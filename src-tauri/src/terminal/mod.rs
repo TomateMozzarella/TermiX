@@ -313,3 +313,6 @@ impl Drop for TerminalManager {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(all(test, windows))]
+mod cleanup_tests;

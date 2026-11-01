@@ -9,7 +9,7 @@ fn default_profile() -> &'static str {
     }
 }
 
-fn open(manager: &TerminalManager, profile: &str, cols: u16, rows: u16) -> String {
+pub(super) fn open(manager: &TerminalManager, profile: &str, cols: u16, rows: u16) -> String {
     let id = manager.open(profile, cols, rows).unwrap();
     #[cfg(windows)]
     {
@@ -22,7 +22,7 @@ fn open(manager: &TerminalManager, profile: &str, cols: u16, rows: u16) -> Strin
     id
 }
 
-fn until(session: &TerminalSession, needle: &str) -> Vec<u8> {
+pub(super) fn until(session: &TerminalSession, needle: &str) -> Vec<u8> {
     let deadline = Instant::now() + Duration::from_secs(20);
     let mut bytes = Vec::new();
     while Instant::now() < deadline {
@@ -84,8 +84,9 @@ fn interactive_shell_resize_independent_tabs_close_and_reopen() {
     until(&b, "second-tab");
     #[cfg(windows)]
     {
-        b.write(b"echo independent\r").unwrap();
-        until(&b, "independent");
+        b.write(b"set TERMIX_TEST=two\r").unwrap();
+        b.write(b"echo %TERMIX_TEST%-marker\r").unwrap();
+        until(&b, "two-marker");
     }
     manager.close(&first).unwrap();
     manager.close(&first).unwrap();
@@ -141,7 +142,7 @@ fn powershell_unicode_interactive_input_and_control_c() {
     let id = open(&manager, "powershell", 80, 24);
     let session = manager.get(&id).unwrap();
     session
-        .write("[Console]::WriteLine([char]0x00F6 + 'unicode-marker')\r".as_bytes())
+        .write("[Console]::WriteLine([string][char]0x00F6 + 'unicode-marker')\r".as_bytes())
         .unwrap();
     until(&session, "öunicode-marker");
     session
