@@ -2,10 +2,11 @@ mod commands;
 mod error;
 mod models;
 mod storage;
+mod terminal;
 
 use std::sync::Mutex;
-use tauri::Manager;
 use storage::SessionStore;
+use tauri::Manager;
 
 pub struct AppState {
     pub sessions: Mutex<SessionStore>,
@@ -18,19 +19,33 @@ pub fn run() {
         .init();
 
     tauri::Builder::default()
+        .manage(terminal::TerminalManager::default())
+        .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::Destroyed) {
+                window.state::<terminal::TerminalManager>().close_all();
+            }
+        })
         .setup(|app| {
             let path = app.path().app_data_dir()?.join("sessions.json");
             if let Some(parent) = path.parent() {
                 std::fs::create_dir_all(parent)?;
             }
             let store = SessionStore::load(path)?;
-            app.manage(AppState { sessions: Mutex::new(store) });
+            app.manage(AppState {
+                sessions: Mutex::new(store),
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::list_sessions,
             commands::save_session,
-            commands::delete_session
+            commands::delete_session,
+            commands::terminal_profiles,
+            commands::open_terminal,
+            commands::read_terminal,
+            commands::write_terminal,
+            commands::resize_terminal,
+            commands::close_terminal
         ])
         .run(tauri::generate_context!())
         .expect("error while running TermiX");

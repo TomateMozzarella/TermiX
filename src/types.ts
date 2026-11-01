@@ -11,6 +11,7 @@ export interface Session {
 }
 
 export interface TerminalTab {
+  profile?: string;
   id: string;
   title: string;
   sessionId?: string;

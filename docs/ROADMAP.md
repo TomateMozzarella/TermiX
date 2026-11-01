@@ -1,7 +1,7 @@
 # TermiX – Product Roadmap and Project Handoff
 
 Last updated: 2026-11-01
-Status: v0.1.0 foundation built and tested on Windows 11; v0.2.0 next.
+Status: v0.1.0 foundation verified on Windows 11; v0.2.0 PTY implementation in progress, Windows CI and installed-app validation pending.
 Repository: https://github.com/TomateMozzarella/TermiX
 
 ## Vision
@@ -14,7 +14,7 @@ Build a polished, modern, cross-platform MobaXterm-style terminal and remote-con
 - The user installed and opened the Windows build successfully and provided a screenshot. The UI runs.
 - GitHub Actions Windows installer build SUCCESS: https://github.com/TomateMozzarella/TermiX/actions/runs/41336575518
 - The previous packaging issue was a missing Windows .ico bundle icon. Fixed by specifying bundle.icon = ["icons/icon.ico", "icons/icon.png"] in src-tauri/tauri.conf.json. Workflow generates temporary icons.
-- IMPORTANT: xterm.js currently shows placeholder output. No local shell, SSH, SFTP, editor, tunnels, RDP, serial, X11 or real terminal transport yet. Do not describe any of these as implemented.
+- v0.1.0 baseline: xterm.js shows placeholder output; no real terminal transport. The v0.2.0 implementation below replaces this for local tabs only. SSH, SFTP, editor, tunnels, RDP, serial and X11 remain planned.
 - Windows build artifacts are uploaded as TermiX-Windows-Installer by .github/workflows/windows-build.yml.
 - The current design is a functional UI shell, not a production-ready remote access client.
 
@@ -28,6 +28,15 @@ Build a polished, modern, cross-platform MobaXterm-style terminal and remote-con
 
 ## Milestones (in order)
 ### v0.2.0 – Real local terminal [NEXT]
+Implementation update (2026-11-01):
+- Added portable-pty 0.9.0 with native ConPTY, allowlisted Windows PowerShell/CMD profiles and a future-portable /bin/sh profile.
+- Narrow open/read/write/resize/close IPC; raw UTF-8 bytes reach xterm without per-chunk string decoding. Pull-based output waits for xterm parsing; bounded backend queue, pending input, terminal count and scrollback.
+- Tabs keep their processes when hidden; ResizeObserver refits visible panes; late startup after React unmount is closed. Closing the last tab leaves an explicit new-terminal action.
+- Windows job objects own shell descendants; jobs close on tab/app shutdown and on shell exit. Shell profiles use fixed system paths with no user command interpolation; profiles are disabled for PowerShell startup. No shell secrets are persisted or logged by TermiX.
+- Added real PTY tests for shell IO, resize, independent tabs, close/reopen, validation, natural exit, PowerShell Unicode/input/Ctrl+C. Frontend tests cover late-start cleanup, output backpressure, ordered/chunked input and startup failure.
+- Verified locally: TypeScript/Vite production build, four frontend lifecycle tests, npm audit reports zero vulnerabilities. Windows backend tests and installer build pending CI; installed-app manual checks still required. Local Rust compilation is unavailable because the Visual C++ linker is absent.
+- Optional pwsh/WSL/Git Bash discovery deferred; Linux desktop and descendant cleanup are not verified. This milestone is not yet marked complete.
+
 - Implement Rust PTY lifecycle (spawn, stream output, write input, resize, terminate), initially Windows ConPTY; design for Linux PTYs.
 - PowerShell and CMD profiles first; discover optional pwsh, WSL, Git Bash.
 - Connect PTY byte streams to xterm.js with proper Unicode, resize handling, copy/paste, scrolling, tab lifecycle and cleanup.
