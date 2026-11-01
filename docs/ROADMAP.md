@@ -55,7 +55,7 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Consistent shared logo for UI and packaged Windows icons; dark native title bar, restrained accent colors, readable typography and a themed terminal scrollbar.
 - Remove the top-bar “Bereit” label and sidebar shell select; use a single footer status. Mark unavailable protocol features as planned.
 - Tests: onboarding, relaunch without repeated setup, settings persistence/replacement, invalid/corrupt settings, save failure, cancellation, keyboard focus and continuing open tabs. Retain existing real PTY tests and build downloadable installers.
-- Implementation present in source; new Windows CI, installer and installed-app verification are pending. This is a focused UX increment before SSH; do not present SSH as implemented.
+- Implementation present in source. All five frontend tests, four browser UI cases and nine Rust tests passed in [Windows Actions run 41343449310](https://github.com/TomateMozzarella/TermiX/actions/runs/41343449310). Use the successful workflow run tied to the delivered installer for build provenance; v0.2.1 installed-app validation is still required. This is a focused UX increment before SSH; do not present SSH as implemented.
 
 ### v0.3.0 – SSH and secure credentials [NEXT AFTER UX INCREMENT]
 - Interactive SSH with password, private-key and agent authentication, PTY allocation, resize, clean disconnect/reconnect, connection timeout.

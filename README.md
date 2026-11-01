@@ -4,7 +4,7 @@ TermiX is an independent, cross-platform remote connection manager built with Ta
 
 ## Current status
 
-v0.2.0 real local terminals passed Windows CI and were confirmed working by the user. v0.2.1 adds first-run setup, persistent settings and visual refinement (new installer verification pending):
+v0.2.0 real local terminals passed Windows CI and were confirmed working by the user. v0.2.1 adds first-run setup, persistent settings and visual refinement (installed-app validation pending):
 - Tauri 2 desktop shell
 - React/TypeScript interface
 - Session list with create/delete/persistence

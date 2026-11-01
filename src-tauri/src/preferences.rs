@@ -42,10 +42,15 @@ impl PreferencesStore {
             .map_err(|_| "Einstellungen konnten nicht serialisiert werden.")?;
         // The command holds the store mutex. Write and sync a sibling temporary
         // file, then atomically replace; a failed write leaves old values intact.
-        let temp = self.path.with_extension("json.tmp");
+        let temp = self
+            .path
+            .with_extension(format!("{}.tmp", uuid::Uuid::new_v4()));
         let result = (|| -> std::io::Result<()> {
             use std::io::Write;
-            let mut file = fs::File::create(&temp)?;
+            let mut file = fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&temp)?;
             file.write_all(&bytes)?;
             file.sync_all()?;
             drop(file);
