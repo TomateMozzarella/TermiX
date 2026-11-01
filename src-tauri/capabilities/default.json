@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Minimal application window permissions",
   "windows": ["main"],
-  "permissions": ["core:default", "local-terminal", "session-storage"]
+  "permissions": ["core:default", "local-terminal", "session-storage", "preferences"]
 }

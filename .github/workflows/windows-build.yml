@@ -29,14 +29,15 @@ jobs:
           restore-keys: windows-rust-${{ hashFiles('src-tauri/Cargo.lock') }}-
       - name: Frontend lifecycle tests
         run: npm test
+      - name: Setup and settings browser tests
+        run: npx playwright install chromium
+      - name: Run setup and settings browser tests
+        timeout-minutes: 5
+        run: npm run test:ui
       - name: Typecheck and frontend build
         run: npm run build
-      - name: Generate temporary application icons
-        shell: pwsh
-        run: |
-          python -m pip install pillow
-          New-Item -ItemType Directory -Force src-tauri/icons | Out-Null
-          python -c "from PIL import Image,ImageDraw; im=Image.new('RGBA',(256,256),'#1a2535'); d=ImageDraw.Draw(im); d.rounded_rectangle((20,20,236,236),radius=40,fill='#2563eb'); d.text((73,93),'TX',fill='white'); im.save('src-tauri/icons/icon.png'); im.save('src-tauri/icons/icon.ico',sizes=[(16,16),(32,32),(48,48),(256,256)])"
+      - name: Generate application icons from shared SVG
+        run: npm run icons
       - name: Rust PTY integration tests
         timeout-minutes: 20
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml -- --test-threads=1

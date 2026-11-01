@@ -1,6 +1,7 @@
 mod commands;
 mod error;
 mod models;
+mod preferences;
 mod storage;
 mod terminal;
 
@@ -10,6 +11,7 @@ use tauri::Manager;
 
 pub struct AppState {
     pub sessions: Mutex<SessionStore>,
+    pub preferences: Mutex<preferences::PreferencesStore>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -33,6 +35,9 @@ pub fn run() {
             let store = SessionStore::load(path)?;
             app.manage(AppState {
                 sessions: Mutex::new(store),
+                preferences: Mutex::new(preferences::PreferencesStore::new(
+                    app.path().app_data_dir()?.join("preferences.json"),
+                )),
             });
             Ok(())
         })
@@ -45,7 +50,9 @@ pub fn run() {
             commands::read_terminal,
             commands::write_terminal,
             commands::resize_terminal,
-            commands::close_terminal
+            commands::close_terminal,
+            commands::get_preferences,
+            commands::save_preferences
         ])
         .run(tauri::generate_context!())
         .expect("error while running TermiX");

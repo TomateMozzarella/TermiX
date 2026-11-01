@@ -1,19 +1,21 @@
 # TermiX – Product Roadmap and Project Handoff
 
 Last updated: 2026-11-01
-Status: v0.1.0 foundation verified on Windows 11; v0.2.0 PTY implementation and automated Windows terminal tests passed; installed-app validation pending.
+Status: v0.2.0 Windows PTY terminal built, automated tests passed, and user confirmed it works in the installed app. v0.2.1 onboarding and visual refinement is the current increment; SSH remains v0.3.0.
 Repository: https://github.com/TomateMozzarella/TermiX
 
 ## Vision
 Build a polished, modern, cross-platform MobaXterm-style terminal and remote-connection manager, initially optimized for Windows 11, with Linux support later. The user prefers downloadable GitHub Actions installers and does not want to compile locally. Keep the dark, compact desktop interface and evolve it into a functional product.
 
-## Verified current state (v0.1.0)
+## Verified current state
+- v0.2.0: user confirmed “funktioniert” and supplied a screenshot of an interactive PowerShell terminal on 2026-11-01. This confirms basic installed-app operation, not every manual edge case.
+- All five frontend lifecycle tests, six real Windows PTY tests, and both Windows installers passed [Actions run 41341535773](https://github.com/TomateMozzarella/TermiX/actions/runs/41341535773).
 - Tauri 2 + Rust backend; React + TypeScript + Vite frontend; xterm.js terminal rendering; lucide-react icons.
 - Dark UI with workspace/sidebar, search, session categories, saved-session area, terminal tabs and status bar.
 - Session create/delete/list persistence in the Rust backend (current JSON storage).
 - The user installed and opened the Windows build successfully and provided a screenshot. The UI runs.
 - GitHub Actions Windows installer build SUCCESS: https://github.com/TomateMozzarella/TermiX/actions/runs/41336575518
-- The previous packaging issue was a missing Windows .ico bundle icon. Fixed by specifying bundle.icon = ["icons/icon.ico", "icons/icon.png"] in src-tauri/tauri.conf.json. Workflow generates temporary icons.
+- The previous packaging issue was a missing Windows .ico bundle icon. Preserve bundle.icon = ["icons/icon.ico", "icons/icon.png"] in src-tauri/tauri.conf.json. v0.2.1 generates these from the shared public/termix.svg with the Tauri icon CLI, replacing the temporary TX artwork.
 - v0.1.0 baseline: xterm.js shows placeholder output; no real terminal transport. The v0.2.0 implementation below replaces this for local tabs only. SSH, SFTP, editor, tunnels, RDP, serial and X11 remain planned.
 - Windows build artifacts are uploaded as TermiX-Windows-Installer by .github/workflows/windows-build.yml.
 - The current design is a functional UI shell, not a production-ready remote access client.
@@ -27,7 +29,7 @@ Build a polished, modern, cross-platform MobaXterm-style terminal and remote-con
 - Default local shell: Windows PowerShell; support CMD, PowerShell 7, WSL distributions and optionally Git Bash with user-selectable profiles. MobaXterm's local Unix-like environment is Cygwin-based; TermiX intentionally uses native shell profiles instead of pretending xterm.js provides Unix commands.
 
 ## Milestones (in order)
-### v0.2.0 – Real local terminal [NEXT]
+### v0.2.0 – Real local terminal [IMPLEMENTED; BASIC INSTALLED USE CONFIRMED]
 Implementation update (2026-11-01):
 - Added portable-pty 0.9.0 with native ConPTY, allowlisted Windows PowerShell/CMD profiles and a future-portable /bin/sh profile.
 - Narrow open/read/write/resize/close IPC; raw UTF-8 bytes reach xterm without per-chunk string decoding. Pull-based output waits for xterm parsing; bounded backend queue, pending input, terminal count and scrollback.
@@ -35,7 +37,7 @@ Implementation update (2026-11-01):
 - Windows job objects own shell descendants; jobs close on tab/app shutdown and on shell exit. Shell profiles use fixed system paths with no user command interpolation; profiles are disabled for PowerShell startup. No shell secrets are persisted or logged by TermiX.
 - Added real PTY tests for shell IO, resize, independent tabs, close/reopen, validation, natural exit, PowerShell Unicode/input/Ctrl+C. Frontend tests cover late-start cleanup, output backpressure, ordered/chunked input and startup failure.
 - Verified locally: TypeScript/Vite production build, five frontend lifecycle tests, npm audit reports zero vulnerabilities. All six real Windows PTY tests passed in [Actions run 41340756174](https://github.com/TomateMozzarella/TermiX/actions/runs/41340756174), including Unicode, interactive input, Ctrl+C, resizing, lifecycle, saturated-output shutdown and descendant cleanup. Installer artifacts are published only by successful complete workflow runs; installed-app manual checks still required. Local Rust compilation is unavailable because the Visual C++ linker is absent.
-- Optional pwsh/WSL/Git Bash discovery deferred; Linux desktop and descendant cleanup are not verified. This milestone is not yet marked complete.
+- Optional pwsh/WSL/Git Bash discovery deferred; Linux desktop and descendant cleanup are not verified. User has confirmed basic installed PowerShell use; exhaustive manual copy/paste and window-close checks remain separate from the automated coverage.
 
 - Implement Rust PTY lifecycle (spawn, stream output, write input, resize, terminate), initially Windows ConPTY; design for Linux PTYs.
 - PowerShell and CMD profiles first; discover optional pwsh, WSL, Git Bash.
@@ -44,7 +46,18 @@ Implementation update (2026-11-01):
 - Never interpolate user input into a command shell or run user-entered commands outside the PTY by accident.
 - Tests: launch shell, echo command, interactive input, resize, close, reopen; build Windows installer in CI.
 
-### v0.3.0 – SSH and secure credentials
+### v0.2.1 – First-run setup, settings and visual refinement [CURRENT]
+User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal works, but the design is not polished. In particular the logo, the disconnected “Bereit” text in the top bar, and the raw shell dropdown need attention. The shell should be chosen in a setup assistant and changed later through settings.
+
+- First launch/upgrade without preferences: two-step assistant for default shell and readable terminal font size. Start the first shell only after preferences are successfully saved.
+- Working settings button: change the default shell for new tabs; apply font size to running terminals without restarting them. Support cancel, errors and retry.
+- Store only validated non-secret preferences in Rust; atomic writes and schema versioning. Do not alter existing saved sessions or persist credentials.
+- Consistent shared logo for UI and packaged Windows icons; dark native title bar, restrained accent colors, readable typography and a themed terminal scrollbar.
+- Remove the top-bar “Bereit” label and sidebar shell select; use a single footer status. Mark unavailable protocol features as planned.
+- Tests: onboarding, relaunch without repeated setup, settings persistence/replacement, invalid/corrupt settings, save failure, cancellation, keyboard focus and continuing open tabs. Retain existing real PTY tests and build downloadable installers.
+- Implementation present in source; new Windows CI, installer and installed-app verification are pending. This is a focused UX increment before SSH; do not present SSH as implemented.
+
+### v0.3.0 – SSH and secure credentials [NEXT AFTER UX INCREMENT]
 - Interactive SSH with password, private-key and agent authentication, PTY allocation, resize, clean disconnect/reconnect, connection timeout.
 - Strict server host-key verification; persistent known-hosts policy and explicit user review for first-seen/changed keys; NEVER silently accept changed keys.
 - Windows Credential Manager / OS-protected keychain for optionally saved passwords; do not persist passwords in JSON/SQLite/localStorage/logs.
@@ -113,3 +126,5 @@ Implementation update (2026-11-01):
 - Wants modern polished MobaXterm-like design, not a clone of Cygwin's shell.
 - Windows 11 first, future cross-platform.
 - Build and distribute using GitHub Actions; user does not want local builds.
+- For private GitHub artifact links, also provide the installer directly in this chat's outputs when possible; the user encountered a browser 404 on the private artifact URL.
+- Default shell belongs in first-run setup and later settings, not a raw always-visible sidebar dropdown. Unify the logo and remove redundant/disconnected status text.

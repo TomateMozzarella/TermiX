@@ -3,6 +3,29 @@ use crate::{error::AppError, models::Session, AppState};
 use tauri::State;
 
 #[tauri::command]
+pub fn get_preferences(
+    state: State<'_, AppState>,
+) -> Result<Option<crate::preferences::Preferences>, String> {
+    state
+        .preferences
+        .lock()
+        .map_err(|_| "Einstellungen sind nicht verfügbar.")?
+        .read()
+}
+
+#[tauri::command]
+pub fn save_preferences(
+    state: State<'_, AppState>,
+    preferences: crate::preferences::Preferences,
+) -> Result<crate::preferences::Preferences, String> {
+    state
+        .preferences
+        .lock()
+        .map_err(|_| "Einstellungen sind nicht verfügbar.")?
+        .save(preferences)
+}
+
+#[tauri::command]
 pub fn terminal_profiles() -> Vec<ShellProfile> {
     crate::terminal::profiles()
 }
