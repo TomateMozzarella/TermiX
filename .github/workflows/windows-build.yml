@@ -10,6 +10,7 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,6 +32,7 @@ jobs:
           New-Item -ItemType Directory -Force src-tauri/icons | Out-Null
           python -c "from PIL import Image,ImageDraw; im=Image.new('RGBA',(256,256),'#1a2535'); d=ImageDraw.Draw(im); d.rounded_rectangle((20,20,236,236),radius=40,fill='#2563eb'); d.text((73,93),'TX',fill='white'); im.save('src-tauri/icons/icon.png'); im.save('src-tauri/icons/icon.ico',sizes=[(16,16),(32,32),(48,48),(256,256)])"
       - name: Rust PTY integration tests
+        timeout-minutes: 20
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml -- --test-threads=1
       - name: Build Windows installer
         run: npm run tauri build
