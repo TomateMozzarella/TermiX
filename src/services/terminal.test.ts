@@ -11,6 +11,17 @@ function mockApi() {
 }
 
 describe("PTY connection lifecycle", () => {
+  it("drains startup output even while a resize is pending", async () => {
+    const api = mockApi();
+    let finishResize!: () => void;
+    api.resize.mockReturnValue(new Promise<void>(done => { finishResize = done; }));
+    api.read.mockResolvedValueOnce({ type: "data", bytes: [27, 91, 54, 110] });
+    const output = vi.fn().mockResolvedValue(undefined);
+    const connection = connectTerminal(api, "cmd", 80, 24, output, vi.fn());
+    await connection.ready;
+    expect(output).toHaveBeenCalledWith(new Uint8Array([27, 91, 54, 110]));
+    finishResize();
+  });
   it("closes a process whose startup resolves after unmount", async () => {
     const api = mockApi();
     let resolve!: (value: string) => void;

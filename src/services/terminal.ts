@@ -46,7 +46,9 @@ export function connectTerminal(api: TerminalApi, profile: string, cols: number,
   const ready = api.open(profile, cols, rows).then(async opened => {
     id = opened;
     if (disposed) { await api.close(opened); return; }
-    await resize();
+    // Start draining immediately: ConPTY can request a cursor-position reply
+    // during startup. Waiting for resize first can block that handshake.
+    void resize();
     while (!disposed) {
       const result = await api.read(opened);
       if (disposed) break;
