@@ -37,7 +37,10 @@ pub(super) fn until(session: &TerminalSession, needle: &str) -> Vec<u8> {
         }
         assert!(bytes.len() < 1024 * 1024, "Unexpected output flood");
     }
-    panic!("PTY output timed out waiting for {needle}");
+    panic!(
+        "PTY output timed out waiting for {needle}; received: {}",
+        String::from_utf8_lossy(&bytes)
+    );
 }
 
 #[test]
@@ -146,16 +149,20 @@ fn powershell_unicode_interactive_input_and_control_c() {
         .unwrap();
     until(&session, "öunicode-marker");
     session
-        .write(b"$answer = Read-Host 'INPUT_READY'; [Console]::WriteLine('answer=' + $answer)\r")
+        .write(b"$answer = Read-Host ('INPUT_' + 'READY'); [Console]::WriteLine('answer=' + $answer)\r")
         .unwrap();
     until(&session, "INPUT_READY");
-    // Wait for the command's Read-Host prompt rather than the echoed source line.
-    std::thread::sleep(Duration::from_millis(500));
     session.write(b"hello\r").unwrap();
     until(&session, "answer=hello");
-    session.write(b"Start-Sleep -Seconds 30\r").unwrap();
-    std::thread::sleep(Duration::from_millis(300));
+    session
+        .write(b"[Console]::WriteLine('sleep-' + 'ready'); Start-Sleep -Seconds 30\r")
+        .unwrap();
+    until(&session, "sleep-ready");
+    std::thread::sleep(Duration::from_millis(100));
     session.write(&[3]).unwrap();
+    // Input sent during pipeline cancellation can legitimately be discarded by
+    // PowerShell. Wait for its next interactive prompt before sending a command.
+    until(&session, "PS ");
     session
         .write(b"[Console]::WriteLine('after-' + 'interrupt')\r")
         .unwrap();
