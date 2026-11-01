@@ -1,54 +1,29 @@
-name: Windows build
-
+name: Build TermiX for Windows
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
-  build:
+  windows:
     runs-on: windows-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Restore TermiX project files
-        shell: pwsh
-        run: |
-          $encoded = (Get-Content ".termix-foundation.zip.b64" -Raw) -replace '\s', ''
-          $bytes = [Convert]::FromBase64String($encoded)
-          [IO.File]::WriteAllBytes("$PWD\termix-foundation.zip", $bytes)
-          Expand-Archive -Path "$PWD\termix-foundation.zip" -DestinationPath "$PWD\restore" -Force
-          Copy-Item -Path "$PWD\restore\termix\*" -Destination "$PWD" -Recurse -Force
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package.json
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
           targets: x86_64-pc-windows-msvc
-
-      - name: Install frontend dependencies
+      - name: Install dependencies
         run: npm install
-
-      - name: Build TermiX
+      - name: Build Windows installer
         run: npm run tauri build
-
-      - name: Upload Windows installers
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: TermiX-Windows-Installer
           path: |
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/msi/*.msi
           if-no-files-found: error
-          retention-days: 14
