@@ -28,6 +28,10 @@
     "active": true,
     "targets": "all",
     "category": "DeveloperTool",
-    "shortDescription": "Cross-platform SSH and remote management client"
+    "shortDescription": "Cross-platform SSH and remote management client",
+    "icon": [
+      "icons/icon.ico",
+      "icons/icon.png"
+    ]
   }
 }
