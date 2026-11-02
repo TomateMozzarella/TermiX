@@ -59,33 +59,14 @@ jobs:
       - run: npm run build
       - run: npm run icons
       - run: ./scripts/installer-assets.ps1
-      - name: Start loopback SSH integration fixture
-        shell: pwsh
-        run: |
-          python -m pip install paramiko
-          $fixtureDir = Join-Path $env:RUNNER_TEMP 'termix-ssh-fixture'
-          New-Item -ItemType Directory -Force $fixtureDir | Out-Null
-          Start-Process python -ArgumentList @('scripts/ssh-test-server.py', '--directory', $fixtureDir, '--port', '22222') -WindowStyle Hidden -RedirectStandardOutput (Join-Path $fixtureDir 'server.out') -RedirectStandardError (Join-Path $fixtureDir 'server.err')
-          $deadline = (Get-Date).AddSeconds(30)
-          while (!(Test-Path (Join-Path $fixtureDir 'ready'))) { if ((Get-Date) -gt $deadline) { Get-Content (Join-Path $fixtureDir 'server.err'); throw 'SSH fixture did not start' }; Start-Sleep -Milliseconds 100 }
-          "TERMIX_SSH_TEST_DIR=$fixtureDir" | Out-File -FilePath $env:GITHUB_ENV -Append
-          'TERMIX_SSH_TEST_PORT=22222' | Out-File -FilePath $env:GITHUB_ENV -Append
-      - name: Prepare isolated native Windows SSH agent fixture
-        shell: pwsh
-        run: |
-          Set-Service ssh-agent -StartupType Manual
-          Start-Service ssh-agent
-          $key = Join-Path $env:TERMIX_SSH_TEST_DIR 'agent-key.pem'
-          icacls $key /inheritance:r /grant:r "${env:USERNAME}:R"
-          & "$env:WINDIR/System32/OpenSSH/ssh-add.exe" $key
-          if ($LASTEXITCODE -ne 0) { throw 'Could not add isolated test key to SSH agent' }
-          'TERMIX_SSH_AGENT_TEST=1' | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Install loopback SSH test dependency
+        run: python -m pip install paramiko
       - name: Compile native integration tests
         timeout-minutes: 30
-        run: cargo test --release --no-run --locked --manifest-path src-tauri/Cargo.toml
+        run: cargo test --no-run --locked --manifest-path src-tauri/Cargo.toml
       - name: Rust PTY, SSH and credential integration tests
         timeout-minutes: 3
-        run: cargo test --release --locked --manifest-path src-tauri/Cargo.toml -- --test-threads=1
+        run: ./scripts/test-native.ps1
       - uses: actions/cache/save@v4
         if: always()
         with:
