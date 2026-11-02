@@ -77,11 +77,7 @@ jobs:
         with:
           path: src-tauri/target
           key: windows-release-${{ hashFiles('src-tauri/Cargo.lock') }}-${{ github.run_id }}
-          # Reuse the existing release compilation during this cache migration.
-          # Subsequent builds use the dedicated release cache first.
-          restore-keys: |
-            windows-release-${{ hashFiles('src-tauri/Cargo.lock') }}-
-            windows-rust-${{ hashFiles('src-tauri/Cargo.lock') }}-41482426265
+          restore-keys: windows-release-${{ hashFiles('src-tauri/Cargo.lock') }}-
       - name: Build Windows installer
         run: npm run tauri build
       - uses: actions/cache/save@v4

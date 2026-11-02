@@ -3,7 +3,7 @@
 Read [docs/ROADMAP.md](docs/ROADMAP.md) and [README.md](README.md) before changing code. The roadmap is the authoritative handoff for product goals, verified current state, milestone ordering, security requirements, and decisions from user discussions.
 
 ## Current focus
-The user confirmed improved v0.2.1 appearance. Current authorized scope (2026-11-02): **v0.3.0 SSH and secure credentials plus expanded onboarding/appearance**. Keep local terminals and old saved sessions working. Read docs/SECURITY.md. Do not jump to SFTP/editor implementation.
+**v0.3.0 SSH plus expanded onboarding/appearance is implemented as a verified Windows test build (2026-11-02).** See docs/ROADMAP.md for the exact delivered application commit, successful workflow and installer hash. All 34 automated tests and silent installer/desktop-shortcut checks passed. User installed-app validation and independent security review remain separate and pending; read docs/SECURITY.md. The next planned milestone is v0.4.0 session management. Keep local terminals and old saved sessions working; do not jump to SFTP/editor implementation.
 
 ## Latest UX decisions
 - Modern, minimal, secure, fast and intuitive are persistent product priorities.

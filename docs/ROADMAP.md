@@ -1,11 +1,11 @@
 # TermiX – Product Roadmap and Project Handoff
 
 Last updated: 2026-11-02
-Status: v0.2.1 delivered and user reported improved appearance. v0.3.0 is authorized and in implementation/verification: SSH plus expanded setup, language, appearance, editor preference and Windows branding.
+Status: v0.3.0 implemented and Windows test installer verified. SSH, expanded setup, language, appearance, editor preference and Windows branding are delivered. User installed-app/interoperability checks and independent security review remain outstanding. Next planned milestone: v0.4.0 session manager.
 Repository: https://github.com/TomateMozzarella/TermiX
 
 ## Vision
-Build a polished, modern, cross-platform MobaXterm-style terminal and remote-connection manager, initially optimized for Windows 11, with Linux support later. The user prefers downloadable GitHub Actions installers and does not want to compile locally. Keep the dark, compact desktop interface and evolve it into a functional product.
+Build a polished, modern, cross-platform MobaXterm-style terminal and remote-connection manager, initially optimized for Windows 11, with Linux support later. The user prefers downloadable GitHub Actions installers and does not want to compile locally. Keep a compact desktop interface with automatic/dark/light appearance and customizable accents.
 
 ## Verified current state
 - v0.2.0: user confirmed “funktioniert” and supplied a screenshot of an interactive PowerShell terminal on 2026-11-01. This confirms basic installed-app operation, not every manual edge case.
@@ -18,7 +18,7 @@ Build a polished, modern, cross-platform MobaXterm-style terminal and remote-con
 - The previous packaging issue was a missing Windows .ico bundle icon. Preserve bundle.icon = ["icons/icon.ico", "icons/icon.png"] in src-tauri/tauri.conf.json. v0.2.1 generates these from the shared public/termix.svg with the Tauri icon CLI, replacing the temporary TX artwork.
 - v0.1.0 baseline: xterm.js shows placeholder output; no real terminal transport. The v0.2.0 implementation below replaces this for local tabs only. SSH, SFTP, editor, tunnels, RDP, serial and X11 remain planned.
 - Windows build artifacts are uploaded as TermiX-Windows-Installer by .github/workflows/windows-build.yml.
-- The current design is a functional UI shell, not a production-ready remote access client.
+- v0.3.0 adds a working SSH engine to the local-terminal baseline. It remains a test build with manual failure-path checks and independent security review outstanding.
 
 ## Technology decisions
 - KEEP Tauri 2 / Rust / React / TypeScript / xterm.js. Tauri is the desktop framework, not the design system; frontend appearance is independently customizable.
@@ -57,13 +57,15 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Tests: onboarding, relaunch without repeated setup, settings persistence/replacement, invalid/corrupt settings, save failure, cancellation, keyboard focus and continuing open tabs. Retain existing real PTY tests and build downloadable installers.
 - Implementation present in source. All five frontend tests, four browser UI cases and nine Rust tests passed in [Windows Actions run 41343449310](https://github.com/TomateMozzarella/TermiX/actions/runs/41343449310). Use the successful workflow run tied to the delivered installer for build provenance; v0.2.1 installed-app validation is still required. This is a focused UX increment before SSH; do not present SSH as implemented.
 
-### v0.3.0 – SSH, secure credentials and expanded setup [CURRENT]
+### v0.3.0 – SSH, secure credentials and expanded setup [IMPLEMENTED; WINDOWS TEST BUILD VERIFIED]
+- Verification: [Actions run 41487262956](https://github.com/TomateMozzarella/TermiX/actions/runs/41487262956), application commit `ddc70f55a2d9d9b087f36b45daa7ca7eef1c0c76`: 18 native tests, 7 frontend tests and 9 browser cases passed. EXE/MSI packaging passed; a silent installation verified executable/icon/license resources and refreshed an existing desktop shortcut to the dedicated ICO. The direct chat EXE was checked against CI SHA-256 `881ca996fa969e032dca8ef8a0d501e14be817b3c0b4e5d4ad81f122eec8ac77`.
+- Native tests use debug builds; the shipped release installer is separately compiled and installation-tested. Browser visual previews use mocked desktop IPC. Do not conflate these checks with installed interactive SSH/UI validation or an independent audit; see docs/SECURITY.md.
 - User authorized implementation on 2026-11-02 after reviewing the plan; the earlier request to wait is revoked.
 - Persistent design goals: minimal/modern, secure, fast, intuitive. English default; English and German initially. Language selection first in setup and changeable later.
 - Setup/settings: default shell, automatic/dark/light mode, accent presets/custom colour with contrast protection, font size and preferred editor (integrated planned/Notepad++/VS Code/custom executable reference). Do not launch an editor during setup; editor integration remains v0.6.0.
 - Minimal flat >_ icon rather than the earlier detailed symbol. One source for UI and native icons. Dedicated v3 shortcut icon and NSIS refresh of existing TermiX shortcuts, without touching unrelated shortcuts or global icon caches.
 - NSIS installer: consistent icon, clean header/sidebar artwork and English/German selection within native installer limits. Existing sessions survive preference migration; newly added setup choices are asked once after upgrade.
-- Implementation uses Rust ssh2/libssh2 with modern algorithm preferences, a two-phase server-key check bound to the same connection, an app-owned public known-hosts file, password/key/agent authentication and opt-in Windows Credential Manager. See docs/SECURITY.md for boundaries and remaining checks. Current code is under CI verification; do not call it production-ready.
+- Implementation uses Rust ssh2/libssh2 with bundled OpenSSL explicitly selected on Windows, modern algorithm preferences, a two-phase server-key check bound to the same connection, an app-owned public known-hosts file, password/key/agent authentication and opt-in Windows Credential Manager. Agent authentication tries bounded identities instead of assuming the first key matches. See docs/SECURITY.md for boundaries and remaining checks; do not call it production-ready.
 - Interactive SSH with password, private-key and agent authentication, PTY allocation, resize, clean disconnect/reconnect, connection timeout.
 - Strict server host-key verification; persistent known-hosts policy and explicit user review for first-seen/changed keys; NEVER silently accept changed keys.
 - Windows Credential Manager / OS-protected keychain for optionally saved passwords; do not persist passwords in JSON/SQLite/localStorage/logs.
@@ -121,7 +123,7 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Update this roadmap's status after each milestone.
 
 ## Open implementation choices
-- Rust PTY crate and transport event design; secure credential/keychain abstraction; SSH library; migration to SQLite; exact UI component library; SFTP sync strategy; optional WSL/Git Bash detection; protocol backends for RDP/X11.
+- Current transports are portable-pty 0.9.0 and ssh2/libssh2/OpenSSL; Windows saved passwords use Credential Manager. Remaining choices include non-Windows credential storage, migration to SQLite, exact UI component library, SFTP sync strategy, optional WSL/Git Bash detection and protocol backends for RDP/X11.
 - Decide these during implementation with tests and threat-model awareness rather than presenting them as already settled.
 
 ## User preferences / decisions from discussions

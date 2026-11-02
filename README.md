@@ -4,7 +4,7 @@ TermiX is an independent, cross-platform remote connection manager built with Ta
 
 ## Current status
 
-v0.3.0 is in implementation/CI verification. It extends the user-tested local terminal with Rust-owned SSH, bilingual setup/settings, theme/accent preferences and refreshed Windows branding. See [security design and remaining checks](docs/SECURITY.md); this is a test build, not a production-readiness claim.
+v0.3.0 is available as a Windows test build. It extends the user-tested local terminal with Rust-owned SSH, bilingual setup/settings, theme/accent preferences and refreshed Windows branding. [Actions run 41487262956](https://github.com/TomateMozzarella/TermiX/actions/runs/41487262956) passed 18 native tests, 7 frontend tests and 9 browser workflows, built EXE/MSI installers, and verified silent installation plus refresh of an existing desktop shortcut. The delivered installer was built from commit `ddc70f55a2d9d9b087f36b45daa7ca7eef1c0c76`; subsequent documentation/cache cleanup does not change its application source. See [security design and remaining manual checks](docs/SECURITY.md); this is not a production-readiness claim.
 - Tauri 2 desktop shell
 - React/TypeScript interface
 - Session list with create/delete/persistence
@@ -34,6 +34,8 @@ The Windows EXE installer uses matching artwork and English/German pages. It ref
 ## Windows downloads and verification
 
 Open the latest successful [Windows Actions run](https://github.com/TomateMozzarella/TermiX/actions/workflows/windows-build.yml) and download **TermiX-Windows-Installer** from Artifacts while signed into an account with repository access. Pull requests also build installers after running tests. v0.2.0 is the user-confirmed baseline; newer builds require their own installed-app check.
+
+Delivered v0.3.0 EXE: `TermiX_0.3.0_x64-setup.exe`, SHA-256 `881ca996fa969e032dca8ef8a0d501e14be817b3c0b4e5d4ad81f122eec8ac77`. The chat also provides this exact installer directly, avoiding private-artifact browser access problems.
 
 On the first launch, complete the four-step setup. Upgrading from v0.2.1 preserves the existing shell/font preferences and asks for the new options once. Preferences are stored locally only after a successful save. Open **Settings** (**Einstellungen**) to change them later: the default shell affects new tabs, while appearance and font size apply to existing terminals without restarting their processes.
 
