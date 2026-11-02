@@ -13,11 +13,13 @@ try {
   $env:TERMIX_SSH_TEST_PORT = '22222'
   Set-Service ssh-agent -StartupType Manual
   Start-Service ssh-agent
-  $key = Join-Path $fixtureDir 'agent-key.pem'
-  icacls $key /inheritance:r /grant:r "${env:USERNAME}:R"
-  if ($LASTEXITCODE -ne 0) { throw 'Could not restrict isolated test key permissions' }
-  & "$env:WINDIR/System32/OpenSSH/ssh-add.exe" $key
-  if ($LASTEXITCODE -ne 0) { throw 'Could not add isolated test key to SSH agent' }
+  foreach ($name in @('unrelated-agent-key.pem', 'agent-key.pem')) {
+    $key = Join-Path $fixtureDir $name
+    icacls $key /inheritance:r /grant:r "${env:USERNAME}:R"
+    if ($LASTEXITCODE -ne 0) { throw 'Could not restrict isolated test key permissions' }
+    & "$env:WINDIR/System32/OpenSSH/ssh-add.exe" $key
+    if ($LASTEXITCODE -ne 0) { throw 'Could not add isolated test key to SSH agent' }
+  }
   $env:TERMIX_SSH_AGENT_TEST = '1'
   # Keep the fixture's parent alive throughout the tests. Windows may terminate
   # a hidden child when the earlier runner step's console closes.

@@ -350,9 +350,25 @@ impl SshManager {
                     .userauth_pubkey_file(&auth.username, None, &path, pass)
                     .map_err(|_| "ssh_auth_failed")?;
             }
-            "agent" => session
-                .userauth_agent(&auth.username)
-                .map_err(|_| "ssh_agent_failed")?,
+            "agent" => {
+                let mut agent = session.agent().map_err(|_| "ssh_agent_failed")?;
+                agent.connect().map_err(|_| "ssh_agent_failed")?;
+                agent.list_identities().map_err(|_| "ssh_agent_failed")?;
+                let identities = agent.identities().map_err(|_| "ssh_agent_failed")?;
+                let deadline = Instant::now() + TIMEOUT;
+                for identity in identities.iter().take(16) {
+                    if Instant::now() >= deadline {
+                        break;
+                    }
+                    if agent.userauth(&auth.username, identity).is_ok() {
+                        break;
+                    }
+                }
+                let _ = agent.disconnect();
+                if !session.authenticated() {
+                    return Err("ssh_agent_failed".into());
+                }
+            }
             _ => return Err("ssh_auth_failed".into()),
         }
         if !session.authenticated() {

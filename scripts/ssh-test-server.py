@@ -16,6 +16,7 @@ host_key = paramiko.Ed25519Key.from_private_key_file(str(host_path))
 user_key = paramiko.RSAKey.generate(2048)
 user_key.write_private_key_file(str(root / 'user-key.pem'), password='fixture-only')
 user_key.write_private_key_file(str(root / 'agent-key.pem'))
+paramiko.RSAKey.generate(2048).write_private_key_file(str(root / 'unrelated-agent-key.pem'))
 (root / 'user-key.pub').write_text(user_key.get_name() + ' ' + user_key.get_base64())
 ed_path = root / 'encrypted-openssh-key'
 ed_path.write_bytes(Ed25519PrivateKey.generate().private_bytes(Encoding.PEM, PrivateFormat.OpenSSH, BestAvailableEncryption(b'fixture-only')))
