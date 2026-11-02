@@ -1,7 +1,7 @@
 # TermiX – Product Roadmap and Project Handoff
 
 Last updated: 2026-11-02
-Status: v0.3.0 implemented and Windows test installer verified. SSH, expanded setup, language, appearance, editor preference and Windows branding are delivered. User installed-app/interoperability checks and independent security review remain outstanding. Next planned milestone: v0.4.0 session manager.
+Status: v0.3.0 implemented and Windows test installer verified. User supplied installed v0.3.0 screenshots and positive appearance feedback on 2026-11-02. Full SSH interoperability/failure-path checks and independent security review remain outstanding. Next planned milestone: v0.4.0 session manager plus usability improvements. Latest request is planning/documentation only; do not start implementation, merge branches or publish releases in this feedback turn.
 Repository: https://github.com/TomateMozzarella/TermiX
 
 ## Vision
@@ -75,7 +75,12 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Security review and tests before calling SSH production-ready.
 
 ### v0.4.0 – Session manager
+- Latest installed-app feedback (2026-11-02) makes editing existing sessions and assigning them to folders core acceptance criteria. Expose a clear edit action; prefill name/host/port/username/authentication references, preserve session identity and apply saved connection changes to subsequent connections without restarting active sessions.
 - Create/edit/delete/duplicate sessions; groups/folders, favorites, search, recently used, profile defaults.
+- Folder management: create/rename/delete folders, assign/move sessions and provide an unassigned/default location. Deleting a folder must not silently delete its sessions.
+- Readability: increase small sidebar/session details, tab labels, form labels/help text and status text; improve light-theme contrast. Add UI scaling separate from terminal font size, respect Windows DPI, and check common resolutions/scales and dialog fit. Do not defer this screenshot-reported issue to v0.7.0.
+- Friendly SSH address entry: accept bare IPs and DNS hostnames; normalize pasted http://, https:// and ssh:// addresses to a visible hostname/IP preview before save. Remove surrounding whitespace and optional trailing slash. HTTP(S) prefixes are input convenience only: the resulting connection remains SSH, normally port 22, with normal host-key verification. Never infer SSH port 80/443 from HTTP(S). Handle an explicitly supplied port visibly; reject ambiguous input, embedded credentials and non-root paths/query/fragment with a helpful explanation instead of silently guessing. Cover IPv6 and hostname cases. Validate normalized data in Rust as well as the UI.
+- Editor configuration only: allow an explicit executable path and a browse button for Notepad++, VS Code and custom editors. Optionally detect installed editors through standard installation locations/registry/PATH, without scanning the whole disk. Show any detected path and allow overriding it; detection failure keeps manual selection available. Never execute a detected/editor path during setup. Actual file opening/editing remains v0.6.0.
 - Save host, port, username, connection type, terminal settings and credential references; NEVER raw secrets.
 - Evaluate migration from current sessions.json to SQLite with backward-compatible migration and backup.
 - Validation, atomic writes, import/export of non-secret metadata; clear UX around missing credentials.
@@ -88,13 +93,16 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 ### v0.6.0 – Editors
 - Embedded Monaco Editor as the default editor: tabs, syntax highlighting, line numbers, search, save, encoding awareness.
 - Configurable external editor executable, e.g. Notepad++, VS Code or any user-selected program.
+- Use the visible, user-confirmed editor executable configured earlier; v0.3.0 currently stores only the choice/reference and neither discovers nor launches Notepad++.
 - Open remote SFTP file -> safe local working copy -> edit -> explicit or controlled sync back via SFTP.
 - Detect remote modifications/conflicts; avoid silently overwriting remote changes.
 - Protect temporary working files and clean up securely; clearly communicate editor trust boundaries.
 
 ### v0.7.0 – Terminal productivity
 - Split panes, search, themes, fonts, font size, key bindings, session/tab restoration, context menus, command palette.
+- Add named command snippets/macros with explicit execution in a clearly identified target session and optional shortcuts. Never store passwords/private keys in macros, auto-run them on connection, or run commands in a different/local session by surprise. Macro recording/advanced scripting needs separate scope decisions.
 - Accessibility, performance, error states and responsive sizing.
+- The embedded terminal already exists since v0.2.0 (xterm.js display, Rust PTY transport, PowerShell/CMD shell); SSH arrives in v0.3.0. A new shell interpreter or terminal emulator written from scratch is not currently planned. If "own terminal" means a bundled Unix environment like MobaXterm's, clarify that separately; optional WSL/pwsh/Git Bash discovery remains planned but is not a delivered bundled Unix environment.
 
 ### v0.8.0 – SSH tunnels
 - Local and remote port forwarding, lifecycle UI, explicit binding configuration, secure defaults and errors.
@@ -115,6 +123,8 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 
 ## Release and quality workflow
 - Work incrementally by milestone, use small reviewable commits/PRs, keep documentation updated.
+- User feedback (2026-11-02): prefer integrating completed, tested development milestones into main and publishing versioned GitHub Releases with downloadable installer assets and release notes, rather than indefinitely keeping everything in a draft branch/Actions artifacts. Use prereleases for experimental development builds and identify remaining limitations honestly. Retain checks and short-lived branches for unfinished work; avoid publishing every intermediate commit as a release.
+- Current state at this feedback handoff: PR #1 remains an open draft on codex/v0.2-local-terminal and no GitHub Releases exist. Record the new workflow preference now; the explicit planning-only request means no merge, tag, release publication or workflow implementation in this turn.
 - GitHub Actions must produce a working Windows installer artifact; do not ask the user to compile locally.
 - Build success is not functional correctness: test new functionality, not only compilation.
 - Keep Rust, TypeScript, Tauri and Windows bundle paths consistent. Preserve .ico bundling fix.
@@ -127,6 +137,7 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Decide these during implementation with tests and threat-model awareness rather than presenting them as already settled.
 
 ## User preferences / decisions from discussions
+- 2026-11-02 feedback: editing sessions, folder assignment, readable/scalable UI, editor EXE detection plus manual override, friendly URL-to-SSH-host input, macros, clearer terminal/editor/file-browser milestone communication, and tested main integration/GitHub Releases are recorded above. No application code was requested in this feedback turn.
 - User approved milestone order above.
 - Wants strong security for SSH passwords and keys.
 - Wants Notepad++ (or another external program) selectable as editor AND an integrated default editor.
