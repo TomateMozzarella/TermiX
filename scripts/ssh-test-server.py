@@ -61,7 +61,15 @@ def connection(sock):
             while b'\r' in pending or b'\n' in pending:
                 pending = pending.replace(b'\r\n', b'\r').replace(b'\n', b'\r')
                 line, pending = pending.split(b'\r', 1)
-                if line == b'exit': channel.send_exit_status(7); channel.close(); return
+                if line == b'exit':
+                    channel.send_exit_status(7)
+                    channel.close()
+                    # Channel close is not a TCP disconnect. Keep the SSH
+                    # transport alive until the client drains status/CLOSE and
+                    # closes its connection, as a normal multi-channel server does.
+                    deadline = time.monotonic() + 5
+                    while transport.is_active() and time.monotonic() < deadline: time.sleep(.01)
+                    return
                 channel.send(b'remote:' + line + b'\r\n> ')
     except (EOFError, OSError, paramiko.SSHException): pass
     finally: transport.close()
