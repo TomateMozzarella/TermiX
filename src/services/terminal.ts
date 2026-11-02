@@ -21,7 +21,8 @@ export type TerminalApi = typeof terminalApi;
 // Separate the asynchronous process lifecycle from React. A tab can unmount
 // while startup is pending (including React StrictMode); the late PTY is closed.
 export function connectTerminal(api: TerminalApi, profile: string, cols: number, rows: number,
-  output: (bytes: Uint8Array) => Promise<void>, ended: (message: string) => void) {
+  output: (bytes: Uint8Array) => Promise<void>, ended: (message: string) => void,
+  format?: (kind: "exit" | "error", value: unknown) => string) {
   let disposed = false;
   let id: string | undefined;
   let inputBytes = 0;
@@ -30,7 +31,7 @@ export function connectTerminal(api: TerminalApi, profile: string, cols: number,
   let resizing = false;
 
   const fail = (error: unknown) => {
-    if (!disposed) ended(`Terminalfehler: ${String(error)}`);
+    if (!disposed) ended(format ? format("error", error) : `Terminalfehler: ${String(error)}`);
     dispose();
   };
   const resize = async () => {
@@ -55,7 +56,7 @@ export function connectTerminal(api: TerminalApi, profile: string, cols: number,
       if (result.type === "data") await output(new Uint8Array(result.bytes));
       else if (result.type === "error") throw new Error(result.message);
       else if (result.type === "exit") {
-        ended(`Shell beendet${result.code === null ? "" : ` (Exit ${result.code})`}`);
+        ended(format ? format("exit", result.code) : `Shell beendet${result.code === null ? "" : ` (Exit ${result.code})`}`);
         dispose();
       }
     }

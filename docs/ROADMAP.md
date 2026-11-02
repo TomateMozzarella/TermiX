@@ -1,7 +1,7 @@
 # TermiX – Product Roadmap and Project Handoff
 
-Last updated: 2026-11-01
-Status: v0.2.0 Windows PTY terminal built, automated tests passed, and user confirmed it works in the installed app. v0.2.1 onboarding and visual refinement is the current increment; SSH remains v0.3.0.
+Last updated: 2026-11-02
+Status: v0.2.1 delivered and user reported improved appearance. v0.3.0 is authorized and in implementation/verification: SSH plus expanded setup, language, appearance, editor preference and Windows branding.
 Repository: https://github.com/TomateMozzarella/TermiX
 
 ## Vision
@@ -57,7 +57,13 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Tests: onboarding, relaunch without repeated setup, settings persistence/replacement, invalid/corrupt settings, save failure, cancellation, keyboard focus and continuing open tabs. Retain existing real PTY tests and build downloadable installers.
 - Implementation present in source. All five frontend tests, four browser UI cases and nine Rust tests passed in [Windows Actions run 41343449310](https://github.com/TomateMozzarella/TermiX/actions/runs/41343449310). Use the successful workflow run tied to the delivered installer for build provenance; v0.2.1 installed-app validation is still required. This is a focused UX increment before SSH; do not present SSH as implemented.
 
-### v0.3.0 – SSH and secure credentials [NEXT AFTER UX INCREMENT]
+### v0.3.0 – SSH, secure credentials and expanded setup [CURRENT]
+- User authorized implementation on 2026-11-02 after reviewing the plan; the earlier request to wait is revoked.
+- Persistent design goals: minimal/modern, secure, fast, intuitive. English default; English and German initially. Language selection first in setup and changeable later.
+- Setup/settings: default shell, automatic/dark/light mode, accent presets/custom colour with contrast protection, font size and preferred editor (integrated planned/Notepad++/VS Code/custom executable reference). Do not launch an editor during setup; editor integration remains v0.6.0.
+- Minimal flat >_ icon rather than the earlier detailed symbol. One source for UI and native icons. Dedicated v3 shortcut icon and NSIS refresh of existing TermiX shortcuts, without touching unrelated shortcuts or global icon caches.
+- NSIS installer: consistent icon, clean header/sidebar artwork and English/German selection within native installer limits. Existing sessions survive preference migration; newly added setup choices are asked once after upgrade.
+- Implementation uses Rust ssh2/libssh2 with modern algorithm preferences, a two-phase server-key check bound to the same connection, an app-owned public known-hosts file, password/key/agent authentication and opt-in Windows Credential Manager. See docs/SECURITY.md for boundaries and remaining checks. Current code is under CI verification; do not call it production-ready.
 - Interactive SSH with password, private-key and agent authentication, PTY allocation, resize, clean disconnect/reconnect, connection timeout.
 - Strict server host-key verification; persistent known-hosts policy and explicit user review for first-seen/changed keys; NEVER silently accept changed keys.
 - Windows Credential Manager / OS-protected keychain for optionally saved passwords; do not persist passwords in JSON/SQLite/localStorage/logs.

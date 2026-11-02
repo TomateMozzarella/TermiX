@@ -12,3 +12,8 @@ commands.allow = ["list_sessions", "save_session", "delete_session"]
 identifier = "preferences"
 description = "Read and save non-secret setup and appearance preferences."
 commands.allow = ["get_preferences", "save_preferences"]
+
+[[permission]]
+identifier = "ssh"
+description = "Verify SSH host keys, authenticate and open bounded SSH PTY sessions; forget a single optional OS-vault password."
+commands.allow = ["ssh_probe", "ssh_cancel", "ssh_open", "ssh_forget_password"]

@@ -4,7 +4,7 @@ TermiX is an independent, cross-platform remote connection manager built with Ta
 
 ## Current status
 
-v0.2.0 real local terminals passed Windows CI and were confirmed working by the user. v0.2.1 adds first-run setup, persistent settings and visual refinement (installed-app validation pending):
+v0.3.0 is in implementation/CI verification. It extends the user-tested local terminal with Rust-owned SSH, bilingual setup/settings, theme/accent preferences and refreshed Windows branding. See [security design and remaining checks](docs/SECURITY.md); this is a test build, not a production-readiness claim.
 - Tauri 2 desktop shell
 - React/TypeScript interface
 - Session list with create/delete/persistence
@@ -19,7 +19,17 @@ v0.2.0 real local terminals passed Windows CI and were confirmed working by the 
 - Dark title bar and scrollbars, a single footer status, and a cleaner sidebar
 - Windows/Linux-oriented project configuration
 
-**Not implemented yet:** SSH transport/authentication, SFTP, port forwarding, RDP, serial and X11. Optional pwsh/WSL/Git Bash profile discovery is deferred. Linux has a /bin/sh profile but has not received desktop validation.
+**Still planned:** SFTP, actual embedded/external file editing, port forwarding, RDP, serial and X11. Optional pwsh/WSL/Git Bash discovery is deferred. Linux has a /bin/sh profile but has not received desktop validation. The editor choice is saved for the later editor milestone; setup never launches a program.
+
+## v0.3.0 setup and SSH
+
+The expanded assistant asks language (English by default, English/German available), shell, automatic/dark/light appearance, accent colour, font size and preferred editor. Automatic follows system changes. Preferences from v0.2.1 retain shell/font choices and request the new options once; saving completes the new setup. Settings preview appearance without restarting terminal processes; cancel restores the saved appearance.
+
+Save an SSH host/port/username, then open it. New or changed public host keys must be checked independently and explicitly approved before authentication. Changed keys also require the exact hostname. TermiX maintains its own known-hosts file and does not silently change OpenSSH's files.
+
+Choose password, an existing private key (passphrase prompted, never saved), local SSH agent (no forwarding), or a saved Windows credential. Password saving is optional and happens only after successful verification/login, in Windows Credential Manager. The saved authentication method and key-file path are non-secret metadata; raw passwords/private keys are not stored in session JSON. Reconnect rechecks server identity. See docs/SECURITY.md for limits, cancellation behavior and manual checks still needed.
+
+The Windows EXE installer uses matching artwork and English/German pages. It refreshes existing TermiX shortcuts to a dedicated icon file and requests a shell icon refresh; unrelated shortcuts and global icon caches are not deleted.
 
 ## Windows downloads and verification
 

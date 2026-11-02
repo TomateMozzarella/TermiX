@@ -8,9 +8,12 @@ export interface Session {
   port: number;
   username: string;
   group: string;
+  authMethod?: "agent" | "password" | "stored" | "key";
+  keyPath?: string;
 }
 
 export interface TerminalTab {
+  transportId?: string;
   profile?: string;
   id: string;
   title: string;

@@ -8,7 +8,23 @@ on:
 permissions:
   contents: read
 jobs:
+  resolve-rust-lock:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Resolve dependency lock for the SSH increment
+        run: |
+          cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
+          Write-Output 'TERMIX_LOCK_BEGIN'
+          Get-Content -Raw src-tauri/Cargo.lock
+          Write-Output 'TERMIX_LOCK_END'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TermiX-Rust-Lock
+          path: src-tauri/Cargo.lock
   windows:
+    needs: resolve-rust-lock
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
@@ -19,8 +35,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
+      - uses: actions/download-artifact@v4
+        with:
+          name: TermiX-Rust-Lock
+          path: src-tauri
       - name: Install dependencies
         run: npm ci
+      - name: Fetch pinned Rust sources and collect native licenses
+        run: |
+          cargo fetch --locked --manifest-path src-tauri/Cargo.toml
+          python scripts/collect-licenses.py
       - uses: actions/cache/restore@v4
         id: rust-cache
         with:
@@ -38,6 +62,29 @@ jobs:
         run: npm run build
       - name: Generate application icons from shared SVG
         run: npm run icons
+      - name: Generate Windows installer artwork
+        run: ./scripts/installer-assets.ps1
+      - name: Start loopback SSH integration fixture
+        shell: pwsh
+        run: |
+          python -m pip install paramiko
+          $fixtureDir = Join-Path $env:RUNNER_TEMP 'termix-ssh-fixture'
+          New-Item -ItemType Directory -Force $fixtureDir | Out-Null
+          Start-Process python -ArgumentList @('scripts/ssh-test-server.py', '--directory', $fixtureDir, '--port', '22222') -WindowStyle Hidden -RedirectStandardOutput (Join-Path $fixtureDir 'server.out') -RedirectStandardError (Join-Path $fixtureDir 'server.err')
+          $deadline = (Get-Date).AddSeconds(30)
+          while (!(Test-Path (Join-Path $fixtureDir 'ready'))) { if ((Get-Date) -gt $deadline) { Get-Content (Join-Path $fixtureDir 'server.err'); throw 'SSH fixture did not start' }; Start-Sleep -Milliseconds 100 }
+          "TERMIX_SSH_TEST_DIR=$fixtureDir" | Out-File -FilePath $env:GITHUB_ENV -Append
+          'TERMIX_SSH_TEST_PORT=22222' | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Prepare isolated native Windows SSH agent fixture
+        shell: pwsh
+        run: |
+          Set-Service ssh-agent -StartupType Manual
+          Start-Service ssh-agent
+          $key = Join-Path $env:TERMIX_SSH_TEST_DIR 'agent-key.pem'
+          icacls $key /inheritance:r /grant:r "${env:USERNAME}:R"
+          & "$env:WINDIR/System32/OpenSSH/ssh-add.exe" $key
+          if ($LASTEXITCODE -ne 0) { throw 'Could not add isolated test key to SSH agent' }
+          'TERMIX_SSH_AGENT_TEST=1' | Out-File -FilePath $env:GITHUB_ENV -Append
       - name: Rust PTY integration tests
         timeout-minutes: 20
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml -- --test-threads=1

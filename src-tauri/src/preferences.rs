@@ -1,8 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::{fs, path::PathBuf};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -11,6 +8,31 @@ pub struct Preferences {
     pub setup_complete: bool,
     pub default_shell: String,
     pub font_size: u16,
+    #[serde(default)]
+    pub setup_version: u8,
+    #[serde(default = "default_language")]
+    pub language: String,
+    #[serde(default = "default_theme")]
+    pub theme: String,
+    #[serde(default = "default_accent")]
+    pub accent: String,
+    #[serde(default = "default_editor")]
+    pub editor: String,
+    #[serde(default)]
+    pub editor_path: String,
+}
+
+fn default_language() -> String {
+    "en".into()
+}
+fn default_theme() -> String {
+    "system".into()
+}
+fn default_accent() -> String {
+    "#71c9bd".into()
+}
+fn default_editor() -> String {
+    "integrated".into()
 }
 
 pub struct PreferencesStore {
@@ -25,93 +47,61 @@ impl PreferencesStore {
     pub fn read(&self) -> Result<Option<Preferences>, String> {
         match fs::read(&self.path) {
             Ok(bytes) => {
-                let value = serde_json::from_slice::<Preferences>(&bytes).map_err(|_| {
-                    "Einstellungen konnten nicht gelesen werden. Die Datei wurde nicht verändert."
-                })?;
+                let mut value = serde_json::from_slice::<Preferences>(&bytes)
+                    .map_err(|_| "preferences_invalid")?;
+                if value.schema_version == 1 {
+                    value.schema_version = 2;
+                }
                 validate(&value)?;
                 Ok(Some(value))
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-            Err(_) => Err("Einstellungen konnten nicht geladen werden.".into()),
+            Err(_) => Err("preferences_read_failed".into()),
         }
     }
 
     pub fn save(&self, value: Preferences) -> Result<Preferences, String> {
         validate(&value)?;
-        let bytes = serde_json::to_vec_pretty(&value)
-            .map_err(|_| "Einstellungen konnten nicht serialisiert werden.")?;
-        // The command holds the store mutex. Write and sync a sibling temporary
-        // file, then atomically replace; a failed write leaves old values intact.
-        let temp = self
-            .path
-            .with_extension(format!("{}.tmp", uuid::Uuid::new_v4()));
-        let result = (|| -> std::io::Result<()> {
-            use std::io::Write;
-            let mut file = fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(&temp)?;
-            file.write_all(&bytes)?;
-            file.sync_all()?;
-            drop(file);
-            replace(&temp, &self.path)
-        })();
-        if result.is_err() {
-            let _ = fs::remove_file(&temp);
-            return Err(
-                "Einstellungen konnten nicht gespeichert werden. Bitte erneut versuchen.".into(),
-            );
-        }
+        let bytes = serde_json::to_vec_pretty(&value).map_err(|_| "preferences_save_failed")?;
+        crate::atomic::write(&self.path, &bytes).map_err(|_| "preferences_save_failed")?;
         Ok(value)
     }
 }
 
 fn validate(value: &Preferences) -> Result<(), String> {
-    if value.schema_version != 1 {
-        return Err("Diese Version der Einstellungen wird nicht unterstützt.".into());
+    if value.schema_version != 2 || value.setup_version > 2 {
+        return Err("preferences_version".into());
     }
     if !crate::terminal::profiles()
         .iter()
         .any(|p| p.id == value.default_shell)
     {
-        return Err("Unbekanntes Terminalprofil.".into());
+        return Err("invalid_profile".into());
     }
     if !(11..=22).contains(&value.font_size) {
-        return Err("Die Schriftgröße muss zwischen 11 und 22 liegen.".into());
+        return Err("invalid_font".into());
+    }
+    if !["en", "de"].contains(&value.language.as_str())
+        || !["system", "dark", "light"].contains(&value.theme.as_str())
+    {
+        return Err("preferences_invalid".into());
+    }
+    if value.accent.len() != 7
+        || !value.accent.starts_with('#')
+        || !value.accent[1..].chars().all(|c| c.is_ascii_hexdigit())
+    {
+        return Err("invalid_accent".into());
+    }
+    if !["integrated", "notepad++", "vscode", "custom"].contains(&value.editor.as_str())
+        || value.editor_path.len() > 4096
+        || value.editor_path.chars().any(|c| c.is_control())
+    {
+        return Err("invalid_editor".into());
+    }
+    if value.editor == "custom" && !PathBuf::from(&value.editor_path).is_absolute() {
+        return Err("invalid_editor".into());
     }
     Ok(())
-}
-
-#[cfg(not(windows))]
-fn replace(source: &Path, destination: &Path) -> std::io::Result<()> {
-    fs::rename(source, destination)
-}
-
-#[cfg(windows)]
-fn replace(source: &Path, destination: &Path) -> std::io::Result<()> {
-    use std::os::windows::ffi::OsStrExt;
-    use windows_sys::Win32::Storage::FileSystem::{
-        MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
-    };
-    let source: Vec<u16> = source.as_os_str().encode_wide().chain(Some(0)).collect();
-    let destination: Vec<u16> = destination
-        .as_os_str()
-        .encode_wide()
-        .chain(Some(0))
-        .collect();
-    // SAFETY: both paths are valid, NUL-terminated UTF-16 buffers for this call.
-    if unsafe {
-        MoveFileExW(
-            source.as_ptr(),
-            destination.as_ptr(),
-            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
-        )
-    } == 0
-    {
-        Err(std::io::Error::last_os_error())
-    } else {
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -119,10 +109,16 @@ mod tests {
     use super::*;
     fn value() -> Preferences {
         Preferences {
-            schema_version: 1,
+            schema_version: 2,
             setup_complete: true,
             default_shell: crate::terminal::profiles()[0].id.into(),
             font_size: 15,
+            setup_version: 2,
+            language: default_language(),
+            theme: default_theme(),
+            accent: default_accent(),
+            editor: default_editor(),
+            editor_path: String::new(),
         }
     }
     #[test]
@@ -158,7 +154,7 @@ mod tests {
         invalid.font_size = 100;
         assert!(store.save(invalid).is_err());
         let mut invalid = value();
-        invalid.schema_version = 2;
+        invalid.schema_version = 3;
         assert!(store.save(invalid).is_err());
         assert_eq!(store.read().unwrap(), Some(value()));
         fs::write(&store.path, b"corrupt").unwrap();
@@ -174,5 +170,35 @@ mod tests {
                 .join("missing/preferences.json"),
         );
         assert!(store.save(value()).is_err());
+    }
+    #[test]
+    fn legacy_preferences_migrate_in_memory_without_losing_choices() {
+        let dir = std::env::temp_dir().join(format!("termix-settings-{}", uuid::Uuid::new_v4()));
+        fs::create_dir(&dir).unwrap();
+        let store = PreferencesStore::new(dir.join("preferences.json"));
+        let legacy = serde_json::json!({ "schemaVersion":1, "setupComplete":true, "defaultShell":crate::terminal::profiles()[0].id, "fontSize":18 });
+        let bytes = serde_json::to_vec(&legacy).unwrap();
+        fs::write(&store.path, &bytes).unwrap();
+        let migrated = store.read().unwrap().unwrap();
+        assert_eq!(migrated.schema_version, 2);
+        assert_eq!(migrated.font_size, 18);
+        assert_eq!(migrated.language, "en");
+        assert_eq!(migrated.theme, "system");
+        assert_eq!(migrated.setup_version, 0);
+        assert_eq!(fs::read(&store.path).unwrap(), bytes);
+        let mut bad = migrated.clone();
+        bad.accent = "url(bad)".into();
+        assert!(store.save(bad).is_err());
+        let mut bad = migrated.clone();
+        bad.language = "unknown".into();
+        assert!(store.save(bad).is_err());
+        let mut bad = migrated.clone();
+        bad.theme = "unknown".into();
+        assert!(store.save(bad).is_err());
+        let mut bad = migrated;
+        bad.editor = "custom".into();
+        bad.editor_path = "relative.exe".into();
+        assert!(store.save(bad).is_err());
+        fs::remove_dir_all(dir).unwrap();
     }
 }

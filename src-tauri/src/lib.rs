@@ -1,9 +1,12 @@
+mod atomic;
 mod commands;
 mod error;
 mod models;
 mod preferences;
+mod ssh;
 mod storage;
 mod terminal;
+mod vault;
 
 use std::sync::Mutex;
 use storage::SessionStore;
@@ -25,6 +28,7 @@ pub fn run() {
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
                 window.state::<terminal::TerminalManager>().close_all();
+                window.state::<ssh::SshManager>().close_all();
             }
         })
         .setup(|app| {
@@ -33,6 +37,9 @@ pub fn run() {
                 std::fs::create_dir_all(parent)?;
             }
             let store = SessionStore::load(path)?;
+            app.manage(ssh::SshManager::new(
+                app.path().app_data_dir()?.join("known-hosts.json"),
+            ));
             app.manage(AppState {
                 sessions: Mutex::new(store),
                 preferences: Mutex::new(preferences::PreferencesStore::new(
@@ -52,7 +59,11 @@ pub fn run() {
             commands::resize_terminal,
             commands::close_terminal,
             commands::get_preferences,
-            commands::save_preferences
+            commands::save_preferences,
+            commands::ssh_probe,
+            commands::ssh_cancel,
+            commands::ssh_open,
+            commands::ssh_forget_password
         ])
         .run(tauri::generate_context!())
         .expect("error while running TermiX");

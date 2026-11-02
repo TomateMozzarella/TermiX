@@ -3,9 +3,15 @@
 Read [docs/ROADMAP.md](docs/ROADMAP.md) and [README.md](README.md) before changing code. The roadmap is the authoritative handoff for product goals, verified current state, milestone ordering, security requirements, and decisions from user discussions.
 
 ## Current focus
-The v0.2.0 local PTY terminal is implemented, passed Windows CI and installer packaging, and the user confirmed that it works on 2026-11-01. Current focus: **v0.2.1 onboarding, settings and visual refinement** requested after that installed-app test. Keep the real terminal working. Then continue with v0.3.0 SSH and secure credentials in the roadmap; do not jump to SFTP/editor.
+The user confirmed improved v0.2.1 appearance. Current authorized scope (2026-11-02): **v0.3.0 SSH and secure credentials plus expanded onboarding/appearance**. Keep local terminals and old saved sessions working. Read docs/SECURITY.md. Do not jump to SFTP/editor implementation.
 
 ## Latest UX decisions
+- Modern, minimal, secure, fast and intuitive are persistent product priorities.
+- English is the default; support English and German throughout the UI and settings. Setup asks language first, then shell, appearance and preferred editor; all remain editable later.
+- Theme choices: automatic/system (default), dark and light. Support a few calm accent presets plus a custom colour with readable contrast. Appearance changes must not restart shells.
+- Use a minimal flat >_ icon inspired by the user's terminal-symbol reference. Refresh this product's existing desktop/start-menu shortcuts with a separately named icon asset; do not clear global Windows icon caches or restart Explorer.
+- Improve the Windows NSIS installer with matching icon, restrained header/sidebar artwork and English/German language choices. Do not claim modern web-style UI is possible in every native installer page.
+- Preferred editor is a saved choice/reference only for now; Monaco, external editing and SFTP synchronization remain later milestones. Never execute editor paths during setup.
 - Choose the default local shell in a first-run setup assistant, then change it in working settings. No raw shell dropdown in the sidebar.
 - Use one shared logo source for the interface, title/taskbar icon and installer; preserve .ico bundling.
 - Remove the floating top-bar “Bereit” label; keep a single meaningful footer status.
