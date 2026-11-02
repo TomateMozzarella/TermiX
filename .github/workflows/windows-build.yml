@@ -80,9 +80,12 @@ jobs:
           & "$env:WINDIR/System32/OpenSSH/ssh-add.exe" $key
           if ($LASTEXITCODE -ne 0) { throw 'Could not add isolated test key to SSH agent' }
           'TERMIX_SSH_AGENT_TEST=1' | Out-File -FilePath $env:GITHUB_ENV -Append
-      - name: Rust PTY, SSH and credential integration tests
+      - name: Compile native integration tests
         timeout-minutes: 30
-        run: cargo test --locked --manifest-path src-tauri/Cargo.toml -- --test-threads=1
+        run: cargo test --release --no-run --locked --manifest-path src-tauri/Cargo.toml
+      - name: Rust PTY, SSH and credential integration tests
+        timeout-minutes: 3
+        run: cargo test --release --locked --manifest-path src-tauri/Cargo.toml -- --test-threads=1
       - uses: actions/cache/save@v4
         if: always()
         with:

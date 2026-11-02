@@ -203,6 +203,18 @@ fn encrypted_key_auth_and_rejected_password_and_expired_ticket() {
     receive(&manager.get(&id).unwrap(), "fixture ready");
     manager.close(&id);
     let probe = manager.probe("127.0.0.1", port).unwrap();
+    let mut key = auth("key", "openssh-ed25519-user");
+    key.key_path = fixture
+        .join("encrypted-openssh-key")
+        .to_string_lossy()
+        .into();
+    key.passphrase = "fixture-only".into();
+    let id = manager
+        .open(&probe.ticket, "known", "", key, 80, 24)
+        .unwrap();
+    receive(&manager.get(&id).unwrap(), "fixture ready");
+    manager.close(&id);
+    let probe = manager.probe("127.0.0.1", port).unwrap();
     let mut wrong = auth("password", "wrong");
     wrong.password = "wrong-test-only".into();
     assert_eq!(
