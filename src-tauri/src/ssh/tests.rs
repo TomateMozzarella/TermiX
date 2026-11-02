@@ -268,3 +268,39 @@ fn native_windows_agent_authentication() {
     manager.close_all();
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[cfg(windows)]
+#[test]
+fn optional_saved_password_stays_in_os_vault_and_is_reused_in_rust() {
+    let Some((port, _)) = fixture() else {
+        return;
+    };
+    let dir = directory();
+    let manager = SshManager::new(dir.join("known-hosts.json"));
+    let username = format!("vault-{}", uuid::Uuid::new_v4());
+    let probe = manager.probe("127.0.0.1", port).unwrap();
+    let mut password = auth("password", &username);
+    password.save_password = true;
+    let id = manager
+        .open(&probe.ticket, "trust", "", password, 80, 24)
+        .unwrap();
+    manager.close(&id);
+    assert_eq!(
+        &**crate::vault::read("127.0.0.1", port, &username).unwrap(),
+        "termix-test-password"
+    );
+    let probe = manager.probe("127.0.0.1", port).unwrap();
+    let mut stored = auth("stored", &username);
+    stored.password.clear();
+    let id = manager
+        .open(&probe.ticket, "known", "", stored, 80, 24)
+        .unwrap();
+    receive(&manager.get(&id).unwrap(), "fixture ready");
+    manager.close(&id);
+    crate::vault::delete("127.0.0.1", port, &username).unwrap();
+    assert!(!std::fs::read_to_string(&manager.pins_path)
+        .unwrap()
+        .contains("termix-test-password"));
+    manager.close_all();
+    std::fs::remove_dir_all(dir).unwrap();
+}

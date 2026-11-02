@@ -101,6 +101,9 @@ fn endpoint(host: &str, port: u16) -> String {
     format!("[{host}]:{port}")
 }
 pub fn validate_endpoint(host: &str, port: u16) -> Result<String, String> {
+    if host.chars().any(|c| c.is_control()) {
+        return Err("invalid_host".into());
+    }
     let host = host
         .trim()
         .trim_start_matches('[')
@@ -498,6 +501,13 @@ impl SshTerminal {
                 Ok(Output::Data { bytes })
             }
             Ok(_) if io.channel.eof() => {
+                match io.channel.wait_close() {
+                    Ok(()) => {}
+                    Err(e) if e.code() == ssh2::ErrorCode::Session(-37) => {
+                        return Ok(Output::Pending)
+                    }
+                    Err(_) => return Err("ssh_disconnected".into()),
+                }
                 let code = io
                     .channel
                     .exit_status()
