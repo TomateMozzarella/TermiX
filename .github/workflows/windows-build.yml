@@ -72,8 +72,23 @@ jobs:
         with:
           path: src-tauri/target
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
+      - uses: actions/cache/restore@v4
+        id: release-cache
+        with:
+          path: src-tauri/target
+          key: windows-release-${{ hashFiles('src-tauri/Cargo.lock') }}-${{ github.run_id }}
+          # Reuse the existing release compilation during this cache migration.
+          # Subsequent builds use the dedicated release cache first.
+          restore-keys: |
+            windows-release-${{ hashFiles('src-tauri/Cargo.lock') }}-
+            windows-rust-${{ hashFiles('src-tauri/Cargo.lock') }}-41482426265
       - name: Build Windows installer
         run: npm run tauri build
+      - uses: actions/cache/save@v4
+        if: always() && steps.release-cache.outputs.cache-primary-key != ''
+        with:
+          path: src-tauri/target
+          key: ${{ steps.release-cache.outputs.cache-primary-key }}
       - name: Verify installed files and refresh of an existing desktop shortcut
         run: ./scripts/test-installer.ps1
       - uses: actions/upload-artifact@v4
