@@ -46,7 +46,7 @@ Implementation update (2026-11-01):
 - Never interpolate user input into a command shell or run user-entered commands outside the PTY by accident.
 - Tests: launch shell, echo command, interactive input, resize, close, reopen; build Windows installer in CI.
 
-### v0.2.1 – First-run setup, settings and visual refinement [CURRENT]
+### v0.2.1 – First-run setup, settings and visual refinement [DELIVERED; USER CONFIRMED IMPROVEMENT]
 User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal works, but the design is not polished. In particular the logo, the disconnected “Bereit” text in the top bar, and the raw shell dropdown need attention. The shell should be chosen in a setup assistant and changed later through settings.
 
 - First launch/upgrade without preferences: two-step assistant for default shell and readable terminal font size. Start the first shell only after preferences are successfully saved.

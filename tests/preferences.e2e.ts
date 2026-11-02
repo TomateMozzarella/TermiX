@@ -15,6 +15,9 @@ test("English is default; setup saves language, shell, appearance and editor; re
   await page.getByRole("button", { name: "Dunkel", exact: true }).click();
   await page.getByRole("slider").fill("17");
   await page.getByLabel("Eigene Farbe", { exact: true }).fill("#b692f6");
+  await page.setViewportSize({ width: 900, height: 600 });
+  await expect(page.getByRole("button", { name: "Weiter", exact: true })).toBeInViewport({ ratio: 1 });
+  await page.setViewportSize({ width: 1280, height: 800 });
   await preview(page, "TermiX-0.3.0-Design-Dark");
   await page.getByRole("button", { name: "Weiter", exact: true }).click();
   await page.getByLabel("Bevorzugter Editor", { exact: true }).selectOption("notepad++");
@@ -29,11 +32,15 @@ test("English is default; setup saves language, shell, appearance and editor; re
 
 test("appearance and language apply without respawning terminals, cancellation restores preview", async ({ page }) => {
   await mockDesktop(page, true); await page.goto("/"); await expect(page.getByRole("button", { name: /^Windows PowerShell/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(1);
   const count = await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Deutsch", exact: true }).click();
   await page.getByRole("radio", { name: /CMD/ }).check(); await page.getByRole("slider").fill("18");
   await page.getByRole("button", { name: "Hell", exact: true }).click();
+  await page.setViewportSize({ width: 900, height: 600 });
+  await expect(page.getByRole("button", { name: "Änderungen speichern" })).toBeInViewport({ ratio: 1 });
+  await page.setViewportSize({ width: 1280, height: 800 });
   await preview(page, "TermiX-0.3.0-Settings-Light");
   await page.getByRole("button", { name: "Änderungen speichern" }).click();
   expect(await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(count);
@@ -47,6 +54,7 @@ test("appearance and language apply without respawning terminals, cancellation r
 test("automatic theme follows system changes while the shell keeps running", async ({ page }) => {
   await mockDesktop(page, true); await page.emulateMedia({ colorScheme: "light" }); await page.goto("/"); await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(page.getByRole("button", { name: /^Windows PowerShell/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(1);
   const count = await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length);
   await page.emulateMedia({ colorScheme: "dark" }); await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   expect(await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(count);

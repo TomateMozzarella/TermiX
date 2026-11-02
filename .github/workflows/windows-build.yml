@@ -34,6 +34,7 @@ jobs:
             ui-previews/*.png
             test-results/**
   windows:
+    needs: frontend
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -89,6 +90,8 @@ jobs:
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
       - name: Build Windows installer
         run: npm run tauri build
+      - name: Verify installed files and refresh of an existing desktop shortcut
+        run: ./scripts/test-installer.ps1
       - uses: actions/upload-artifact@v4
         with:
           name: TermiX-Windows-Installer

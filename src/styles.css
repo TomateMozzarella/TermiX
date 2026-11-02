@@ -81,3 +81,7 @@ body,.app-shell,.main{background:var(--bg);color:var(--fg)}
 .text-button{border:0;background:transparent;padding:7px 0;color:var(--accent-ink);font-size:12px;text-decoration:underline}
 .terminal-host{flex:1;min-height:0}.terminal-reconnect{display:flex;justify-content:flex-end;padding-bottom:10px}
 @media(max-height:780px){.preferences-panel{border-radius:12px}.preferences-content{padding-top:20px}.preferences-intro{margin-bottom:20px}}
+.preferences-panel{display:flex;flex-direction:column;overflow:hidden}
+.preferences-brand,.setup-progress,.preferences-footer{flex-shrink:0}
+.preferences-content{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.terminal-preview{color:var(--fg)}

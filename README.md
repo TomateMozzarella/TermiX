@@ -14,9 +14,9 @@ v0.3.0 is in implementation/CI verification. It extends the user-tested local te
 - Windows PowerShell and CMD profiles, independent tabs, input/output and resize
 - Bounded output buffering and scrollback; tab/window cleanup with Windows process jobs
 - Automated Rust PTY integration tests and frontend lifecycle tests
-- First-run assistant for default shell and font size; settings can change these later
+- Four-step English/German setup for language, shell, appearance/font size and editor preference
 - A shared SVG logo for the interface and generated Windows application/installer icons
-- Dark title bar and scrollbars, a single footer status, and a cleaner sidebar
+- System/dark/light appearance, custom accent colours, matching title bar and terminal scrollbars
 - Windows/Linux-oriented project configuration
 
 **Still planned:** SFTP, actual embedded/external file editing, port forwarding, RDP, serial and X11. Optional pwsh/WSL/Git Bash discovery is deferred. Linux has a /bin/sh profile but has not received desktop validation. The editor choice is saved for the later editor milestone; setup never launches a program.
@@ -35,7 +35,7 @@ The Windows EXE installer uses matching artwork and English/German pages. It ref
 
 Open the latest successful [Windows Actions run](https://github.com/TomateMozzarella/TermiX/actions/workflows/windows-build.yml) and download **TermiX-Windows-Installer** from Artifacts while signed into an account with repository access. Pull requests also build installers after running tests. v0.2.0 is the user-confirmed baseline; newer builds require their own installed-app check.
 
-On the first launch (also after upgrading without preferences), choose Windows PowerShell or CMD in the setup assistant, then choose a font size. Preferences are stored locally only after a successful save. Open **Einstellungen** to change them later: the default shell affects new tabs, while font size applies to existing terminals without restarting their processes.
+On the first launch, complete the four-step setup. Upgrading from v0.2.1 preserves the existing shell/font preferences and asks for the new options once. Preferences are stored locally only after a successful save. Open **Settings** (**Einstellungen**) to change them later: the default shell affects new tabs, while appearance and font size apply to existing terminals without restarting their processes.
 
 Use + for independent tabs. Closing a tab terminates its shell and Windows job descendants; closing the window closes all terminals. An exited shell stays visible until its tab is closed. The terminal scrollback buffer stays in memory (5,000 lines) and is not saved in session JSON; shells may keep their own command history according to their configuration. Use standard terminal selection/copy/paste. Input/paste is limited to 256 KiB pending per tab; at most 16 live terminals can be opened.
 
@@ -43,22 +43,29 @@ Before marking the milestone complete, verify in the installed app: Unicode outp
 
 ## Tests
 
-`npm ci`, `npm test`, `npm run test:ui`, `npm run build`, `npm run icons` and `cargo test --locked --manifest-path src-tauri/Cargo.toml` run in Windows CI before installer packaging. Browser tests use Playwright Chromium with mocked desktop IPC to verify UI behavior; backend tests use actual PTYs and actual preference files. Lockfiles are committed.
+Windows CI runs the frontend tests, Playwright browser workflows and production build. Native tests use actual PTYs, preference files, Windows Credential Manager and a loopback SSH server with isolated test-only passwords/keys and a Windows SSH agent. Browser tests mock desktop IPC and cover UI behavior independently of the native engine. A silent installation check verifies bundled resources and refresh of an existing desktop shortcut. Lockfiles are committed.
 
 ## Development
 
 Requires Rust stable, Node.js LTS and the Tauri platform prerequisites.
+The commands below target Windows PowerShell. Generate the bundled artwork and license resource before launching/building the desktop app.
 
 ```bash
 npm install
+cargo fetch --locked --manifest-path src-tauri/Cargo.toml
+python scripts/collect-licenses.py
 npm run icons
+./scripts/installer-assets.ps1
 npm run tauri dev
 ```
 
 ## Production build
 
 ```bash
+cargo fetch --locked --manifest-path src-tauri/Cargo.toml
+python scripts/collect-licenses.py
 npm run icons
+./scripts/installer-assets.ps1
 npm run tauri build
 ```
 
