@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Command, Terminal, X } from "lucide-react";
 import type { Preferences } from "./services/preferences";
 import type { ShellProfile } from "./services/terminal";
@@ -13,7 +13,11 @@ export function PreferencesDialog({ mode, profiles, initial, onSave, onClose, on
   const [step, setStep] = useState(0), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const panel = useRef<HTMLDivElement>(null), title = useRef<HTMLHeadingElement>(null);
   const setup = mode === "setup", lang = draft.language, tr = (key: Message) => t(lang, key);
-  useEffect(() => { const previous = document.activeElement as HTMLElement | null; return () => { previous?.focus(); onPreview(null); }; }, []);
+  useLayoutEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    return () => { if (mode === "settings") requestAnimationFrame(() => { if (previous?.isConnected) previous.focus(); }); };
+  }, []);
+  useEffect(() => () => onPreview(null), []);
   useEffect(() => { title.current?.focus(); }, [step]);
   useEffect(() => { onPreview(draft); }, [draft]);
   const edit = (value: Partial<Preferences>) => setDraft(old => ({ ...old, ...value }));
