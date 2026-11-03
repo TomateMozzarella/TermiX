@@ -15,7 +15,30 @@ use std::{
 #[derive(Default)]
 pub struct Remote {
     pub gate: Mutex<()>,
+    subsystem: Mutex<Option<ssh2::Sftp>>,
     pub transfer: Mutex<Option<Arc<Transfer>>>,
+}
+// Explicit nonblocking close avoids ssh2::File's blocking Drop path while a
+// terminal shares the transport. The subsystem is retained until TCP shutdown.
+struct Handle<'a> {
+    file: ssh2::File,
+    terminal: &'a SshTerminal,
+}
+impl std::ops::Deref for Handle<'_> {
+    type Target = ssh2::File;
+    fn deref(&self) -> &Self::Target {
+        &self.file
+    }
+}
+impl std::ops::DerefMut for Handle<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.file
+    }
+}
+impl Drop for Handle<'_> {
+    fn drop(&mut self) {
+        let _ = retry(self.terminal, None, || self.file.close());
+    }
 }
 pub struct Transfer {
     cancel: AtomicBool,
@@ -98,9 +121,16 @@ pub fn retry<T>(
 pub fn list(terminal: &SshTerminal, value: &str) -> Result<Listing, String> {
     let _gate = terminal.remote.gate.try_lock().map_err(|_| "sftp_busy")?;
     let requested = path(value)?;
-    let sftp = retry(terminal, None, || terminal.ssh_session().sftp())?;
+    let mut subsystem = terminal.remote.subsystem.lock().map_err(|_| "ssh_state")?;
+    if subsystem.is_none() {
+        *subsystem = Some(retry(terminal, None, || terminal.ssh_session().sftp())?);
+    }
+    let sftp = subsystem.as_ref().ok_or("sftp_failed")?;
     let canonical = retry(terminal, None, || sftp.realpath(&requested))?;
-    let mut directory = retry(terminal, None, || sftp.opendir(&canonical))?;
+    let mut directory = Handle {
+        file: retry(terminal, None, || sftp.opendir(&canonical))?,
+        terminal,
+    };
     let mut entries = Vec::new();
     let deadline = Instant::now() + Duration::from_secs(30);
     loop {
@@ -254,7 +284,13 @@ fn transfer(
 ) -> Result<(), String> {
     let _gate = terminal.remote.gate.lock().map_err(|_| "ssh_state")?;
     let cancelled = Some(&task.cancel);
-    let sftp = retry(terminal, cancelled, || terminal.ssh_session().sftp())?;
+    let mut subsystem = terminal.remote.subsystem.lock().map_err(|_| "ssh_state")?;
+    if subsystem.is_none() {
+        *subsystem = Some(retry(terminal, cancelled, || {
+            terminal.ssh_session().sftp()
+        })?);
+    }
+    let sftp = subsystem.as_ref().ok_or("sftp_failed")?;
     let mut buffer = vec![0u8; 65536];
     if upload {
         let mut source = std::fs::File::open(local).map_err(|_| "sftp_local")?;
@@ -283,14 +319,17 @@ fn transfer(
             remote_string(remote.parent().ok_or("sftp_path")?)?,
             uuid::Uuid::new_v4()
         ))?;
-        let mut destination = retry(terminal, cancelled, || {
-            sftp.open_mode(
-                &temporary,
-                ssh2::OpenFlags::WRITE | ssh2::OpenFlags::CREATE | ssh2::OpenFlags::EXCLUSIVE,
-                0o600,
-                ssh2::OpenType::File,
-            )
-        })?;
+        let mut destination = Handle {
+            file: retry(terminal, cancelled, || {
+                sftp.open_mode(
+                    &temporary,
+                    ssh2::OpenFlags::WRITE | ssh2::OpenFlags::CREATE | ssh2::OpenFlags::EXCLUSIVE,
+                    0o600,
+                    ssh2::OpenType::File,
+                )
+            })?,
+            terminal,
+        };
         let result = (|| {
             loop {
                 let n = source.read(&mut buffer).map_err(|_| "sftp_local")?;
@@ -345,7 +384,10 @@ fn transfer(
         if stat.perm.unwrap_or(0) & 0o170000 != 0o100000 {
             return Err("sftp_type".into());
         }
-        let mut source = retry(terminal, cancelled, || sftp.open(remote))?;
+        let mut source = Handle {
+            file: retry(terminal, cancelled, || sftp.open(remote))?,
+            terminal,
+        };
         task.status.lock().map_err(|_| "ssh_state")?.total = stat.size.unwrap_or(0);
         let before = std::fs::symlink_metadata(local).ok();
         if before
