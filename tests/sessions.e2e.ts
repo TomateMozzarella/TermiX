@@ -89,3 +89,17 @@ test("UI scaling and editor discovery/manual override preserve terminal font and
   expect(await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(1);
   await page.reload(); await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+test("external library changes require an explicit reload instead of overwriting the newer state", async ({ page }) => {
+  await start(page); await createLocal(page, "Original"); await page.getByRole("button", { name: "Edit session: Original", exact: true }).click(); await page.getByLabel("Display name", { exact: true }).fill("My draft");
+  await page.evaluate(() => { const w = window as any; w.failLibrary = true; w.libraryFailure = "session_changed"; w.externalCatalog = structuredClone(w.catalog); w.externalCatalog.revision += 10; w.externalCatalog.sessions[0].name = "Other window"; });
+  await page.getByRole("button", { name: "Save session", exact: true }).click(); await expect(page.getByRole("alert")).toContainText("Another window");
+  await page.getByRole("button", { name: "Cancel", exact: true }).click(); await page.getByRole("button", { name: "Reload library", exact: true }).click(); await expect(page.getByRole("button", { name: "Open session: Other window", exact: true })).toBeVisible();
+});
+
+test("session menus stay in the viewport and tab keyboard navigation retains focus", async ({ page }) => {
+  await start(page); await createLocal(page, "Keyboard"); await page.setViewportSize({ width: 900, height: 600 });
+  await page.getByRole("button", { name: "More session actions: Keyboard", exact: true }).click(); await expect(page.getByRole("menu")).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole("menuitem", { name: "Duplicate session", exact: true })).toBeFocused(); await page.keyboard.press("ArrowDown"); await expect(page.getByRole("menuitem", { name: "Delete session", exact: true })).toBeFocused(); await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "New tab", exact: true }).click(); const tabs = page.getByRole("tab"); await tabs.last().focus(); await page.keyboard.press("ArrowLeft"); await expect(tabs.first()).toBeFocused(); await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
+});

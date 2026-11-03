@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Activity, HardDrive, Plus, Settings, Terminal, X } from "lucide-react";
 import { PreferencesDialog } from "./PreferencesDialog";
@@ -7,7 +7,7 @@ import { SessionSidebar, type SessionView } from "./SessionSidebar";
 import { ConfirmDialog, FolderDialog, ImportDialog } from "./LibraryDialogs";
 import { defaults, getPreferences, savePreferences, type Preferences } from "./services/preferences";
 import { terminalApi, type ShellProfile } from "./services/terminal";
-import { deleteFolder, deleteSession, exportSessions, getCatalog, importSessions, pickSessionImport, saveFolder, saveSession, touchSession } from "./services/sessions";
+import { deleteFolder, deleteSession, exportSessions, getCatalog, importSessions, pickSessionImport, reloadCatalog, saveFolder, saveSession, touchSession } from "./services/sessions";
 import { resolvedTheme, accentForeground, accentText } from "./appearance";
 import { errorText, t, type Message } from "./i18n";
 import type { Session, SessionCatalog, SessionFolder, TerminalTab } from "./types";
@@ -22,6 +22,7 @@ export default function App() {
   const [systemDark, setSystemDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
   const [catalog, setCatalog] = useState(emptyCatalog), [view, setView] = useState<SessionView>("all"), [query, setQuery] = useState("");
   const [tabs, setTabs] = useState<TerminalTab[]>([]), [activeTab, setActiveTab] = useState("");
+  const [keyboardTabs, setKeyboardTabs] = useState(false);
   const [editor, setEditor] = useState<{ session: Session; editing: boolean } | null>(null), [folderEditor, setFolderEditor] = useState<SessionFolder | null>(null);
   const [confirm, setConfirm] = useState<{ kind: "session" | "folder"; id: string; name: string } | null>(null), [incoming, setIncoming] = useState<SessionCatalog | null>(null);
   const [status, setStatus] = useState(""), [notice, setNotice] = useState<Message | null>(null), [busy, setBusy] = useState(false);
@@ -30,6 +31,7 @@ export default function App() {
   const configured = !!preferences?.setupComplete && preferences.setupVersion === 2;
   const modalOpen = !!(preferencesMode || editor || folderEditor || confirm || incoming || sshTarget);
   const updateCatalog = (value: SessionCatalog) => setCatalog(old => value.revision >= old.revision ? value : old);
+  const library = <T,>(request: Promise<T>): Promise<T> => request.catch(e => { setStatus(String(e)); throw e; });
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)"); const change = () => setSystemDark(media.matches);
     media.addEventListener("change", change); return () => media.removeEventListener("change", change);
@@ -78,19 +80,21 @@ export default function App() {
   async function persistSession(value: Session) {
     setBusy(true);
     try {
-      await saveSession(value); updateCatalog(await getCatalog()); setEditor(null); setStatus("");
+      await library(saveSession(value)); updateCatalog(await getCatalog()); setEditor(null); setStatus("");
     } finally { setBusy(false); }
   }
   const rememberUse = (id: string) => { void touchSession(id).then(updateCatalog).catch(e => setStatus(String(e))); };
   function openSession(session: Session) {
+    setKeyboardTabs(false);
     if (session.kind === "ssh") { setSshTarget({ session }); return; }
     if (session.kind !== "local" || !preferences) { setStatus(tr("unavailable")); return; }
     const tab = localTab(preferences, session); setTabs(old => [...old, tab]); setActiveTab(tab.id); rememberUse(session.id);
   }
-  function addLocalTab() { if (!preferences || !configured) return; const tab = localTab(preferences); setTabs(old => [...old, tab]); setActiveTab(tab.id); }
+  function addLocalTab() { if (!preferences || !configured) return; setKeyboardTabs(false); const tab = localTab(preferences); setTabs(old => [...old, tab]); setActiveTab(tab.id); }
   function closeTab(id: string) { setTabs(old => { const next = old.filter(t => t.id !== id); if (activeTab === id) setActiveTab(next[next.length - 1]?.id ?? ""); return next; }); }
   async function run(action: () => Promise<void>) { setBusy(true); setStatus(""); setNotice(null); try { await action(); } catch (e) { setStatus(String(e)); } finally { setBusy(false); } }
   function connected(id: string, details: Pick<Session, "username" | "authMethod" | "keyPath">) {
+    setKeyboardTabs(false);
     if (!sshTarget) { void terminalApi.close(id); return; }
     const snapshot = { ...sshTarget.session, ...details };
     const tab: TerminalTab = { id: makeId(), title: snapshot.name, sessionId: snapshot.id, kind: "ssh", transportId: id, fontSize: snapshot.fontSize, connection: snapshot };
@@ -100,6 +104,14 @@ export default function App() {
       void saveSession({ ...current, ...details }).then(() => touchSession(snapshot.id)).then(updateCatalog).catch(e => setStatus(String(e)));
     }
     setTabs(old => replaces ? old.map(t => t.id === replaces ? tab : t) : [...old, tab]); setActiveTab(tab.id); setSshTarget(null);
+  }
+  function onTabsKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).getAttribute("role") !== "tab" || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    const index = buttons.indexOf(event.target as HTMLButtonElement);
+    const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 : (index + (event.key === "ArrowRight" ? 1 : buttons.length - 1)) % buttons.length;
+    setKeyboardTabs(true); setActiveTab(tabs[next].id); buttons[next].focus();
   }
   return <div className="app-shell">
     <header className="topbar"><div className="brand"><img className="brand-logo" src="/termix.svg" alt=""/><span>Termi<span className="brand-x">X</span></span><span className="version">0.4.0</span></div><div className="topbar-actions"><button className="settings-button" disabled={!preferences} onClick={() => setPreferencesMode("settings")} title={tr("settings")}><Settings size={18}/><span>{tr("settings")}</span></button></div></header>
@@ -111,21 +123,21 @@ export default function App() {
       onFolder={folder => setFolderEditor(folder ?? { id: makeId(), name: "" })} onDeleteFolder={folder => setConfirm({ kind: "folder", id: folder.id, name: folder.name })}
       onImport={() => void run(async () => { const value = await pickSessionImport(); if (value) setIncoming(value); })}
       onExport={() => void run(async () => { if (await exportSessions()) setNotice("exportDone"); })}/>
-      <main className="main"><div className="tabbar" role="tablist" aria-label="TermiX">{tabs.map(tab => <div key={tab.id} className={`tab ${activeTab === tab.id ? "active" : ""}`}><button role="tab" aria-selected={activeTab === tab.id} title={tab.connection?.host ? `${tab.title} · ${tab.connection.host}:${tab.connection.port}` : tab.title} onClick={() => setActiveTab(tab.id)}><Terminal size={16}/><span>{tab.title}</span></button><button className="tab-close" aria-label={`${tr("closeTab")}: ${tab.title}`} onClick={() => closeTab(tab.id)}><X size={15}/></button></div>)}<button className="new-tab" disabled={!configured} onClick={addLocalTab} title={tr("newTab")} aria-label={tr("newTab")}><Plus size={19}/></button></div>
+      <main className="main"><div className="tabbar" role="tablist" aria-label="TermiX" onKeyDown={onTabsKeyDown}>{tabs.map(tab => <div key={tab.id} className={`tab ${activeTab === tab.id ? "active" : ""}`}><button role="tab" tabIndex={activeTab === tab.id ? 0 : -1} aria-selected={activeTab === tab.id} title={tab.connection?.host ? `${tab.title} · ${tab.connection.host}:${tab.connection.port}` : tab.title} onClick={() => { setKeyboardTabs(false); setActiveTab(tab.id); }}><Terminal size={16}/><span>{tab.title}</span></button><button className="tab-close" aria-label={`${tr("closeTab")}: ${tab.title}`} onClick={() => closeTab(tab.id)}><X size={15}/></button></div>)}<button className="new-tab" disabled={!configured} onClick={addLocalTab} title={tr("newTab")} aria-label={tr("newTab")}><Plus size={19}/></button></div>
       <div className="terminal-area">{startupError ? <div className="workspace-empty" role="alert"><h2>{tr("loadFailed")}</h2><p>{errorText(startupError, lang)}</p><button className="btn primary" onClick={() => setRetry(v => v + 1)}>{tr("retry")}</button></div> : !tabs.length && <div className="workspace-empty"><img src="/termix.svg" alt=""/><h2>{tr("emptyTitle")}</h2><p>{tr("emptyIntro")}</p><button className="btn primary" disabled={!configured} onClick={addLocalTab}><Plus size={18}/>{tr("openTerminal")}</button></div>}
-      {tabs.map(tab => <div key={tab.id} className="terminal-layer" style={{ display: activeTab === tab.id ? "flex" : "none", flexDirection: "column" }}><Suspense fallback={<span role="status">{tr("openTerminal")}…</span>}><TerminalPane tab={tab} active={activeTab === tab.id && !modalOpen} fontSize={tab.fontSize ?? visible.fontSize} theme={theme} accent={visible.accent} language={lang} onReconnect={() => { const session = catalog.sessions.find(s => s.id === tab.sessionId) ?? tab.connection; if (session) setSshTarget({ session, replaces: tab.id }); }}/></Suspense></div>)}</div>
+      {tabs.map(tab => <div key={tab.id} className="terminal-layer" style={{ display: activeTab === tab.id ? "flex" : "none", flexDirection: "column" }}><Suspense fallback={<span role="status">{tr("openTerminal")}…</span>}><TerminalPane tab={tab} active={activeTab === tab.id && !modalOpen} focusOnActivate={!keyboardTabs} fontSize={tab.fontSize ?? visible.fontSize} theme={theme} accent={visible.accent} language={lang} onReconnect={() => { const session = catalog.sessions.find(s => s.id === tab.sessionId) ?? tab.connection; if (session) setSshTarget({ session, replaces: tab.id }); }}/></Suspense></div>)}</div>
       <footer className="statusbar"><span title={status ? errorText(status, lang) : ""}><Activity size={15}/>{status ? errorText(status, lang) : notice ? tr(notice) : tabs.find(tab => tab.id === activeTab)?.kind === "ssh" ? "SSH" : tr("localWorkspace")}</span><span><HardDrive size={15}/>{catalog.sessions.length} {tr("sessions")}</span><span>{tabs.find(tab => tab.id === activeTab)?.fontSize ?? visible.fontSize} px<span className="status-divider">/</span>UTF-8</span></footer>
-      {status && <div className="workspace-notice" role="alert"><span>{errorText(status, lang)}</span><button className="icon-button" aria-label={tr("closeDialog")} onClick={() => setStatus("")}><X size={17}/></button></div>}
+      {status && !modalOpen && <div className="workspace-notice" role="alert"><span>{errorText(status, lang)}</span>{status === "session_changed" && <button className="btn secondary" disabled={busy} onClick={() => void run(async () => { setCatalog(await reloadCatalog()); })}>{tr("reloadLibrary")}</button>}<button className="icon-button" aria-label={tr("closeDialog")} onClick={() => setStatus("")}><X size={17}/></button></div>}
     </main></div>
     {preferencesMode && preferences && <PreferencesDialog mode={preferencesMode} profiles={profiles} initial={preferences} onSave={applyPreferences} onPreview={setPreview} onClose={() => { setPreview(null); setPreferencesMode(null); }}/ >}
     {editor && <SessionDialog key={editor.session.id} initial={editor.session} editing={editor.editing} folders={catalog.folders} profiles={profiles} language={lang} onSave={persistSession} onClose={() => setEditor(null)}/>}
-    {folderEditor && <FolderDialog initial={folderEditor} language={lang} onClose={() => setFolderEditor(null)} onSave={async folder => { updateCatalog(await saveFolder(folder)); setFolderEditor(null); }}/ >}
+    {folderEditor && <FolderDialog initial={folderEditor} language={lang} onClose={() => setFolderEditor(null)} onSave={async folder => { updateCatalog(await library(saveFolder(folder))); setFolderEditor(null); }}/ >}
     {confirm && <ConfirmDialog title={`${tr(confirm.kind === "folder" ? "deleteFolder" : "deleteSession")} · ${confirm.name}`} note={tr(confirm.kind === "folder" ? "folderDeleteNote" : "confirmDeleteSession")} language={lang} onClose={() => setConfirm(null)} onConfirm={async () => {
-      if (confirm.kind === "folder") { updateCatalog(await deleteFolder(confirm.id)); if (view === `folder:${confirm.id}`) setView("unassigned"); }
-      else { await deleteSession(confirm.id); updateCatalog(await getCatalog()); }
+      if (confirm.kind === "folder") { updateCatalog(await library(deleteFolder(confirm.id))); if (view === `folder:${confirm.id}`) setView("unassigned"); }
+      else { await library(deleteSession(confirm.id)); updateCatalog(await getCatalog()); }
       setConfirm(null);
     }}/ >}
-    {incoming && <ImportDialog catalog={incoming} language={lang} onClose={() => setIncoming(null)} onConfirm={async () => { updateCatalog(await importSessions(incoming)); setIncoming(null); setNotice("importDone"); }}/ >}
+    {incoming && <ImportDialog catalog={incoming} language={lang} onClose={() => setIncoming(null)} onConfirm={async () => { updateCatalog(await library(importSessions(incoming))); setIncoming(null); setNotice("importDone"); }}/ >}
     {sshTarget && <Suspense fallback={<div role="status">{tr("connecting")}</div>}><SshDialog session={sshTarget.session} language={lang} onClose={() => setSshTarget(null)} onConnected={connected}/></Suspense>}
   </div>;
 }

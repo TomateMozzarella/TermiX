@@ -6,7 +6,7 @@ commands.allow = ["terminal_profiles", "open_terminal", "read_terminal", "write_
 [[permission]]
 identifier = "session-storage"
 description = "Read and update non-secret session metadata in the main window."
-commands.allow = ["list_sessions", "get_catalog", "save_session", "delete_session", "save_folder", "delete_folder", "touch_session", "pick_session_import", "import_sessions", "export_sessions"]
+commands.allow = ["list_sessions", "get_catalog", "reload_catalog", "save_session", "delete_session", "save_folder", "delete_folder", "touch_session", "pick_session_import", "import_sessions", "export_sessions"]
 
 [[permission]]
 identifier = "preferences"

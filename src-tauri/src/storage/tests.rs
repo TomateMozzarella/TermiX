@@ -1,4 +1,38 @@
 use super::*;
+#[test]
+fn concurrent_instances_and_external_edits_do_not_silently_overwrite_data() {
+    let dir = directory();
+    let path = dir.join("sessions.json");
+    let mut first = SessionStore::load(path.clone()).unwrap();
+    let mut second = SessionStore::load(path.clone()).unwrap();
+    first.upsert(session("first")).unwrap();
+    assert_eq!(
+        second.upsert(session("second")).unwrap_err().to_string(),
+        "session_changed"
+    );
+    second.reload().unwrap();
+    second.upsert(session("second")).unwrap();
+    assert_eq!(SessionStore::load(path.clone()).unwrap().all().len(), 2);
+    let lock = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(dir.join("sessions.lock"))
+        .unwrap();
+    lock.try_lock().unwrap();
+    assert_eq!(
+        second.delete("second").unwrap_err().to_string(),
+        "session_busy"
+    );
+    drop(lock);
+    second.delete("second").unwrap();
+    fs::write(&path, b"external change").unwrap();
+    assert_eq!(
+        second.delete("first").unwrap_err().to_string(),
+        "session_changed"
+    );
+    assert_eq!(fs::read(path).unwrap(), b"external change");
+    fs::remove_dir_all(dir).unwrap();
+}
 fn directory() -> PathBuf {
     let dir = std::env::temp_dir().join(format!("termix-catalog-{}", uuid::Uuid::new_v4()));
     fs::create_dir(&dir).unwrap();
@@ -83,7 +117,8 @@ fn failed_write_and_invalid_import_leave_memory_and_disk_unchanged() {
     assert!(store.upsert(edit).is_err());
     assert_eq!(store.all()[0].name, "Server");
     let secret = serde_json::json!([{"id":"one","name":"Server","kind":"ssh","host":"example.test","port":22,"username":"user","group":"","password":"must-not-import"}]);
-    assert!(decode(secret, true).is_err());
+    assert!(decode(secret.clone(), true).is_err());
+    assert!(decode(secret, false).is_err());
     fs::write(&path, b"corrupt").unwrap();
     assert!(SessionStore::load(path.clone()).is_err());
     assert_eq!(fs::read(path).unwrap(), b"corrupt");

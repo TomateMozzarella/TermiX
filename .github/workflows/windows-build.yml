@@ -18,6 +18,8 @@ jobs:
           node-version: '22'
       - run: npm ci
       - run: npm test
+      - name: Release receipt tamper checks
+        run: python -m unittest discover -s scripts -p test_release_assets.py
       - run: npx playwright install chromium
       - name: Browser workflow tests
         env:

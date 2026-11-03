@@ -18,25 +18,27 @@ pub struct SessionStore {
     path: PathBuf,
     catalog: Catalog,
     legacy: Option<Vec<u8>>,
+    snapshot: Option<Vec<u8>>,
 }
 
 impl SessionStore {
     pub fn load(path: PathBuf) -> Result<Self, AppError> {
-        let (catalog, legacy) = match fs::File::open(&path) {
+        let (catalog, legacy, snapshot) = match fs::File::open(&path) {
             Ok(file) => {
                 let bytes = read_bounded(file)?;
                 let value: serde_json::Value = serde_json::from_slice(&bytes)?;
                 let legacy = value.is_array();
                 let catalog = decode(value, false)?;
-                (catalog, legacy.then_some(bytes))
+                (catalog, legacy.then_some(bytes.clone()), Some(bytes))
             }
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (Catalog::default(), None),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (Catalog::default(), None, None),
             Err(e) => return Err(e.into()),
         };
         Ok(Self {
             path,
             catalog,
             legacy,
+            snapshot,
         })
     }
     pub fn all(&self) -> Vec<Session> {
@@ -44,6 +46,11 @@ impl SessionStore {
     }
     pub fn catalog(&self) -> Catalog {
         self.catalog.clone()
+    }
+    pub fn reload(&mut self) -> Result<Catalog, AppError> {
+        let latest = Self::load(self.path.clone())?;
+        *self = latest;
+        Ok(self.catalog())
     }
     pub fn upsert(&mut self, mut session: Session) -> Result<Session, AppError> {
         normalize_session(&mut session)?;
@@ -150,6 +157,23 @@ impl SessionStore {
         Ok(self.catalog())
     }
     fn commit(&mut self, mut next: Catalog) -> Result<(), AppError> {
+        // The OS releases this lock on process exit/crash. A separate lock file
+        // keeps the lock stable while sessions.json is atomically replaced.
+        let lock = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(self.path.with_file_name("sessions.lock"))?;
+        lock.try_lock().map_err(|_| invalid("session_busy"))?;
+        let current = match fs::File::open(&self.path) {
+            Ok(file) => Some(read_bounded(file)?),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+            Err(e) => return Err(e.into()),
+        };
+        if current != self.snapshot {
+            return Err(invalid("session_changed"));
+        }
         next.revision = self.catalog.revision.saturating_add(1);
         for session in &mut next.sessions {
             normalize_session(session)?;
@@ -182,6 +206,7 @@ impl SessionStore {
         // Publish the new in-memory state only after the atomic write succeeds.
         self.catalog = next;
         self.legacy = None;
+        self.snapshot = Some(bytes);
         Ok(())
     }
 }
@@ -275,7 +300,9 @@ fn validate(catalog: &Catalog) -> Result<(), AppError> {
     Ok(())
 }
 fn decode(value: serde_json::Value, strict_import: bool) -> Result<Catalog, AppError> {
-    if strict_import {
+    // Legacy bytes are backed up verbatim, so reject unknown/credential fields
+    // before creating that backup as well as before accepting imported files.
+    if strict_import || value.is_array() {
         let sessions = if value.is_array() {
             value.as_array()
         } else {

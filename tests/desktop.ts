@@ -22,9 +22,10 @@ export async function mockDesktop(page: Page, configured = false, legacy = false
       if (command === "detect_editor") return mock.detectedEditorPath ?? null;
       if (command === "choose_editor") return mock.editorPickedPath ?? null;
       if (command === "get_catalog") { seed(); return structuredClone(mock.catalog); }
+      if (command === "reload_catalog") { if (mock.externalCatalog) mock.catalog = structuredClone(mock.externalCatalog); return persist(); }
       if (command === "list_sessions") { seed(); return structuredClone(mock.catalog.sessions); }
       if (["save_session", "save_folder", "delete_session", "delete_folder", "import_sessions", "touch_session"].includes(command)) {
-        if (mock.failLibrary) throw "session_save_failed";
+        if (mock.failLibrary) throw mock.libraryFailure ?? "session_save_failed";
         seed();
         if (command === "save_session") {
           const session = structuredClone(args.session), index = mock.catalog.sessions.findIndex((s: any) => s.id === session.id);

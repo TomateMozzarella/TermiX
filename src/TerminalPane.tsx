@@ -6,11 +6,11 @@ import type { TerminalTab } from "./types";
 import { terminalTheme, type ResolvedTheme } from "./appearance";
 import { errorText, t, type Language } from "./i18n";
 
-export function TerminalPane({ tab, active, fontSize, theme, accent, language, onReconnect }: { tab: TerminalTab; active: boolean; fontSize: number; theme: ResolvedTheme; accent: string; language: Language; onReconnect: () => void }) {
+export function TerminalPane({ tab, active, focusOnActivate, fontSize, theme, accent, language, onReconnect }: { tab: TerminalTab; active: boolean; focusOnActivate: boolean; fontSize: number; theme: ResolvedTheme; accent: string; language: Language; onReconnect: () => void }) {
   const [ended, setEnded] = useState(false);
   const visual = useRef({ theme, accent, language }); visual.current = { theme, accent, language };
   const host = useRef<HTMLDivElement>(null);
-  const focus = useRef<() => void>(() => {});
+  const focus = useRef<(requestFocus: boolean) => void>(() => {});
   const appearance = useRef<(size: number, theme: ResolvedTheme, accent: string) => void>(() => {});
   useEffect(() => {
     if (!host.current) return;
@@ -38,14 +38,14 @@ export function TerminalPane({ tab, active, fontSize, theme, accent, language, o
     const input = terminal.onData(text => connection.write(text));
     const resized = terminal.onResize(({ cols, rows }) => connection.resize(cols, rows));
     const observer = new ResizeObserver(fitVisible); observer.observe(element);
-    focus.current = () => { fitVisible(); terminal.focus(); };
+    focus.current = requestFocus => { fitVisible(); if (requestFocus) terminal.focus(); };
     return () => {
       alive = false; focus.current = () => {};
       appearance.current = () => {};
       observer.disconnect(); input.dispose(); resized.dispose(); connection.dispose(); terminal.dispose();
     };
   }, [tab.id, tab.kind, tab.profile, tab.transportId]);
-  useEffect(() => { if (active) focus.current(); }, [active]);
+  useEffect(() => { if (active) focus.current(focusOnActivate); }, [active, focusOnActivate]);
   useEffect(() => { appearance.current(fontSize, theme, accent); }, [fontSize, theme, accent]);
   return <>{tab.kind === "ssh" && ended && <div className="terminal-reconnect"><button className="btn secondary" onClick={onReconnect}>{t(language, "reconnect")}</button></div>}<div ref={host} className="terminal-host" /></>;
 }

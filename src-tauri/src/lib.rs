@@ -56,6 +56,7 @@ pub fn run() {
             commands::save_session,
             commands::delete_session,
             commands::get_catalog,
+            commands::reload_catalog,
             commands::save_folder,
             commands::delete_folder,
             commands::touch_session,

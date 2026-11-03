@@ -1,5 +1,14 @@
 # SSH security design (v0.3.0)
 
+## v0.4 session library and release additions
+- Session/folder changes are validated in Rust and atomically replace a versioned catalog. An OS file lock serializes cooperating writers, and comparison with the last loaded bytes rejects stale updates. Reload after an external change; disk/write failures do not publish a new in-memory state. A legacy array receives a non-overwritten backup before its first migration write. Unknown legacy/import fields are rejected before a raw legacy backup could copy credential fields.
+- Import uses an explicit native JSON picker, a 4 MiB bound, schema/field validation and preview/confirmation. Imports receive fresh session IDs and cannot replace existing sessions by ID. Exports contain typed metadata only, never the vault, private-key file contents or known-host trust. File selection is explicit; no generic frontend read/write-path API is exposed.
+- Editor discovery checks bounded standard locations/registry/PATH entries. The native EXE picker and save validation do not execute programs. Actual editing remains outside v0.4.
+- Pasted HTTP(S)/SSH addresses are normalized to SSH endpoints; protocol/port defaults and host-key verification are not weakened. Embedded credentials, paths/query/fragments and ambiguous hosts are rejected with actionable feedback.
+- Release publication is limited to main and consumes a successful same-repository PR build at that exact commit. Receipt source SHA, workflow run, installer names/types, byte lengths and SHA-256 values are checked before publication. Releases are drafted with all assets before becoming visible and are not overwritten on subsequent same-version pushes. These receipts are provenance checks, not code signing or an independent security audit.
+
+The SSH trust/credential design below is retained for v0.4.
+
 This is a test-build security design, not a claim of production readiness or a completed independent audit.
 
 ## Trust boundaries

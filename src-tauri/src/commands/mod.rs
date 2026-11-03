@@ -188,6 +188,14 @@ pub fn get_catalog(state: State<'_, AppState>) -> Result<crate::models::Catalog,
         .catalog())
 }
 #[tauri::command]
+pub fn reload_catalog(state: State<'_, AppState>) -> Result<crate::models::Catalog, AppError> {
+    state
+        .sessions
+        .lock()
+        .map_err(|_| AppError::LockPoisoned)?
+        .reload()
+}
+#[tauri::command]
 pub fn save_folder(
     state: State<'_, AppState>,
     folder: crate::models::Folder,

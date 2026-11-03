@@ -100,6 +100,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .search input::placeholder{color:var(--muted)}.section-label{font-size:calc(12px * var(--ui-scale));line-height:1.4;letter-spacing:.7px}
 .nav-item{height:calc(42px * var(--ui-scale));font-size:calc(14px * var(--ui-scale));gap:10px;color:var(--fg)}
 .nav-item:hover{background:var(--surface-alt);color:var(--fg)}.count{font-size:calc(12px * var(--ui-scale));color:var(--muted)}
+.nav-item.planned:hover{color:var(--muted)}.new-tab:hover{background:var(--surface-alt);color:var(--fg)}
 .planned-tag{font-size:calc(11px * var(--ui-scale))}.nav-item.planned{opacity:.8;color:var(--muted)}
 .folder-section{margin-bottom:22px}.folder-row{display:flex;align-items:center;border-radius:7px}.folder-row>.nav-item{min-width:0;flex:1}.folder-row>.nav-item>span:not(.count){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .folder-row>.icon-button{width:calc(29px * var(--ui-scale));height:calc(34px * var(--ui-scale));color:var(--muted)}

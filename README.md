@@ -4,6 +4,16 @@ TermiX is an independent, cross-platform remote connection manager built with Ta
 
 ## Current status
 
+v0.4.0 is in Windows CI verification. It adds editing/duplication/deletion, folders, favorites/recent views, import/export previews and a versioned atomic session catalog with a backup of the v0.3 array. Active connections keep their original host/profile when saved metadata changes. The catalog uses OS file locking and checks its saved snapshot to reject stale writes from another window; reload the library before applying further changes after a conflict. SQLite is deferred for this milestone.
+
+UI labels and controls are larger and support independent 100–150% interface scaling. Existing preferences default to 100% without repeating setup. Terminal font size remains separate. Editor selection can discover Notepad++/VS Code from standard locations, App Paths registry entries or PATH, or use the native EXE picker/manual path. No editor is executed in v0.4.
+
+SSH address entry accepts hostnames, IPs and pasted http(s)/ssh URLs. The preview shows the normalized SSH destination and explicit port. HTTP(S) prefixes do not imply port 80/443; paths, embedded credentials, queries and fragments require correction. Rust validates the normalized values independently of the interface.
+
+Completed milestones are integrated into `main` at the exact tested PR commit. The release workflow publishes a GitHub development prerelease only after verifying that commit's successful build artifact, receipt and checksums; existing releases are not overwritten. See [v0.4.0 release notes](docs/releases/v0.4.0.md). SFTP, actual editing and macros remain later milestones.
+
+### Previously delivered v0.3.0
+
 v0.3.0 is available as a Windows test build. It extends the user-tested local terminal with Rust-owned SSH, bilingual setup/settings, theme/accent preferences and refreshed Windows branding. [Actions run 41487262956](https://github.com/TomateMozzarella/TermiX/actions/runs/41487262956) passed 18 native tests, 7 frontend tests and 9 browser workflows, built EXE/MSI installers, and verified silent installation plus refresh of an existing desktop shortcut. The delivered installer was built from commit `ddc70f55a2d9d9b087f36b45daa7ca7eef1c0c76`; subsequent documentation/cache cleanup does not change its application source. See [security design and remaining manual checks](docs/SECURITY.md); this is not a production-readiness claim.
 - Tauri 2 desktop shell
 - React/TypeScript interface
@@ -46,6 +56,8 @@ Before marking the milestone complete, verify in the installed app: Unicode outp
 ## Tests
 
 Windows CI runs the frontend tests, Playwright browser workflows and production build. Native tests use actual PTYs, preference files, Windows Credential Manager and a loopback SSH server with isolated test-only passwords/keys and a Windows SSH agent. Browser tests mock desktop IPC and cover UI behavior independently of the native engine. A silent installation check verifies bundled resources and refresh of an existing desktop shortcut. Lockfiles are committed.
+
+v0.4 adds shared Rust/TypeScript address cases, native migration/rollback/import/concurrent-writer checks, editor-path validation, browser workflows for sessions/folders/scaling/editor overrides, and Python checks that reject tampered or mismatched release receipts. File dialogs themselves still need installed interactive Windows checks.
 
 ## Development
 
