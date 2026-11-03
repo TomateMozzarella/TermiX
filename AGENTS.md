@@ -3,6 +3,7 @@
 Read [docs/ROADMAP.md](docs/ROADMAP.md) and [README.md](README.md) before changing code. The roadmap is the authoritative handoff for product goals, verified current state, milestone ordering, security requirements, and decisions from user discussions.
 
 ## Current focus
+The user resumed implementation on 2026-11-03: finish v0.4.0 session management and the recorded usability additions, validate Windows installers, integrate the tested commit into main and publish a versioned GitHub prerelease. The prior planning-only pause is revoked. Keep this milestone separate from SFTP/editor execution/macros.
 **v0.3.0 SSH plus expanded onboarding/appearance is implemented as a verified Windows test build (2026-11-02).** See docs/ROADMAP.md for the exact delivered application commit, successful workflow and installer hash. All 34 automated tests and silent installer/desktop-shortcut checks passed. User installed-app validation and independent security review remain separate and pending; read docs/SECURITY.md. The next planned milestone is v0.4.0 session management. Keep local terminals and old saved sessions working; do not jump to SFTP/editor implementation.
 
 ## Latest UX decisions

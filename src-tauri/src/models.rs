@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum SessionKind {
     Ssh,
@@ -23,6 +23,42 @@ pub struct Session {
     pub auth_method: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub key_path: Option<String>,
+    #[serde(default)]
+    pub favorite: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_used: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shell_profile: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font_size: Option<u16>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Folder {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Catalog {
+    pub schema_version: u8,
+    #[serde(default)]
+    pub revision: u64,
+    pub folders: Vec<Folder>,
+    pub sessions: Vec<Session>,
+}
+
+impl Default for Catalog {
+    fn default() -> Self {
+        Self {
+            schema_version: 2,
+            revision: 0,
+            folders: Vec::new(),
+            sessions: Vec::new(),
+        }
+    }
 }
 
 #[cfg(test)]

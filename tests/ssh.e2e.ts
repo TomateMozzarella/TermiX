@@ -6,12 +6,12 @@ async function start(page: Page, status: string) {
   // Refreshing the session list uses the same normal app refresh path.
   await page.getByRole("button", { name: "Add session", exact: true }).click();
   await page.getByLabel("Hostname / IP", { exact: true }).fill("example.test"); await page.getByLabel("Username", { exact: true }).fill("test-user"); await page.getByRole("button", { name: "Save session", exact: true }).click();
-  await page.getByRole("button", { name: /Test server/ }).click();
+  await page.getByRole("button", { name: "Open session: Test server", exact: true }).click();
 }
 test("unknown hosts require explicit trust before credentials appear", async ({ page }) => {
   await start(page, "unknown"); await expect(page.getByText(/This server is not known yet/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Trust server and continue", exact: true })).toBeDisabled(); await expect(page.getByLabel("Authentication", { exact: true })).toHaveCount(0);
-  await preview(page, "TermiX-0.3.0-SSH-Verify");
+  await preview(page, "TermiX-0.4.0-SSH-Verify");
   await page.getByRole("checkbox").check(); await page.getByRole("button", { name: "Trust server and continue", exact: true }).click(); await expect(page.getByLabel("Authentication", { exact: true })).toBeVisible();
 });
 test("changed host keys are blocked until fingerprint and exact hostname are confirmed", async ({ page }) => {

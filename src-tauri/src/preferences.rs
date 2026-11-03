@@ -20,6 +20,8 @@ pub struct Preferences {
     pub editor: String,
     #[serde(default)]
     pub editor_path: String,
+    #[serde(default = "default_ui_scale")]
+    pub ui_scale: u16,
 }
 
 fn default_language() -> String {
@@ -33,6 +35,9 @@ fn default_accent() -> String {
 }
 fn default_editor() -> String {
     "integrated".into()
+}
+fn default_ui_scale() -> u16 {
+    100
 }
 
 pub struct PreferencesStore {
@@ -52,7 +57,7 @@ impl PreferencesStore {
                 if value.schema_version == 1 {
                     value.schema_version = 2;
                 }
-                validate(&value)?;
+                validate(&value, false)?;
                 Ok(Some(value))
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
@@ -61,14 +66,14 @@ impl PreferencesStore {
     }
 
     pub fn save(&self, value: Preferences) -> Result<Preferences, String> {
-        validate(&value)?;
+        validate(&value, true)?;
         let bytes = serde_json::to_vec_pretty(&value).map_err(|_| "preferences_save_failed")?;
         crate::atomic::write(&self.path, &bytes).map_err(|_| "preferences_save_failed")?;
         Ok(value)
     }
 }
 
-fn validate(value: &Preferences) -> Result<(), String> {
+fn validate(value: &Preferences, check_file: bool) -> Result<(), String> {
     if value.schema_version != 2 || value.setup_version > 2 {
         return Err("preferences_version".into());
     }
@@ -80,6 +85,9 @@ fn validate(value: &Preferences) -> Result<(), String> {
     }
     if !(11..=22).contains(&value.font_size) {
         return Err("invalid_font".into());
+    }
+    if !(100..=150).contains(&value.ui_scale) {
+        return Err("invalid_ui_scale".into());
     }
     if !["en", "de"].contains(&value.language.as_str())
         || !["system", "dark", "light"].contains(&value.theme.as_str())
@@ -101,6 +109,9 @@ fn validate(value: &Preferences) -> Result<(), String> {
     if value.editor == "custom" && !PathBuf::from(&value.editor_path).is_absolute() {
         return Err("invalid_editor".into());
     }
+    if value.editor != "integrated" && !value.editor_path.is_empty() {
+        crate::editors::validate_path(&value.editor_path, check_file)?;
+    }
     Ok(())
 }
 
@@ -119,6 +130,7 @@ mod tests {
             accent: default_accent(),
             editor: default_editor(),
             editor_path: String::new(),
+            ui_scale: 100,
         }
     }
     #[test]
@@ -185,6 +197,7 @@ mod tests {
         assert_eq!(migrated.language, "en");
         assert_eq!(migrated.theme, "system");
         assert_eq!(migrated.setup_version, 0);
+        assert_eq!(migrated.ui_scale, 100);
         assert_eq!(fs::read(&store.path).unwrap(), bytes);
         let mut bad = migrated.clone();
         bad.accent = "url(bad)".into();

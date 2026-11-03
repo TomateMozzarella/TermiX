@@ -12,9 +12,10 @@ export interface Preferences {
   accent: string;
   editor: "integrated" | "notepad++" | "vscode" | "custom";
   editorPath: string;
+  uiScale: number;
 }
 
-export const defaults = (shell: string): Preferences => ({ schemaVersion: 2, setupComplete: false, setupVersion: 0, defaultShell: shell, fontSize: 15, language: "en", theme: "system", accent: "#71c9bd", editor: "integrated", editorPath: "" });
+export const defaults = (shell: string): Preferences => ({ schemaVersion: 2, setupComplete: false, setupVersion: 0, defaultShell: shell, fontSize: 15, language: "en", theme: "system", accent: "#71c9bd", editor: "integrated", editorPath: "", uiScale: 100 });
 
 export const getPreferences = () => invoke<Preferences | null>("get_preferences");
 export const savePreferences = (preferences: Preferences) => invoke<Preferences>("save_preferences", { preferences });

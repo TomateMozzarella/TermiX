@@ -2,6 +2,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum AppError {
+    #[error("{0}")]
+    Validation(String),
     #[error("Storage error: {0}")]
     Storage(#[from] std::io::Error),
     #[error("Serialization error: {0}")]

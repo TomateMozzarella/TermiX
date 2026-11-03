@@ -178,3 +178,108 @@ pub fn delete_session(state: State<'_, AppState>, id: String) -> Result<(), AppE
     let mut store = state.sessions.lock().map_err(|_| AppError::LockPoisoned)?;
     store.delete(&id)
 }
+
+#[tauri::command]
+pub fn get_catalog(state: State<'_, AppState>) -> Result<crate::models::Catalog, AppError> {
+    Ok(state
+        .sessions
+        .lock()
+        .map_err(|_| AppError::LockPoisoned)?
+        .catalog())
+}
+#[tauri::command]
+pub fn save_folder(
+    state: State<'_, AppState>,
+    folder: crate::models::Folder,
+) -> Result<crate::models::Catalog, AppError> {
+    state
+        .sessions
+        .lock()
+        .map_err(|_| AppError::LockPoisoned)?
+        .save_folder(folder)
+}
+#[tauri::command]
+pub fn delete_folder(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<crate::models::Catalog, AppError> {
+    state
+        .sessions
+        .lock()
+        .map_err(|_| AppError::LockPoisoned)?
+        .delete_folder(&id)
+}
+#[tauri::command]
+pub fn touch_session(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<crate::models::Catalog, AppError> {
+    state
+        .sessions
+        .lock()
+        .map_err(|_| AppError::LockPoisoned)?
+        .touch(&id)
+}
+#[tauri::command]
+pub async fn pick_session_import(
+    window: tauri::WebviewWindow,
+) -> Result<Option<crate::models::Catalog>, String> {
+    let Some(path) = crate::files::choose(window, crate::files::Choice::Import).await? else {
+        return Ok(None);
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::storage::SessionStore::read_import(&path)
+            .map(Some)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|_| "session_import_failed".to_string())?
+}
+#[tauri::command]
+pub fn import_sessions(
+    state: State<'_, AppState>,
+    catalog: crate::models::Catalog,
+) -> Result<crate::models::Catalog, AppError> {
+    state
+        .sessions
+        .lock()
+        .map_err(|_| AppError::LockPoisoned)?
+        .import(catalog)
+}
+#[tauri::command]
+pub async fn export_sessions(
+    window: tauri::WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<bool, String> {
+    let bytes = state
+        .sessions
+        .lock()
+        .map_err(|_| "session_save_failed")?
+        .export()
+        .map_err(|e| e.to_string())?;
+    let Some(path) = crate::files::choose(window, crate::files::Choice::Export).await? else {
+        return Ok(false);
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::atomic::write(&path, &bytes)
+            .map(|_| true)
+            .map_err(|_| "session_export_failed".into())
+    })
+    .await
+    .map_err(|_| "session_export_failed".to_string())?
+}
+#[tauri::command]
+pub async fn choose_editor(window: tauri::WebviewWindow) -> Result<Option<String>, String> {
+    let Some(path) = crate::files::choose(window, crate::files::Choice::Editor).await? else {
+        return Ok(None);
+    };
+    let path = path.to_string_lossy().to_string();
+    crate::editors::validate_path(&path, true)?;
+    Ok(Some(path))
+}
+#[tauri::command]
+pub async fn detect_editor(editor: String) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || crate::editors::detect(&editor))
+        .await
+        .map_err(|_| "invalid_editor".to_string())?
+}

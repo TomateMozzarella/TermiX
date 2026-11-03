@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Check, Command, Terminal, X } from "lucide-react
 import type { Preferences } from "./services/preferences";
 import type { ShellProfile } from "./services/terminal";
 import { errorText, t, type Message } from "./i18n";
+import { chooseEditor, detectEditor } from "./services/editors";
 
 const stages: Message[] = ["language", "shell", "appearance", "editor"];
 export function PreferencesDialog({ mode, profiles, initial, onSave, onClose, onPreview }: {
@@ -11,16 +12,34 @@ export function PreferencesDialog({ mode, profiles, initial, onSave, onClose, on
 }) {
   const [draft, setDraft] = useState(initial);
   const [step, setStep] = useState(0), [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const [finding, setFinding] = useState(false), [editorNote, setEditorNote] = useState<Message | null>(null);
+  const editorRequest = useRef(0);
   const panel = useRef<HTMLDivElement>(null), title = useRef<HTMLHeadingElement>(null);
   const setup = mode === "setup", lang = draft.language, tr = (key: Message) => t(lang, key);
   useLayoutEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     return () => { if (mode === "settings") requestAnimationFrame(() => { if (previous?.isConnected) previous.focus(); }); };
   }, []);
-  useEffect(() => () => onPreview(null), []);
+  useEffect(() => () => { editorRequest.current++; onPreview(null); }, []);
   useEffect(() => { title.current?.focus(); }, [step]);
   useEffect(() => { onPreview(draft); }, [draft]);
   const edit = (value: Partial<Preferences>) => setDraft(old => ({ ...old, ...value }));
+  const findEditor = async (editor: Preferences["editor"]) => {
+    const request = ++editorRequest.current; setFinding(true); setEditorNote(null); setError("");
+    try { const path = await detectEditor(editor); if (request === editorRequest.current) { if (path) edit({ editorPath: path }); setEditorNote(path ? "editorFound" : "editorNotFound"); } }
+    catch (e) { if (request === editorRequest.current) setError(String(e)); }
+    finally { if (request === editorRequest.current) setFinding(false); }
+  };
+  const selectEditor = (editor: Preferences["editor"]) => {
+    editorRequest.current++; setFinding(false); setEditorNote(null); edit({ editor, editorPath: "" });
+    if (editor === "notepad++" || editor === "vscode") void findEditor(editor);
+  };
+  const browseEditor = async () => {
+    const request = ++editorRequest.current; setFinding(true); setEditorNote(null); setError("");
+    try { const path = await chooseEditor(); if (path && request === editorRequest.current) edit({ editorPath: path }); }
+    catch (e) { if (request === editorRequest.current) setError(String(e)); }
+    finally { if (request === editorRequest.current) setFinding(false); }
+  };
   const save = async () => {
     setBusy(true); setError("");
     if (!/^#[a-f0-9]{6}$/i.test(draft.accent)) { setError("invalid_accent"); setBusy(false); return; }
@@ -50,17 +69,20 @@ export function PreferencesDialog({ mode, profiles, initial, onSave, onClose, on
         </label>)}</div></section>}
         {visible(2) && <section className="preference-section">
           <h2 id="theme-label">{tr("theme")}</h2><div className="segmented" role="group" aria-labelledby="theme-label">{(["system", "dark", "light"] as const).map(value => <button disabled={busy} key={value} type="button" aria-pressed={draft.theme === value} onClick={() => edit({ theme: value })}>{tr(value)}</button>)}</div><p className="preferences-note">{tr("autoNote")}</p>
+          <div className="preference-heading spaced"><h2 id="ui-scale-label">{tr("uiScale")}</h2><output>{draft.uiScale}%</output></div><input className="font-slider" disabled={busy} aria-labelledby="ui-scale-label" type="range" min="100" max="150" step="5" value={draft.uiScale} onChange={e => edit({ uiScale: Number(e.target.value) })}/><p className="preferences-note">{tr("uiScaleNote")}</p>
           <h2 className="spaced" id="accent-label">{tr("accent")}</h2><div className="accent-options">{["#71c9bd", "#5b9cf5", "#b692f6", "#ef9b63", "#e87da7"].map(colour => <button disabled={busy} key={colour} className="colour-swatch" aria-label={colour} aria-pressed={draft.accent.toLowerCase() === colour} style={{ background: colour }} onClick={() => edit({ accent: colour })}>{draft.accent.toLowerCase() === colour && <Check size={15}/>}</button>)}<label className="custom-colour">{tr("customColour")}<input disabled={busy} aria-label={tr("customColour")} type="color" value={/^#[a-f0-9]{6}$/i.test(draft.accent) ? draft.accent : "#71c9bd"} onChange={e => edit({ accent: e.target.value })}/></label></div>
           <div className="preference-heading spaced"><h2 id="font-label">{tr("font")}</h2><output>{draft.fontSize} px</output></div><input className="font-slider" disabled={busy} aria-labelledby="font-label" type="range" min="11" max="22" value={draft.fontSize} onChange={e => edit({ fontSize: Number(e.target.value) })}/><div className="font-scale"><span>{tr("compact")}</span><span>{tr("spacious")}</span></div>
           <div className="terminal-preview" style={{ fontSize: draft.fontSize }} aria-label={tr("preview")}><div><span className="preview-prompt">{draft.defaultShell === "cmd" ? "C:\\Workspace>" : draft.defaultShell === "sh" ? "$" : "PS C:\\Workspace>"}</span> echo {tr("hello")}</div><div className="preview-output">{tr("hello")}</div><div><span className="preview-cursor"/></div></div>
         </section>}
-        {visible(3) && <section className="preference-section"><label className="field"><span>{tr("editor")}</span><select aria-label={tr("editor")} disabled={busy} value={draft.editor} onChange={e => edit({ editor: e.target.value as Preferences["editor"] })}><option value="integrated">{tr("integrated")}</option><option value="notepad++">Notepad++</option><option value="vscode">Visual Studio Code</option><option value="custom">{tr("customEditor")}</option></select></label>{draft.editor === "custom" && <label className="field"><span>{tr("editorPath")}</span><input disabled={busy} value={draft.editorPath} placeholder="C:\\Tools\\Editor.exe" onChange={e => edit({ editorPath: e.target.value })}/></label>}<p className="preferences-note">{tr("editorNote")}</p></section>}
+        {visible(3) && <section className="preference-section"><label className="field"><span>{tr("editor")}</span><select aria-label={tr("editor")} disabled={busy || finding} value={draft.editor} onChange={e => selectEditor(e.target.value as Preferences["editor"])}><option value="integrated">{tr("integrated")}</option><option value="notepad++">Notepad++</option><option value="vscode">Visual Studio Code</option><option value="custom">{tr("customEditor")}</option></select></label>
+          {draft.editor !== "integrated" && <><label className="field"><span>{tr("editorPath")}</span><input disabled={busy} value={draft.editorPath} placeholder="C:\Tools\Editor.exe" onChange={e => { editorRequest.current++; setFinding(false); setEditorNote(null); edit({ editorPath: e.target.value }); }}/></label><div className="editor-actions"><button className="btn secondary" disabled={busy || finding} onClick={() => void browseEditor()}>{tr("browse")}</button>{draft.editor !== "custom" && <button className="btn secondary" disabled={busy || finding} onClick={() => void findEditor(draft.editor)}>{tr("detectEditor")}</button>}</div><p className="preferences-note" role="status">{finding ? tr("detectingEditor") : editorNote ? tr(editorNote) : tr("editorPathNote")}</p></>}
+          <p className="preferences-note">{tr("editorNote")}</p></section>}
         {error && <div className="preferences-error" role="alert">{errorText(error, lang)}</div>}
       </div>
       <footer className="preferences-footer"><span>{tr(setup ? "later" : "localSaved")}</span><div className="preferences-actions">
         {setup && step > 0 && <button className="btn secondary" disabled={busy} onClick={() => setStep(v => v - 1)}><ArrowLeft size={15}/>{tr("back")}</button>}
         {!setup && <button className="btn secondary" disabled={busy} onClick={onClose}>{tr("cancel")}</button>}
-        <button className="btn primary" disabled={busy} onClick={() => setup && step < 3 ? setStep(v => v + 1) : void save()}>{busy ? tr("saving") : tr(setup ? step < 3 ? "next" : "finish" : "saveChanges")}{!busy && (setup && step < 3 ? <ArrowRight size={15}/> : <Check size={15}/>)}</button>
+        <button className="btn primary" disabled={busy || finding} onClick={() => setup && step < 3 ? setStep(v => v + 1) : void save()}>{busy ? tr("saving") : tr(setup ? step < 3 ? "next" : "finish" : "saveChanges")}{!busy && (setup && step < 3 ? <ArrowRight size={15}/> : <Check size={15}/>)}</button>
       </div></footer>
     </div>
   </div>;

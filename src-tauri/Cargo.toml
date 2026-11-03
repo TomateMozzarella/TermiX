@@ -1,6 +1,6 @@
 [package]
 name = "termix"
-version = "0.3.0"
+version = "0.4.0"
 description = "Cross-platform remote connection manager"
 authors = ["TermiX contributors"]
 edition = "2021"
@@ -28,4 +28,4 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_JobObjects", "Win32_Security", "Win32_Security_Credentials", "Win32_System_Threading", "Win32_Storage_FileSystem"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_JobObjects", "Win32_Security", "Win32_Security_Credentials", "Win32_System_Threading", "Win32_Storage_FileSystem", "Win32_UI_Controls_Dialogs", "Win32_System_Registry"] }

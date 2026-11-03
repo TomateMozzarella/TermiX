@@ -1,6 +1,9 @@
+mod address;
 mod atomic;
 mod commands;
+mod editors;
 mod error;
+mod files;
 mod models;
 mod preferences;
 mod ssh;
@@ -52,6 +55,15 @@ pub fn run() {
             commands::list_sessions,
             commands::save_session,
             commands::delete_session,
+            commands::get_catalog,
+            commands::save_folder,
+            commands::delete_folder,
+            commands::touch_session,
+            commands::pick_session_import,
+            commands::import_sessions,
+            commands::export_sessions,
+            commands::choose_editor,
+            commands::detect_editor,
             commands::terminal_profiles,
             commands::open_terminal,
             commands::read_terminal,

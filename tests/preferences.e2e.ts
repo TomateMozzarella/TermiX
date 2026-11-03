@@ -5,7 +5,7 @@ test("English is default; setup saves language, shell, appearance and editor; re
   await mockDesktop(page); await page.goto("/");
   await expect(page.getByRole("heading", { name: "Make yourself at home." })).toBeVisible();
   await expect(page.getByRole("button", { name: "English", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await preview(page, "TermiX-0.3.0-Language");
+  await preview(page, "TermiX-0.4.0-Language");
   expect(await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(0);
   await page.getByRole("button", { name: "Deutsch", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Richte dich ein." })).toBeVisible();
@@ -13,39 +13,39 @@ test("English is default; setup saves language, shell, appearance and editor; re
   await page.getByRole("radio", { name: /CMD/ }).check();
   await page.getByRole("button", { name: "Weiter", exact: true }).click();
   await page.getByRole("button", { name: "Dunkel", exact: true }).click();
-  await page.getByRole("slider").fill("17");
+  await page.getByRole("slider", { name: "Schriftgröße", exact: true }).fill("17");
   await page.getByLabel("Eigene Farbe", { exact: true }).fill("#b692f6");
   await page.setViewportSize({ width: 900, height: 600 });
   await expect(page.getByRole("button", { name: "Weiter", exact: true })).toBeInViewport({ ratio: 1 });
   await page.setViewportSize({ width: 1280, height: 800 });
-  await preview(page, "TermiX-0.3.0-Design-Dark");
+  await preview(page, "TermiX-0.4.0-Design-Dark");
   await page.getByRole("button", { name: "Weiter", exact: true }).click();
   await page.getByLabel("Bevorzugter Editor", { exact: true }).selectOption("notepad++");
   await page.getByRole("button", { name: "Workspace öffnen" }).click();
-  await expect(page.getByRole("button", { name: /^CMD/ })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /^CMD/ })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("button", { name: /^CMD/ })).toBeVisible(); await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: /^CMD/ })).toBeVisible(); await expect(page.getByRole("dialog")).toHaveCount(0);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("test-preferences")!));
   expect(saved).toMatchObject({ language: "de", defaultShell: "cmd", fontSize: 17, editor: "notepad++", accent: "#b692f6", theme: "dark", setupVersion: 2 });
   await expect(page.getByRole("combobox")).toHaveCount(0);
 });
 
 test("appearance and language apply without respawning terminals, cancellation restores preview", async ({ page }) => {
-  await mockDesktop(page, true); await page.goto("/"); await expect(page.getByRole("button", { name: /^Windows PowerShell/ })).toBeVisible();
+  await mockDesktop(page, true); await page.goto("/"); await expect(page.getByRole("tab", { name: /^Windows PowerShell/ })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(1);
   const count = await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Deutsch", exact: true }).click();
-  await page.getByRole("radio", { name: /CMD/ }).check(); await page.getByRole("slider").fill("18");
+  await page.getByRole("radio", { name: /CMD/ }).check(); await page.getByRole("slider", { name: "Schriftgröße", exact: true }).fill("18");
   await page.getByRole("button", { name: "Hell", exact: true }).click();
   await page.setViewportSize({ width: 900, height: 600 });
   await expect(page.getByRole("button", { name: "Änderungen speichern" })).toBeInViewport({ ratio: 1 });
   await page.setViewportSize({ width: 1280, height: 800 });
-  await preview(page, "TermiX-0.3.0-Settings-Light");
+  await preview(page, "TermiX-0.4.0-Settings-Light");
   await page.getByRole("button", { name: "Änderungen speichern" }).click();
   expect(await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(count);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await page.getByRole("button", { name: "Neuer Tab", exact: true }).click(); await expect(page.getByRole("button", { name: /^CMD/ })).toBeVisible();
+  await page.getByRole("button", { name: "Neuer Tab", exact: true }).click(); await expect(page.getByRole("tab", { name: /^CMD/ })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").at(-1)?.args.profile)).toBe("cmd");
   await page.getByRole("button", { name: "Einstellungen", exact: true }).click(); await page.getByRole("button", { name: "Dunkel", exact: true }).click(); await page.getByRole("button", { name: "English", exact: true }).click();
   await page.getByRole("button", { name: "Cancel", exact: true }).click(); await expect(page.locator("html")).toHaveAttribute("data-theme", "light"); await expect(page.getByRole("button", { name: "Einstellungen", exact: true })).toBeVisible();
@@ -53,7 +53,7 @@ test("appearance and language apply without respawning terminals, cancellation r
 
 test("automatic theme follows system changes while the shell keeps running", async ({ page }) => {
   await mockDesktop(page, true); await page.emulateMedia({ colorScheme: "light" }); await page.goto("/"); await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await expect(page.getByRole("button", { name: /^Windows PowerShell/ })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /^Windows PowerShell/ })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(1);
   const count = await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length);
   await page.emulateMedia({ colorScheme: "dark" }); await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -62,7 +62,7 @@ test("automatic theme follows system changes while the shell keeps running", asy
 
 test("legacy preferences retain shell and font and request the new setup once", async ({ page }) => {
   await mockDesktop(page, false, true); await page.goto("/"); await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(page.getByRole("radio", { name: /CMD/ })).toBeChecked(); await page.getByRole("button", { name: "Continue", exact: true }).click(); await expect(page.getByRole("slider")).toHaveValue("18");
+  await expect(page.getByRole("radio", { name: /CMD/ })).toBeChecked(); await page.getByRole("button", { name: "Continue", exact: true }).click(); await expect(page.getByRole("slider", { name: "Font size", exact: true })).toHaveValue("18");
 });
 
 test("save failure keeps setup open and supports retry without starting a shell", async ({ page }) => {

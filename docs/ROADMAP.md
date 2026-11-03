@@ -1,8 +1,10 @@
 # TermiX – Product Roadmap and Project Handoff
 
-Last updated: 2026-11-02
+Last updated: 2026-11-03
 Status: v0.3.0 implemented and Windows test installer verified. User supplied installed v0.3.0 screenshots and positive appearance feedback on 2026-11-02. Full SSH interoperability/failure-path checks and independent security review remain outstanding. Next planned milestone: v0.4.0 session manager plus usability improvements. Latest request is planning/documentation only; do not start implementation, merge branches or publish releases in this feedback turn.
 Repository: https://github.com/TomateMozzarella/TermiX
+
+Implementation resumed by the user on 2026-11-03. Current authorized work is v0.4.0 plus the tested main/GitHub-prerelease workflow; the preceding feedback-turn pause is revoked. SQLite is deferred: the existing JSON library is upgraded to a versioned catalog with atomic writes, transaction-like in-memory updates and a legacy backup, which covers the current folder/session scope without a database migration dependency.
 
 ## Vision
 Build a polished, modern, cross-platform MobaXterm-style terminal and remote-connection manager, initially optimized for Windows 11, with Linux support later. The user prefers downloadable GitHub Actions installers and does not want to compile locally. Keep a compact desktop interface with automatic/dark/light appearance and customizable accents.
