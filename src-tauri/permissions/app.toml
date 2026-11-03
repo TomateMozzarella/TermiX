@@ -17,3 +17,7 @@ commands.allow = ["get_preferences", "save_preferences", "choose_editor", "detec
 identifier = "ssh"
 description = "Verify SSH host keys, authenticate and open bounded SSH PTY sessions; forget a single optional OS-vault password."
 commands.allow = ["ssh_probe", "ssh_cancel", "ssh_open", "ssh_forget_password"]
+[[permission]]
+identifier = "sftp"
+description = "Browse verified SSH transports and transfer files chosen through native dialogs; no arbitrary local paths."
+commands.allow = ["sftp_list", "sftp_upload", "sftp_download", "sftp_progress", "sftp_cancel"]

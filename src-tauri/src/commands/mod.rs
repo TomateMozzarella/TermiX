@@ -291,3 +291,70 @@ pub async fn detect_editor(editor: String) -> Result<Option<String>, String> {
         .await
         .map_err(|_| "invalid_editor".to_string())?
 }
+#[tauri::command]
+pub async fn sftp_list(
+    state: State<'_, crate::ssh::SshManager>,
+    id: String,
+    path: String,
+) -> Result<crate::sftp::Listing, String> {
+    let terminal = state.get(&id)?;
+    tauri::async_runtime::spawn_blocking(move || crate::sftp::list(&terminal, &path))
+        .await
+        .map_err(|_| "sftp_failed".to_owned())?
+}
+#[tauri::command]
+pub fn sftp_progress(
+    state: State<'_, crate::ssh::SshManager>,
+    id: String,
+) -> Result<Option<crate::sftp::Progress>, String> {
+    let terminal = state.get(&id)?;
+    crate::sftp::progress(&terminal)
+}
+#[tauri::command]
+pub fn sftp_cancel(
+    state: State<'_, crate::ssh::SshManager>,
+    id: String,
+    transfer: String,
+) -> Result<(), String> {
+    let terminal = state.get(&id)?;
+    crate::sftp::cancel(&terminal, &transfer);
+    Ok(())
+}
+#[tauri::command]
+pub async fn sftp_upload(
+    state: State<'_, crate::ssh::SshManager>,
+    window: tauri::WebviewWindow,
+    id: String,
+    directory: String,
+    overwrite: bool,
+) -> Result<Option<String>, String> {
+    let terminal = state.get(&id)?;
+    let remote = crate::sftp::path(&directory)?;
+    let Some(local) = crate::files::choose(window, crate::files::Choice::Upload).await? else {
+        return Ok(None);
+    };
+    let name = local
+        .file_name()
+        .and_then(|s| s.to_str())
+        .ok_or("sftp_path")?;
+    let destination = remote
+        .join(name)
+        .to_str()
+        .ok_or("sftp_path")?
+        .replace('\\', "/");
+    crate::sftp::start(terminal, destination, local, true, overwrite).map(Some)
+}
+#[tauri::command]
+pub async fn sftp_download(
+    state: State<'_, crate::ssh::SshManager>,
+    window: tauri::WebviewWindow,
+    id: String,
+    path: String,
+) -> Result<Option<String>, String> {
+    let terminal = state.get(&id)?;
+    crate::sftp::path(&path)?;
+    let Some(local) = crate::files::choose(window, crate::files::Choice::Download).await? else {
+        return Ok(None);
+    };
+    crate::sftp::start(terminal, path, local, false, false).map(Some)
+}

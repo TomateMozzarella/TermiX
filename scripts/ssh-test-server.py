@@ -1,5 +1,5 @@
 """Loopback-only SSH protocol fixture. Never uses or prints real credentials."""
-import argparse, json, pathlib, socket, threading, time
+import argparse, json, pathlib, socket, threading, time, os, errno
 import paramiko
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption, BestAvailableEncryption
@@ -27,6 +27,54 @@ def event(kind, username=''):
         with (root / 'events.jsonl').open('a', encoding='utf8') as stream:
             stream.write(json.dumps({'event': kind, 'username': username}) + '\n')
 
+
+remote_root = root / 'remote-files'
+remote_root.mkdir(exist_ok=True)
+(remote_root / 'hello.txt').write_bytes(b'fixture content')
+(remote_root / 'large.bin').write_bytes(b'x' * (1024 * 1024 * 4))
+(remote_root / 'folder').mkdir(exist_ok=True)
+
+class Files(paramiko.SFTPServerInterface):
+    def local(self, value):
+        candidate = (remote_root / value.lstrip('/')).resolve()
+        if candidate != remote_root.resolve() and remote_root.resolve() not in candidate.parents:
+            raise OSError(errno.EACCES, 'outside fixture')
+        return candidate
+    def canonicalize(self, value):
+        try: return '/' + self.local(value).relative_to(remote_root.resolve()).as_posix().replace('.', '', 1) if value == '.' else '/' + self.local(value).relative_to(remote_root.resolve()).as_posix()
+        except OSError: return '/'
+    def list_folder(self, value):
+        try:
+            result = []
+            for item in self.local(value).iterdir():
+                stat = paramiko.SFTPAttributes.from_stat(item.lstat()); stat.filename = item.name; result.append(stat)
+            return result
+        except OSError as e: return paramiko.SFTPServer.convert_errno(e.errno)
+    def stat(self, value):
+        try: return paramiko.SFTPAttributes.from_stat(self.local(value).stat())
+        except OSError as e: return paramiko.SFTPServer.convert_errno(e.errno)
+    lstat = stat
+    def open(self, value, flags, attr):
+        try:
+            fd = os.open(self.local(value), flags, 0o600)
+            stream = os.fdopen(fd, 'r+b' if flags & os.O_RDWR else 'wb' if flags & os.O_WRONLY else 'rb')
+            handle = paramiko.SFTPHandle(flags)
+            if not flags & os.O_WRONLY: handle.readfile = stream
+            if flags & (os.O_RDWR | os.O_WRONLY): handle.writefile = stream
+            return handle
+        except OSError as e: return paramiko.SFTPServer.convert_errno(e.errno)
+    def remove(self, value):
+        try: self.local(value).unlink(); return paramiko.SFTP_OK
+        except OSError as e: return paramiko.SFTPServer.convert_errno(e.errno)
+    def rename(self, source, target):
+        try:
+            if self.local(target).exists(): return paramiko.SFTP_FAILURE
+            self.local(source).rename(self.local(target)); return paramiko.SFTP_OK
+        except OSError as e: return paramiko.SFTPServer.convert_errno(e.errno)
+    def posix_rename(self, source, target):
+        try: os.replace(self.local(source), self.local(target)); return paramiko.SFTP_OK
+        except OSError as e: return paramiko.SFTPServer.convert_errno(e.errno)
+
 class Server(paramiko.ServerInterface):
     def __init__(self): self.ready = threading.Event(); self.channel = None
     def get_allowed_auths(self, username): return 'password,publickey'
@@ -46,6 +94,7 @@ class Server(paramiko.ServerInterface):
 def connection(sock):
     transport = paramiko.Transport(sock)
     transport.add_server_key(host_key)
+    transport.set_subsystem_handler("sftp", paramiko.SFTPServer, Files)
     server = Server()
     try:
         transport.start_server(server=server)

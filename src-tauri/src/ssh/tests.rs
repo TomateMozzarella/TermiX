@@ -316,3 +316,102 @@ fn optional_saved_password_stays_in_os_vault_and_is_reused_in_rust() {
     manager.close_all();
     std::fs::remove_dir_all(dir).unwrap();
 }
+#[test]
+fn sftp_listing_streaming_transfers_overwrite_and_cancel() {
+    let Some((port, _fixture)) = fixture() else {
+        return;
+    };
+    let dir = directory();
+    let manager = SshManager::new(dir.join("known-hosts.json"));
+    let probe = manager.probe("127.0.0.1", port).unwrap();
+    let id = manager
+        .open(
+            &probe.ticket,
+            "trust",
+            "",
+            auth("password", "sftp-test"),
+            80,
+            24,
+        )
+        .unwrap();
+    let terminal = manager.get(&id).unwrap();
+    let listing = crate::sftp::list(&terminal, ".").unwrap();
+    assert!(listing
+        .entries
+        .iter()
+        .any(|e| e.name == "hello.txt" && !e.directory));
+    assert!(listing
+        .entries
+        .iter()
+        .any(|e| e.name == "folder" && e.directory));
+    fn finish(terminal: &SshTerminal) -> crate::sftp::Progress {
+        let deadline = Instant::now() + Duration::from_secs(20);
+        loop {
+            let p = crate::sftp::progress(terminal).unwrap().unwrap();
+            if p.state != "running" {
+                return p;
+            }
+            assert!(Instant::now() < deadline, "Transfer stalled");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+    let downloaded = dir.join("download.txt");
+    crate::sftp::start(
+        Arc::clone(&terminal),
+        "/hello.txt".into(),
+        downloaded.clone(),
+        false,
+        false,
+    )
+    .unwrap();
+    assert_eq!(finish(&terminal).state, "done");
+    assert_eq!(std::fs::read(&downloaded).unwrap(), b"fixture content");
+    let upload = dir.join("upload.txt");
+    std::fs::write(&upload, b"new bytes").unwrap();
+    let remote = format!("/test-{}.txt", uuid::Uuid::new_v4());
+    crate::sftp::start(
+        Arc::clone(&terminal),
+        remote.clone(),
+        upload.clone(),
+        true,
+        false,
+    )
+    .unwrap();
+    let p = finish(&terminal);
+    assert_eq!(p.state, "done", "{:?}", p.error);
+    crate::sftp::start(
+        Arc::clone(&terminal),
+        remote.clone(),
+        upload.clone(),
+        true,
+        false,
+    )
+    .unwrap();
+    assert_eq!(finish(&terminal).error.as_deref(), Some("sftp_exists"));
+    crate::sftp::start(
+        Arc::clone(&terminal),
+        remote,
+        downloaded.clone(),
+        false,
+        false,
+    )
+    .unwrap();
+    assert_eq!(finish(&terminal).state, "done");
+    assert_eq!(std::fs::read(downloaded).unwrap(), b"new bytes");
+    let target = dir.join("cancel.bin");
+    std::fs::write(&target, b"preserve").unwrap();
+    let task = crate::sftp::start(
+        Arc::clone(&terminal),
+        "/large.bin".into(),
+        target.clone(),
+        false,
+        false,
+    )
+    .unwrap();
+    crate::sftp::cancel(&terminal, &task);
+    assert_eq!(finish(&terminal).state, "cancelled");
+    assert_eq!(std::fs::read(target).unwrap(), b"preserve");
+    terminal.write(b"still-live\r").unwrap();
+    receive(&terminal, "remote:still-live");
+    manager.close(&id);
+}

@@ -5,6 +5,8 @@ pub enum Choice {
     Editor,
     Import,
     Export,
+    Upload,
+    Download,
 }
 
 pub async fn choose(
@@ -34,6 +36,7 @@ fn show(owner: usize, choice: Choice) -> Result<Option<PathBuf>, String> {
     use windows_sys::Win32::UI::Controls::Dialogs::*;
     let filter = match choice {
         Choice::Editor => "Windows executable (*.exe)\0*.exe\0\0",
+        Choice::Upload | Choice::Download => "All files (*.*)\0*.*\0\0",
         _ => "TermiX sessions (*.json)\0*.json\0\0",
     }
     .encode_utf16()
@@ -56,9 +59,11 @@ fn show(owner: usize, choice: Choice) -> Result<Option<PathBuf>, String> {
         options.nMaxFile = filename.len() as u32;
         options.nFilterIndex = 1;
         options.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_DONTADDTORECENT;
-        let result = if matches!(choice, Choice::Export) {
+        let result = if matches!(choice, Choice::Export | Choice::Download) {
             options.Flags |= OFN_OVERWRITEPROMPT;
-            options.lpstrDefExt = extension.as_ptr();
+            if matches!(choice, Choice::Export) {
+                options.lpstrDefExt = extension.as_ptr();
+            }
             GetSaveFileNameW(&mut options)
         } else {
             options.Flags |= OFN_FILEMUSTEXIST;
@@ -86,10 +91,11 @@ fn show(owner: usize, choice: Choice) -> Result<Option<PathBuf>, String> {
     } else {
         "json"
     };
-    if !path
-        .extension()
-        .and_then(|s| s.to_str())
-        .is_some_and(|s| s.eq_ignore_ascii_case(expected))
+    if !matches!(choice, Choice::Upload | Choice::Download)
+        && !path
+            .extension()
+            .and_then(|s| s.to_str())
+            .is_some_and(|s| s.eq_ignore_ascii_case(expected))
     {
         return Err("file_type_invalid".into());
     }

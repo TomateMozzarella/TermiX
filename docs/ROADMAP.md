@@ -90,8 +90,11 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Evaluate migration from current sessions.json to SQLite with backward-compatible migration and backup.
 - Validation, atomic writes, import/export of non-secret metadata; clear UX around missing credentials.
 
-### v0.5.0 – SFTP
-- SFTP browser with remote/local navigation, upload/download, progress, cancellation, overwrite confirmation, drag-and-drop.
+### v0.5.0 – SFTP and workspace interaction [IN DEVELOPMENT]
+- SFTP browser on the existing verified SSH connection: remote path navigation, bounded directory listing, streamed uploads/downloads, progress/cancellation and explicit replacement control. Native Windows Open/Save dialogs provide local navigation and grant the specific local file, rather than exposing arbitrary frontend filesystem access. Internal remote-file drag-to-download is included; OS Explorer drag/drop, a dual-pane local browser, recursive folders and resumable transfers remain follow-ups.
+- 2026-11-03 user feedback: drag saved sessions into folders/unassigned, resize sidebar and file-browser panel, collapse Connections/Folders/Saved Sessions, reorder terminal tabs by drag and drop and close tabs with the middle mouse button. Include these in v0.5 without restarting active terminals. The native window is already resizable; split terminal panes remain v0.7.
+- Transfers use exclusive sibling partial files and commit only after successful completion; never truncate the destination at start. Report permissions, existing targets, changed source/destination, unsupported SFTP/atomic replacement and cancellation. Best-effort partial cleanup; a lost connection may leave a clearly named .termix-UUID.part file. No automatic resume.
+- SSH monitoring requested: show CPU usage, RAM used/total, disk used/total and connected SSH users. Schedule a dedicated v0.5.x follow-up before v0.6, initially Linux with capability detection, opt-in low-frequency bounded polling, separate channel, no credentials/sudo, pause when hidden, explicit unsupported/unavailable states. Count SSH sessions separately from distinct users; do not claim who(1) entries are all SSH connections. Windows/BSD need platform-specific support. This is recorded, not implemented by the SFTP release.
 - Secure path handling, permission/error reporting, safe partial transfer recovery.
 - Integrate SFTP browsing with SSH sessions.
 

@@ -5,7 +5,7 @@ Read [docs/ROADMAP.md](docs/ROADMAP.md) and [README.md](README.md) before changi
 ## Current focus
 **v0.4.0 is implemented, tested, integrated into main and published as a GitHub development prerelease (2026-11-03).** Application/tag commit: fb51f303d07f3ea375156be3af57679d3a6720ac. All 80 tests passed, plus EXE/MSI packaging and silent installation verifying executable version 0.4.0 and desktop-shortcut icon. See docs/ROADMAP.md and docs/SECURITY.md for provenance, scope and remaining installed interactive checks/security review.
 
-The next planned milestone is v0.5.0 SFTP/file browsing. Start future work from main and preserve the local/SSH terminals, session catalog migration, settings and strict credential/host-key boundaries. Actual editing remains v0.6.0 and macros v0.7.0.
+The active milestone is v0.5.0 SFTP/file browsing plus the 2026-11-03 workspace feedback: session-folder drag/drop, sidebar/file-panel resizing, collapsible groups, tab reorder and middle-click close. Monitoring is recorded as a Linux-first v0.5.x follow-up with explicit support/error states. Do not claim it is implemented. Start future work from main and preserve the local/SSH terminals, session catalog migration, settings and strict credential/host-key boundaries. Actual editing remains v0.6.0 and macros v0.7.0.
 
 ## Latest UX decisions
 - The user resumed implementation and main/release delivery on 2026-11-03; the previous planning-only pause is revoked.

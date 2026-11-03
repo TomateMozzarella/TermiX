@@ -1,0 +1,40 @@
+import { test, expect } from "@playwright/test";
+import { mockDesktop, preview } from "./desktop";
+
+test("move sessions into folders, collapse groups, resize and preserve terminals", async ({ page }) => {
+  await mockDesktop(page, true);
+  await page.addInitScript(() => { (window as any).savedSessions = [{ id: "s1", name: "Operations", kind: "local", host: "", port: 22, username: "", group: "Production" }]; });
+  await page.goto("/");
+  const session = page.getByRole("button", { name: "Open session: Operations", exact: true }); await expect(session).toBeVisible();
+  await session.locator("..").dragTo(page.getByRole("button", { name: "Unassigned", exact: true }));
+  await expect.poll(() => page.evaluate(() => (window as any).catalog.sessions[0].group)).toBe("");
+  await session.locator("..").dragTo(page.getByRole("button", { name: "Production", exact: true }));
+  await expect.poll(() => page.evaluate(() => (window as any).catalog.sessions[0].group)).toBe("Production");
+  for (const section of ["Connections", "Folders", "Saved sessions"]) { const button = page.getByRole("button", { name: section, exact: true }); await button.click(); await expect(button).toHaveAttribute("aria-expanded", "false"); await button.click(); }
+  const separator = page.getByRole("separator", { name: "Resize sidebar" }); const before = await page.locator(".sidebar").boundingBox();
+  await separator.focus(); await page.keyboard.press("ArrowRight"); await expect(separator).toHaveAttribute("aria-valuenow", "330"); expect((await page.locator(".sidebar").boundingBox())!.width).toBeGreaterThan(before!.width);
+  expect(await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(1);
+});
+
+test("drag tabs and middle click closes exactly that tab", async ({ page }) => {
+  await mockDesktop(page, true); await page.goto("/"); await page.getByRole("button", { name: "New terminal", exact: true }).click();
+  const tabs = page.getByRole("tab"); await expect(tabs).toHaveCount(2);
+  const original = await page.locator(".tab").first().getAttribute("class");
+  await page.locator(".tab").last().dragTo(page.locator(".tab").first());
+  await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
+  await tabs.first().click({ button: "middle" }); await expect(tabs).toHaveCount(1);
+  await expect.poll(() => page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "close_terminal").length)).toBe(1);
+});
+
+test("browse SFTP through verified SSH, transfer progress, cancel and report errors", async ({ page }) => {
+  await mockDesktop(page, true); await page.addInitScript(() => { (window as any).hostStatus = "known"; (window as any).savedSessions = [{ id: "s1", name: "Server", host: "example.test", port: 22, username: "test-user", kind: "ssh", group: "" }]; });
+  await page.goto("/"); await expect(page.getByRole("button", { name: "Files", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Open session: Server", exact: true }).click(); await page.getByRole("button", { name: "Connect", exact: true }).click();
+  await page.getByRole("button", { name: "Files", exact: true }).click(); const files = page.getByRole("region", { name: "Files", exact: true }); await expect(files.getByText("hello.txt", { exact: true })).toBeVisible();
+  await files.getByRole("button", { name: "docs", exact: true }).click(); await expect(files.getByRole("textbox", { name: "Remote directory" })).toHaveValue("/home/test/docs");
+  await preview(page, "TermiX-0.5.0-SFTP");
+  await files.getByRole("button", { name: "Download: hello.txt", exact: true }).click(); await expect(files.getByRole("progressbar")).toHaveAttribute("value", "5");
+  await files.getByRole("button", { name: "Cancel", exact: true }).click(); await expect(files.getByRole("status")).toContainText("Cancelled");
+  await page.evaluate(() => { (window as any).sftpFailure = "sftp_permission"; }); await files.getByRole("button", { name: "Open / refresh directory" }).click(); await expect(files.getByRole("alert")).toContainText("Access denied");
+  const calls = await page.evaluate(() => (window as any).testCalls); expect(calls.filter((c: any) => c.command === "ssh_open")).toHaveLength(1); expect(calls.filter((c: any) => c.command === "sftp_list").every((c: any) => c.args.id === "ssh-test-connection")).toBe(true);
+});

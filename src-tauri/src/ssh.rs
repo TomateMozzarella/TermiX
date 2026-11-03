@@ -406,6 +406,7 @@ impl SshManager {
                 exited: None,
             }),
             closed: AtomicBool::new(false),
+            remote: crate::sftp::Remote::default(),
         });
         let mut sessions = self.sessions.lock().map_err(|_| "ssh_state")?;
         if sessions.len() >= LIMIT {
@@ -456,12 +457,19 @@ struct SshIo {
     exited: Option<Option<u32>>,
 }
 pub struct SshTerminal {
+    pub remote: crate::sftp::Remote,
     socket: TcpStream,
     session: ssh2::Session,
     io: Mutex<SshIo>,
     closed: AtomicBool,
 }
 impl SshTerminal {
+    pub fn ssh_session(&self) -> &ssh2::Session {
+        &self.session
+    }
+    pub fn is_closed(&self) -> bool {
+        self.closed.load(Ordering::Acquire)
+    }
     pub fn write(&self, bytes: &[u8]) -> Result<(), String> {
         if self.closed.load(Ordering::Acquire) {
             return Err("ssh_closed".into());

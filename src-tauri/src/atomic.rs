@@ -10,7 +10,7 @@ pub fn write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
         file.write_all(bytes)?;
         file.sync_all()?;
         drop(file);
-        replace(&temp, path)
+        replace_file(&temp, path)
     })();
     if result.is_err() {
         let _ = fs::remove_file(temp);
@@ -19,11 +19,11 @@ pub fn write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
 }
 
 #[cfg(not(windows))]
-fn replace(source: &Path, destination: &Path) -> std::io::Result<()> {
+pub fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
     fs::rename(source, destination)
 }
 #[cfg(windows)]
-fn replace(source: &Path, destination: &Path) -> std::io::Result<()> {
+pub fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
     use std::os::windows::ffi::OsStrExt;
     use windows_sys::Win32::Storage::FileSystem::{
         MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,

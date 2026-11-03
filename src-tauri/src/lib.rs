@@ -6,6 +6,7 @@ mod error;
 mod files;
 mod models;
 mod preferences;
+mod sftp;
 mod ssh;
 mod storage;
 mod terminal;
@@ -73,6 +74,11 @@ pub fn run() {
             commands::close_terminal,
             commands::get_preferences,
             commands::save_preferences,
+            commands::sftp_list,
+            commands::sftp_upload,
+            commands::sftp_download,
+            commands::sftp_progress,
+            commands::sftp_cancel,
             commands::ssh_probe,
             commands::ssh_cancel,
             commands::ssh_open,
