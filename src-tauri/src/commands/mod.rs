@@ -353,7 +353,18 @@ pub async fn sftp_download(
 ) -> Result<Option<String>, String> {
     let terminal = state.get(&id)?;
     crate::sftp::path(&path)?;
-    let Some(local) = crate::files::choose(window, crate::files::Choice::Download).await? else {
+    let Some(local) = crate::files::choose(
+        window,
+        crate::files::Choice::Download(
+            crate::sftp::path(&path)?
+                .file_name()
+                .and_then(|s| s.to_str())
+                .ok_or("sftp_path")?
+                .to_owned(),
+        ),
+    )
+    .await?
+    else {
         return Ok(None);
     };
     crate::sftp::start(terminal, path, local, false, false).map(Some)

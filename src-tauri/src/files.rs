@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum Choice {
     Editor,
     Import,
     Export,
     Upload,
-    Download,
+    Download(String),
 }
 
 pub async fn choose(
@@ -36,7 +36,7 @@ fn show(owner: usize, choice: Choice) -> Result<Option<PathBuf>, String> {
     use windows_sys::Win32::UI::Controls::Dialogs::*;
     let filter = match choice {
         Choice::Editor => "Windows executable (*.exe)\0*.exe\0\0",
-        Choice::Upload | Choice::Download => "All files (*.*)\0*.*\0\0",
+        Choice::Upload | Choice::Download(_) => "All files (*.*)\0*.*\0\0",
         _ => "TermiX sessions (*.json)\0*.json\0\0",
     }
     .encode_utf16()
@@ -45,6 +45,11 @@ fn show(owner: usize, choice: Choice) -> Result<Option<PathBuf>, String> {
     let mut filename = vec![0u16; 32768];
     if matches!(choice, Choice::Export) {
         for (i, unit) in "TermiX-sessions.json".encode_utf16().enumerate() {
+            filename[i] = unit;
+        }
+    }
+    if let Choice::Download(name) = &choice {
+        for (i, unit) in name.encode_utf16().take(filename.len() - 1).enumerate() {
             filename[i] = unit;
         }
     }
@@ -59,7 +64,7 @@ fn show(owner: usize, choice: Choice) -> Result<Option<PathBuf>, String> {
         options.nMaxFile = filename.len() as u32;
         options.nFilterIndex = 1;
         options.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_DONTADDTORECENT;
-        let result = if matches!(choice, Choice::Export | Choice::Download) {
+        let result = if matches!(choice, Choice::Export | Choice::Download(_)) {
             options.Flags |= OFN_OVERWRITEPROMPT;
             if matches!(choice, Choice::Export) {
                 options.lpstrDefExt = extension.as_ptr();
@@ -91,7 +96,7 @@ fn show(owner: usize, choice: Choice) -> Result<Option<PathBuf>, String> {
     } else {
         "json"
     };
-    if !matches!(choice, Choice::Upload | Choice::Download)
+    if !matches!(choice, Choice::Upload | Choice::Download(_))
         && !path
             .extension()
             .and_then(|s| s.to_str())

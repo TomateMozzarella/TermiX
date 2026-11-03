@@ -388,6 +388,23 @@ fn sftp_listing_streaming_transfers_overwrite_and_cancel() {
     )
     .unwrap();
     assert_eq!(finish(&terminal).error.as_deref(), Some("sftp_exists"));
+    std::fs::write(&upload, b"replacement").unwrap();
+    crate::sftp::start(
+        Arc::clone(&terminal),
+        remote.clone(),
+        upload.clone(),
+        true,
+        true,
+    )
+    .unwrap();
+    let replacement = finish(&terminal);
+    // Servers without atomic overwrite must preserve the original.
+    assert!(replacement.state == "done" || replacement.error.as_deref() == Some("sftp_failed"));
+    let expected = if replacement.state == "done" {
+        b"replacement".as_slice()
+    } else {
+        b"new bytes".as_slice()
+    };
     crate::sftp::start(
         Arc::clone(&terminal),
         remote,
@@ -397,7 +414,7 @@ fn sftp_listing_streaming_transfers_overwrite_and_cancel() {
     )
     .unwrap();
     assert_eq!(finish(&terminal).state, "done");
-    assert_eq!(std::fs::read(downloaded).unwrap(), b"new bytes");
+    assert_eq!(std::fs::read(downloaded).unwrap(), expected);
     let target = dir.join("cancel.bin");
     std::fs::write(&target, b"preserve").unwrap();
     let task = crate::sftp::start(

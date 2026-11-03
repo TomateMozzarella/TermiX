@@ -97,7 +97,11 @@ pub fn list(terminal: &SshTerminal, value: &str) -> Result<Listing, String> {
     let canonical = retry(terminal, None, || sftp.realpath(&requested))?;
     let mut directory = retry(terminal, None, || sftp.opendir(&canonical))?;
     let mut entries = Vec::new();
+    let deadline = Instant::now() + Duration::from_secs(30);
     loop {
+        if Instant::now() >= deadline {
+            return Err("sftp_timeout".into());
+        }
         let entry = retry(terminal, None, || directory.readdir());
         let (name, stat) = match entry {
             Ok(e) => e,
@@ -246,7 +250,8 @@ fn transfer(
     let mut buffer = vec![0u8; 65536];
     if upload {
         let mut source = std::fs::File::open(local).map_err(|_| "sftp_local")?;
-        let size = source.metadata().map_err(|_| "sftp_local")?.len();
+        let original = source.metadata().map_err(|_| "sftp_local")?;
+        let size = original.len();
         if !source.metadata().map_err(|_| "sftp_local")?.is_file() {
             return Err("sftp_local".into());
         }
@@ -295,6 +300,13 @@ fn transfer(
                     task.status.lock().map_err(|_| "ssh_state")?.bytes += written as u64;
                 }
             }
+            let current = source.metadata().map_err(|_| "sftp_local")?;
+            if task.status.lock().map_err(|_| "ssh_state")?.bytes != size
+                || (original.len(), original.modified().ok())
+                    != (current.len(), current.modified().ok())
+            {
+                return Err("sftp_changed".into());
+            }
             retry(terminal, cancelled, || destination.close())?;
             let now = match retry(terminal, cancelled, || sftp.lstat(remote)) {
                 Ok(s) => Some(s),
@@ -307,7 +319,7 @@ fn transfer(
                 return Err("sftp_changed".into());
             }
             let flags = if overwrite {
-                ssh2::RenameFlags::ATOMIC | ssh2::RenameFlags::OVERWRITE
+                ssh2::RenameFlags::ATOMIC | ssh2::RenameFlags::OVERWRITE | ssh2::RenameFlags::NATIVE
             } else {
                 ssh2::RenameFlags::empty()
             };
