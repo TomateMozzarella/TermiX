@@ -86,6 +86,8 @@ jobs:
           restore-keys: |
             windows-release-${{ hashFiles('src-tauri/Cargo.lock') }}-
             windows-release-
+      - name: Clear cached installer output before packaging
+        run: ./scripts/clean-bundles.ps1
       - name: Build Windows installer
         run: npm run tauri build
       - uses: actions/cache/save@v4

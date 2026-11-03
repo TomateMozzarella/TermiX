@@ -11,7 +11,7 @@ def verify_installers(directory, version, commit, run_id):
     assets, kinds = [], set()
     for row in manifest['files']:
         name = row['name']
-        if pathlib.PurePath(name).name != name or '/' in name or '\\' in name or version not in name:
+        if pathlib.PurePath(name).name != name or '/' in name or '\\' in name or ('_' + version + '_') not in name:
             raise RuntimeError('Invalid installer name')
         matches = list(directory.rglob(name))
         if len(matches) != 1: raise RuntimeError('Missing or ambiguous installer asset')

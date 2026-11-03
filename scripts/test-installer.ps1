@@ -2,7 +2,10 @@ $ErrorActionPreference = 'Stop'
 # Runs only on the disposable Windows CI machine, never on the user's desktop.
 if ($env:CI -ne 'true') { throw 'Installer smoke test requires isolated CI' }
 $installDir = Join-Path $env:RUNNER_TEMP 'TermiX-installer-check'
-$installer = (Get-ChildItem 'src-tauri/target/release/bundle/nsis/*-setup.exe' | Select-Object -First 1).FullName
+$version = (Get-Content -Raw 'package.json' | ConvertFrom-Json).version
+$installers = @(Get-ChildItem 'src-tauri/target/release/bundle/nsis/*-setup.exe' | Where-Object { $_.Name.StartsWith("TermiX_${version}_") })
+if ($installers.Count -ne 1) { throw 'Expected exactly one installer for the current version' }
+$installer = $installers[0].FullName
 if (!$installer) { throw 'Installer missing' }
 $desktop = [Environment]::GetFolderPath('Desktop')
 $linkPath = Join-Path $desktop 'TermiX.lnk'
@@ -17,9 +20,12 @@ if ($process.ExitCode -ne 0) { throw "Installer exit $($process.ExitCode)" }
 foreach ($name in @('termix.exe', 'termix-v3.ico', 'THIRD_PARTY_LICENSES.txt')) {
   if (!(Test-Path -LiteralPath (Join-Path $installDir $name))) { throw "Missing installed resource: $name" }
 }
+$expectedVersion = [version]$version
+$installedVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $installDir 'termix.exe'))
+if ($installedVersion.ProductMajorPart -ne $expectedVersion.Major -or $installedVersion.ProductMinorPart -ne $expectedVersion.Minor -or $installedVersion.ProductBuildPart -ne $expectedVersion.Build) { throw 'Installed executable is from another version' }
 $installedIcon = Join-Path $installDir 'termix-v3.ico'
 if ((Get-FileHash $installedIcon).Hash -ne (Get-FileHash 'src-tauri/icons/icon.ico').Hash) { throw 'Installed icon differs from source' }
 $shortcut = $shell.CreateShortcut($linkPath)
 if ($shortcut.TargetPath -ne (Join-Path $installDir 'termix.exe')) { throw 'Shortcut target changed' }
 if ($shortcut.IconLocation -notlike "$installedIcon,*") { throw "Desktop shortcut still has old icon: $($shortcut.IconLocation)" }
-Write-Output 'Silent installation, bundled licenses and existing desktop shortcut icon verified.'
+Write-Output "Silent installation of $version, executable version, bundled licenses and existing desktop shortcut icon verified."

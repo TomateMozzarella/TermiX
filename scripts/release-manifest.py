@@ -8,7 +8,7 @@ files = sorted([*root.glob('nsis/*-setup.exe'), *root.glob('msi/*.msi')])
 if len(files) != 2: raise RuntimeError('Expected one EXE and one MSI installer')
 records = []
 for path in files:
-    if version not in path.name: raise RuntimeError('Stale installer filename')
+    if ('_' + version + '_') not in path.name: raise RuntimeError('Stale installer filename')
     records.append({'name': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'bytes': path.stat().st_size})
 manifest = {'schemaVersion': 1, 'version': version, 'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(), 'runId': int(__import__('os').environ['GITHUB_RUN_ID']), 'files': records}
 (root / 'release-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf8')
