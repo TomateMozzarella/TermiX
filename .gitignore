@@ -6,3 +6,7 @@ src-tauri/gen/
 test-results/
 playwright-report/
 src-tauri/windows/generated/
+__pycache__/
+*.pyc
+ui-previews/
+release-assets/

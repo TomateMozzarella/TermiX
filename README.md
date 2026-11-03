@@ -4,7 +4,9 @@ TermiX is an independent, cross-platform remote connection manager built with Ta
 
 ## Current status
 
-v0.4.0 is in Windows CI verification. It adds editing/duplication/deletion, folders, favorites/recent views, import/export previews and a versioned atomic session catalog with a backup of the v0.3 array. Active connections keep their original host/profile when saved metadata changes. The catalog uses OS file locking and checks its saved snapshot to reject stale writes from another window; reload the library before applying further changes after a conflict. SQLite is deferred for this milestone.
+**[v0.4.0 Windows development prerelease](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.4.0) is published and its application source is integrated into main.** [Build 41681128357](https://github.com/TomateMozzarella/TermiX/actions/runs/41681128357) passed all 80 tests (25 native Windows, 31 frontend, 17 browser, 7 release-receipt checks), built EXE/MSI installers and verified a silent installation of executable version 0.4.0 plus the desktop-shortcut icon. [Publication 41684183118](https://github.com/TomateMozzarella/TermiX/actions/runs/41684183118) verified the artifacts and published tag/source commit fb51f303d07f3ea375156be3af57679d3a6720ac. Subsequent documentation changes do not alter that application source or overwrite its release assets.
+
+v0.4 adds editing/duplication/deletion, folders, favorites/recent views, import/export previews and a versioned atomic session catalog with a backup of the v0.3 array. Active connections keep their original host/profile when saved metadata changes. The catalog uses OS file locking and checks its saved snapshot to reject stale writes from another window; reload the library before applying further changes after a conflict. SQLite is deferred for this milestone.
 
 UI labels and controls are larger and support independent 100–150% interface scaling. Existing preferences default to 100% without repeating setup. Terminal font size remains separate. Editor selection can discover Notepad++/VS Code from standard locations, App Paths registry entries or PATH, or use the native EXE picker/manual path. No editor is executed in v0.4.
 
@@ -42,6 +44,10 @@ Choose password, an existing private key (passphrase prompted, never saved), loc
 The Windows EXE installer uses matching artwork and English/German pages. It refreshes existing TermiX shortcuts to a dedicated icon file and requests a shell icon refresh; unrelated shortcuts and global icon caches are not deleted.
 
 ## Windows downloads and verification
+
+Open **[GitHub Release v0.4.0](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.4.0)** and choose `TermiX_0.4.0_x64-setup.exe` (guided installation) or the MSI. The prerelease includes SHA256SUMS and release-manifest.json. Private-repository downloads require a signed-in account with repository access; the chat provides the same EXE directly as well.
+
+Delivered v0.4 EXE SHA-256: `6757b55828e97cddbc1d68efba6024a8ca130061e73042b4a61a9efa5f3d86e9`. It matches GitHub's published asset digest and the locally transferred installer. Close TermiX before upgrading. The next planned milestone is v0.5.0 SFTP; actual editing follows in v0.6.0 and macros in v0.7.0.
 
 Open the latest successful [Windows Actions run](https://github.com/TomateMozzarella/TermiX/actions/workflows/windows-build.yml) and download **TermiX-Windows-Installer** from Artifacts while signed into an account with repository access. Pull requests also build installers after running tests. v0.2.0 is the user-confirmed baseline; newer builds require their own installed-app check.
 

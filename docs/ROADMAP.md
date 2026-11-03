@@ -1,10 +1,10 @@
 # TermiX – Product Roadmap and Project Handoff
 
 Last updated: 2026-11-03
-Status: v0.3.0 implemented and Windows test installer verified. User supplied installed v0.3.0 screenshots and positive appearance feedback on 2026-11-02. Full SSH interoperability/failure-path checks and independent security review remain outstanding. Next planned milestone: v0.4.0 session manager plus usability improvements. Latest request is planning/documentation only; do not start implementation, merge branches or publish releases in this feedback turn.
+Status: v0.4.0 implemented, tested, integrated into main and published as a GitHub development prerelease on 2026-11-03. Next planned milestone: v0.5.0 SFTP/file browsing. Installed interactive validation and independent security review remain separate from automated CI checks.
 Repository: https://github.com/TomateMozzarella/TermiX
 
-Implementation resumed by the user on 2026-11-03. Current authorized work is v0.4.0 plus the tested main/GitHub-prerelease workflow; the preceding feedback-turn pause is revoked. SQLite is deferred: the existing JSON library is upgraded to a versioned catalog with atomic writes, transaction-like in-memory updates and a legacy backup, which covers the current folder/session scope without a database migration dependency.
+The user resumed v0.4 implementation/main/release work on 2026-11-03, revoking the preceding feedback-turn pause. That milestone is complete. SQLite is deferred: the existing JSON library was upgraded to a versioned catalog with atomic writes, OS writer locking, stale-snapshot checks and a legacy backup, covering the folder/session scope without a database migration dependency.
 
 ## Vision
 Build a polished, modern, cross-platform MobaXterm-style terminal and remote-connection manager, initially optimized for Windows 11, with Linux support later. The user prefers downloadable GitHub Actions installers and does not want to compile locally. Keep a compact desktop interface with automatic/dark/light appearance and customizable accents.
@@ -14,11 +14,11 @@ Build a polished, modern, cross-platform MobaXterm-style terminal and remote-con
 - All five frontend lifecycle tests, six real Windows PTY tests, and both Windows installers passed [Actions run 41341535773](https://github.com/TomateMozzarella/TermiX/actions/runs/41341535773).
 - Tauri 2 + Rust backend; React + TypeScript + Vite frontend; xterm.js terminal rendering; lucide-react icons.
 - Dark UI with workspace/sidebar, search, session categories, saved-session area, terminal tabs and status bar.
-- Session create/delete/list persistence in the Rust backend (current JSON storage).
+- Rust-owned session edit/create/delete/duplicate, folders, favorites/recent and metadata import/export with a versioned JSON catalog (v0.4).
 - The user installed and opened the Windows build successfully and provided a screenshot. The UI runs.
 - GitHub Actions Windows installer build SUCCESS: https://github.com/TomateMozzarella/TermiX/actions/runs/41336575518
 - The previous packaging issue was a missing Windows .ico bundle icon. Preserve bundle.icon = ["icons/icon.ico", "icons/icon.png"] in src-tauri/tauri.conf.json. v0.2.1 generates these from the shared public/termix.svg with the Tauri icon CLI, replacing the temporary TX artwork.
-- v0.1.0 baseline: xterm.js shows placeholder output; no real terminal transport. The v0.2.0 implementation below replaces this for local tabs only. SSH, SFTP, editor, tunnels, RDP, serial and X11 remain planned.
+- Historical v0.1 baseline had placeholder output. Real local terminals arrived in v0.2 and SSH in v0.3. SFTP, actual editing, tunnels, RDP, serial and X11 remain planned.
 - Windows build artifacts are uploaded as TermiX-Windows-Installer by .github/workflows/windows-build.yml.
 - v0.3.0 adds a working SSH engine to the local-terminal baseline. It remains a test build with manual failure-path checks and independent security review outstanding.
 
@@ -76,7 +76,10 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Do not claim OS credential storage protects against malware running as the same user.
 - Security review and tests before calling SSH production-ready.
 
-### v0.4.0 – Session manager
+### v0.4.0 – Session manager [IMPLEMENTED; WINDOWS PRERELEASE PUBLISHED]
+- Application/tag commit: fb51f303d07f3ea375156be3af57679d3a6720ac. [Build 41681128357](https://github.com/TomateMozzarella/TermiX/actions/runs/41681128357) passed 25 native Windows tests, 31 frontend tests, 17 browser workflows and 7 release-receipt checks (80 total). Native checks include migration/backup, rollback, concurrency/stale writes, import ID preservation, address normalization and editor-path validation. Existing PTY/SSH/vault checks passed.
+- EXE/MSI packaging passed. Stale cached bundles are cleared safely before packaging; silent installation verifies the actual executable reports 0.4.0, licenses/icon resources exist and an existing desktop shortcut uses the dedicated ICO. Interactive file-picker behavior and broader installed UX/SSH checks remain manual.
+- [Release publication 41684183118](https://github.com/TomateMozzarella/TermiX/actions/runs/41684183118) published [v0.4.0](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.4.0) with EXE, MSI, SHA256SUMS and a source manifest. main was fast-forwarded to the exact successful PR head; PR #1 was automatically marked merged. EXE SHA-256 `6757b55828e97cddbc1d68efba6024a8ca130061e73042b4a61a9efa5f3d86e9` matches the published asset digest and direct chat copy.
 - Latest installed-app feedback (2026-11-02) makes editing existing sessions and assigning them to folders core acceptance criteria. Expose a clear edit action; prefill name/host/port/username/authentication references, preserve session identity and apply saved connection changes to subsequent connections without restarting active sessions.
 - Create/edit/delete/duplicate sessions; groups/folders, favorites, search, recently used, profile defaults.
 - Folder management: create/rename/delete folders, assign/move sessions and provide an unassigned/default location. Deleting a folder must not silently delete its sessions.
@@ -126,7 +129,7 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 ## Release and quality workflow
 - Work incrementally by milestone, use small reviewable commits/PRs, keep documentation updated.
 - User feedback (2026-11-02): prefer integrating completed, tested development milestones into main and publishing versioned GitHub Releases with downloadable installer assets and release notes, rather than indefinitely keeping everything in a draft branch/Actions artifacts. Use prereleases for experimental development builds and identify remaining limitations honestly. Retain checks and short-lived branches for unfinished work; avoid publishing every intermediate commit as a release.
-- Current state at this feedback handoff: PR #1 remains an open draft on codex/v0.2-local-terminal and no GitHub Releases exist. Record the new workflow preference now; the explicit planning-only request means no merge, tag, release publication or workflow implementation in this turn.
+- Current delivered state: PR #1 is merged, main contains v0.4 and GitHub prerelease v0.4.0 is published. The earlier planning-only restriction applied to the feedback turn and was revoked by the user's subsequent implementation request. Future work starts from main; verify a complete PR build at its exact head before fast-forward integration. Existing same-version releases remain immutable across documentation follow-ups.
 - GitHub Actions must produce a working Windows installer artifact; do not ask the user to compile locally.
 - Build success is not functional correctness: test new functionality, not only compilation.
 - Keep Rust, TypeScript, Tauri and Windows bundle paths consistent. Preserve .ico bundling fix.
