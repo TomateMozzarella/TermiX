@@ -330,7 +330,7 @@ fn transfer(
             })?,
             terminal,
         };
-        let result = (|| {
+        let result = (|| -> Result<(), String> {
             loop {
                 let n = source.read(&mut buffer).map_err(|_| "sftp_local")?;
                 if n == 0 {
@@ -402,7 +402,7 @@ fn transfer(
             .create_new(true)
             .open(&temporary)
             .map_err(|_| "sftp_local")?;
-        let result = (|| {
+        let result = (|| -> Result<(), String> {
             loop {
                 let n = io_retry(terminal, task, || source.read(&mut buffer))?;
                 if n == 0 {
@@ -436,7 +436,7 @@ fn transfer(
             }
             // User explicitly confirmed the local destination in Save As. Use the
             // same atomic platform replacement primitive as catalog persistence.
-            crate::atomic::replace_file(&temporary, local).map_err(|_| "sftp_local")
+            crate::atomic::replace_file(&temporary, local).map_err(|_| "sftp_local".to_owned())
         })();
         if result.is_err() {
             let _ = std::fs::remove_file(&temporary);
