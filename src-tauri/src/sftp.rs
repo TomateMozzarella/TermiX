@@ -71,14 +71,19 @@ pub fn retry<T>(
     mut operation: impl FnMut() -> Result<T, ssh2::Error>,
 ) -> Result<T, String> {
     let deadline = Instant::now() + Duration::from_secs(10);
+    let mut pending = false;
     loop {
-        if terminal.is_closed() || cancelled.is_some_and(|c| c.load(Ordering::Acquire)) {
+        if terminal.is_closed()
+            || (!pending && cancelled.is_some_and(|c| c.load(Ordering::Acquire)))
+        {
             return Err("sftp_cancelled".into());
         }
         match operation() {
             Ok(value) => return Ok(value),
             Err(e) if e.code() == ssh2::ErrorCode::Session(-37) => {
+                pending = true;
                 if Instant::now() >= deadline {
+                    terminal.close();
                     return Err("sftp_timeout".into());
                 }
                 std::thread::sleep(Duration::from_millis(10));
@@ -220,14 +225,17 @@ fn io_retry<T>(
     mut op: impl FnMut() -> std::io::Result<T>,
 ) -> Result<T, String> {
     let deadline = Instant::now() + Duration::from_secs(10);
+    let mut pending = false;
     loop {
-        if terminal.is_closed() || task.cancel.load(Ordering::Acquire) {
+        if terminal.is_closed() || (!pending && task.cancel.load(Ordering::Acquire)) {
             return Err("sftp_cancelled".into());
         }
         match op() {
             Ok(value) => return Ok(value),
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                pending = true;
                 if Instant::now() >= deadline {
+                    terminal.close();
                     return Err("sftp_timeout".into());
                 }
                 std::thread::sleep(Duration::from_millis(10));

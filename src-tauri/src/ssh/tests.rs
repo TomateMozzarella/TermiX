@@ -425,9 +425,24 @@ fn sftp_listing_streaming_transfers_overwrite_and_cancel() {
         false,
     )
     .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while crate::sftp::progress(&terminal).unwrap().unwrap().bytes == 0 {
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(5));
+    }
     crate::sftp::cancel(&terminal, &task);
     assert_eq!(finish(&terminal).state, "cancelled");
     assert_eq!(std::fs::read(target).unwrap(), b"preserve");
+    assert!(!std::fs::read_dir(&dir).unwrap().any(|e| e
+        .unwrap()
+        .file_name()
+        .to_string_lossy()
+        .starts_with(".termix-")));
+    assert!(!crate::sftp::list(&terminal, "/")
+        .unwrap()
+        .entries
+        .iter()
+        .any(|e| e.name.starts_with(".termix-")));
     terminal.write(b"still-live\r").unwrap();
     receive(&terminal, "remote:still-live");
     manager.close(&id);
