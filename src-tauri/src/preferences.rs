@@ -22,8 +22,23 @@ pub struct Preferences {
     pub editor_path: String,
     #[serde(default = "default_ui_scale")]
     pub ui_scale: u16,
+    #[serde(default = "default_sftp_side")]
+    pub sftp_side: String,
+    #[serde(default = "default_sftp_start")]
+    pub sftp_start: String,
+    #[serde(default = "default_terminal_palette")]
+    pub terminal_palette: String,
 }
 
+fn default_sftp_side() -> String {
+    "left".into()
+}
+fn default_sftp_start() -> String {
+    ".".into()
+}
+fn default_terminal_palette() -> String {
+    "auto".into()
+}
 fn default_language() -> String {
     "en".into()
 }
@@ -89,6 +104,12 @@ fn validate(value: &Preferences, check_file: bool) -> Result<(), String> {
     if !(100..=150).contains(&value.ui_scale) {
         return Err("invalid_ui_scale".into());
     }
+    if !["left", "right"].contains(&value.sftp_side.as_str())
+        || !["auto", "dark", "light"].contains(&value.terminal_palette.as_str())
+        || crate::sftp::path(&value.sftp_start).is_err()
+    {
+        return Err("preferences_invalid".into());
+    }
     if !["en", "de"].contains(&value.language.as_str())
         || !["system", "dark", "light"].contains(&value.theme.as_str())
     {
@@ -131,6 +152,9 @@ mod tests {
             editor: default_editor(),
             editor_path: String::new(),
             ui_scale: 100,
+            sftp_side: default_sftp_side(),
+            sftp_start: default_sftp_start(),
+            terminal_palette: default_terminal_palette(),
         }
     }
     #[test]

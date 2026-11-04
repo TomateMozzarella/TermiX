@@ -9,7 +9,7 @@ export function accentForeground(hex: string) {
   return (luminance + .05) / .05 >= 1.05 / (luminance + .05) ? "#000000" : "#ffffff";
 }
 export function terminalTheme(theme: ResolvedTheme, accent: string) {
-  return theme === "light" ? { background: "#f7f9fc", foreground: "#233047", cursor: accentText(accent, "light"), selectionBackground: "#b7d0eb99", black: "#27334a", red: "#ae2540", green: "#236f48", yellow: "#866216", blue: "#235eac", magenta: "#8740a6", cyan: "#166e7a", white: "#d8dfeb", brightBlack: "#67758b", brightWhite: "#ffffff" } : { background: "#10141c", foreground: "#d7deea", cursor: accentText(accent, "dark"), selectionBackground: "#698ab455" };
+  return theme === "light" ? { background: "#f7f9fc", foreground: "#233047", cursor: accentText(accent, "light"), selectionBackground: "#b7d0eb99", black: "#27334a", red: "#ae2540", green: "#236f48", yellow: "#866216", blue: "#235eac", magenta: "#8740a6", cyan: "#166e7a", white: "#d8dfeb", brightBlack: "#67758b", brightRed: "#b31d3c", brightGreen: "#176b38", brightYellow: "#795700", brightBlue: "#174d9f", brightMagenta: "#813299", brightCyan: "#006875", brightWhite: "#3c4961" } : { background: "#10141c", foreground: "#d7deea", cursor: accentText(accent, "dark"), selectionBackground: "#698ab455", black: "#6e7d94", red: "#f08794", green: "#8ad9a0", yellow: "#edcc87", blue: "#87b8ff", magenta: "#d6a5ef", cyan: "#83d8df", white: "#d7deea", brightBlack: "#94a2b9", brightRed: "#ffa3ad", brightGreen: "#a6efb9", brightYellow: "#ffe2a1", brightBlue: "#a6cdff", brightMagenta: "#ecc1ff", brightCyan: "#a6edf2", brightWhite: "#ffffff" };
 }
 export function accentText(hex: string, theme: ResolvedTheme): string {
   if (!/^#[0-9a-f]{6}$/i.test(hex)) return theme === "dark" ? "#d7deea" : "#233047";

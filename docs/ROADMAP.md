@@ -1,7 +1,7 @@
 # TermiX – Product Roadmap and Project Handoff
 
 Last updated: 2026-11-04
-Status: v0.5.0 implemented, tested, integrated into main and published as a GitHub development prerelease on 2026-11-04. Next: Linux-first SSH monitoring in a v0.5.x follow-up, before v0.6 editors. Installed interactive validation and independent security review remain separate from automated CI checks.
+Status: v0.5.0 implemented, tested, integrated into main and published as a GitHub development prerelease on 2026-11-04. Active: v0.6 editors and installed-app fixes requested on 2026-11-04. Linux-first SSH monitoring remains pending; the user advanced to v0.6 before it shipped. Installed interactive validation and independent security review remain separate from automated CI checks.
 Repository: https://github.com/TomateMozzarella/TermiX
 
 The user resumed v0.4 implementation/main/release work on 2026-11-03, revoking the preceding feedback-turn pause. That milestone is complete. SQLite is deferred: the existing JSON library was upgraded to a versioned catalog with atomic writes, OS writer locking, stale-snapshot checks and a legacy backup, covering the folder/session scope without a database migration dependency.
@@ -101,10 +101,15 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Secure path handling and permission/error reporting are implemented. Failed transfers clean their partial files when possible; automatic recovery/resume remains planned.
 - Integrate SFTP browsing with SSH sessions.
 
-### v0.6.0 – Editors
+### v0.6.0 – Editors and installed Windows fixes [IN DEVELOPMENT]
+- 2026-11-04 feedback: fix installed session/folder and tab drag/drop (Tauri WebView2 native file interception must be disabled for HTML5 dragging), align upload controls, offer left/right SFTP placement, configurable SFTP starting directory, readable independent terminal palettes, session-list/SFTP context menus including folder creation, running-app close offer in the installer, upgrade data preservation and published GitHub EXE assets.
+- Root SFTP startup is the authenticated user/server starting directory, not a hardcoded /root. A global path preference now selects another initial directory; it does not follow terminal cd automatically.
+- Integrated editing supports bounded UTF-8 regular files (2 MiB, eight documents), language highlighting, tabs/search and explicit Ctrl+S; content hashes detect remote conflicts before atomic replacement. Unsupported atomic replacement fails safely.
+- External editing uses a configured absolute executable, one argument containing a random per-user working-copy path, explicit reload and manual server save. No automatic watcher/upload, shell interpolation or execution from setup. Crash leftovers can remain in the user temp folder.
+- Installer testing includes an existing running application and byte-for-byte preservation of sessions/preferences/known-hosts files. Interactive close/cancel and real native drag gestures still require installed checks.
 - Embedded Monaco Editor as the default editor: tabs, syntax highlighting, line numbers, search, save, encoding awareness.
 - Configurable external editor executable, e.g. Notepad++, VS Code or any user-selected program.
-- Use the visible, user-confirmed editor executable configured earlier; v0.3.0 currently stores only the choice/reference and neither discovers nor launches Notepad++.
+- Use the visible, user-confirmed editor executable configured earlier. v0.4 detects executable locations; v0.6 launches only after an explicit edit action.
 - Open remote SFTP file -> safe local working copy -> edit -> explicit or controlled sync back via SFTP.
 - Detect remote modifications/conflicts; avoid silently overwriting remote changes.
 - Protect temporary working files and clean up securely; clearly communicate editor trust boundaries.

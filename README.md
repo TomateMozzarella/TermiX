@@ -2,6 +2,10 @@
 
 TermiX is an independent, cross-platform remote connection manager built with Tauri 2, Rust, React, TypeScript and xterm.js.
 
+## v0.6 development
+
+Active work adds Monaco remote editing and explicit external-editor working copies, WebView2 drag fixes, configurable SFTP side/start directory, context menus, independent terminal colours and upgrade verification. SSH monitoring remains pending after the user advanced to this milestone. See docs/ROADMAP.md for scope and verified delivery status.
+
 ## Current status
 
 **[v0.5.0 Windows development prerelease](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.5.0) is published and integrated into main.** [Build 41692187212](https://github.com/TomateMozzarella/TermiX/actions/runs/41692187212) passed 85 tests (27 native Windows, 31 frontend, 20 browser and 7 release-receipt checks), EXE/MSI packaging and silent installation of version 0.5.0 with the shortcut icon. [Publication 41871779129](https://github.com/TomateMozzarella/TermiX/actions/runs/41871779129) published the exact tested application/tag commit `df84e11e0bccee832cb0b643bf65981d0655ef2a`.

@@ -68,6 +68,9 @@ class Files(paramiko.SFTPServerInterface):
             if flags & (os.O_RDWR | os.O_WRONLY): handle.writefile = stream
             return handle
         except OSError as e: return paramiko.SFTPServer.convert_errno(e.errno)
+    def mkdir(self, value, attr):
+        try: self.local(value).mkdir(mode=0o700); return paramiko.SFTP_OK
+        except OSError as e: return paramiko.SFTPServer.convert_errno(e.errno)
     def remove(self, value):
         try: self.local(value).unlink(); return paramiko.SFTP_OK
         except OSError as e: return paramiko.SFTPServer.convert_errno(e.errno)

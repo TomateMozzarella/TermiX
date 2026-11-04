@@ -20,4 +20,4 @@ commands.allow = ["ssh_probe", "ssh_cancel", "ssh_open", "ssh_forget_password"]
 [[permission]]
 identifier = "sftp"
 description = "Browse verified SSH transports and transfer files chosen through native dialogs; no arbitrary local paths."
-commands.allow = ["sftp_list", "sftp_upload", "sftp_download", "sftp_progress", "sftp_cancel"]
+commands.allow = ["sftp_list", "sftp_upload", "sftp_download", "sftp_progress", "sftp_cancel", "sftp_mkdir", "editor_open", "editor_save", "editor_close", "editor_external", "editor_reload_external"]

@@ -1,3 +1,9 @@
+; Use Tauri's path-scoped Restart Manager check before replacing any files.
+; Interactive installs offer OK/Cancel to close only the installed TermiX.
+; Do not use taskkill /IM: unrelated copies and other users must be preserved.
+!macro NSIS_HOOK_PREINSTALL
+  !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+!macroend
 ; Refresh only this product's shortcuts, preserving the user's choice to have
 ; no desktop shortcut. A separately named icon avoids stale executable icons.
 !macro TermiXRefreshShortcut SHORTCUT

@@ -369,3 +369,102 @@ pub async fn sftp_download(
     };
     crate::sftp::start(terminal, path, local, false, false).map(Some)
 }
+#[tauri::command]
+pub async fn editor_open(
+    state: State<'_, crate::ssh::SshManager>,
+    id: String,
+    path: String,
+) -> Result<crate::document::View, String> {
+    let terminal = state.get(&id)?;
+    tauri::async_runtime::spawn_blocking(move || crate::document::open(&terminal, &path))
+        .await
+        .map_err(|_| "sftp_failed".to_owned())?
+}
+#[tauri::command]
+pub async fn editor_save(
+    state: State<'_, crate::ssh::SshManager>,
+    id: String,
+    token: String,
+    text: String,
+) -> Result<(), String> {
+    let terminal = state.get(&id)?;
+    tauri::async_runtime::spawn_blocking(move || crate::document::save(&terminal, &token, text))
+        .await
+        .map_err(|_| "sftp_failed".to_owned())?
+}
+#[tauri::command]
+pub fn editor_close(
+    state: State<'_, crate::ssh::SshManager>,
+    id: String,
+    token: String,
+) -> Result<(), String> {
+    {
+        let terminal = state.get(&id)?;
+        crate::document::close(&terminal, &token)
+    }
+}
+#[tauri::command]
+pub async fn editor_external(
+    state: State<'_, crate::ssh::SshManager>,
+    app: tauri::AppHandle,
+    id: String,
+    token: String,
+) -> Result<(), String> {
+    let terminal = state.get(&id)?;
+    use tauri::Manager;
+    let preferences = app
+        .state::<AppState>()
+        .preferences
+        .lock()
+        .map_err(|_| "preferences_invalid")?
+        .read()?
+        .ok_or("preferences_invalid")?;
+    if preferences.editor == "integrated" || preferences.editor_path.is_empty() {
+        return Err("invalid_editor".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::document::external(&terminal, &token, preferences.editor_path)
+    })
+    .await
+    .map_err(|_| "editor_launch".to_owned())?
+}
+#[tauri::command]
+pub async fn editor_reload_external(
+    state: State<'_, crate::ssh::SshManager>,
+    id: String,
+    token: String,
+) -> Result<String, String> {
+    let terminal = state.get(&id)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::document::reload_external(&terminal, &token)
+    })
+    .await
+    .map_err(|_| "sftp_failed".to_owned())?
+}
+#[tauri::command]
+pub async fn sftp_mkdir(
+    state: State<'_, crate::ssh::SshManager>,
+    id: String,
+    directory: String,
+    name: String,
+) -> Result<(), String> {
+    let terminal = state.get(&id)?;
+    if name.is_empty()
+        || name.len() > 255
+        || name == "."
+        || name == ".."
+        || name.contains(['/', '\\'])
+        || name.chars().any(|c| c.is_control())
+    {
+        return Err("sftp_path".into());
+    }
+    let target = crate::sftp::path(&format!("{}/{}", directory.trim_end_matches('/'), name))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let _gate = terminal.remote.gate.try_lock().map_err(|_| "sftp_busy")?;
+        let subsystem = terminal.remote.subsystem.lock().map_err(|_| "ssh_state")?;
+        let sftp = subsystem.as_ref().ok_or("sftp_failed")?;
+        crate::sftp::retry(&terminal, None, || sftp.mkdir(&target, 0o700))
+    })
+    .await
+    .map_err(|_| "sftp_failed".to_owned())?
+}

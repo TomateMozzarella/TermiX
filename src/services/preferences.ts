@@ -13,9 +13,12 @@ export interface Preferences {
   editor: "integrated" | "notepad++" | "vscode" | "custom";
   editorPath: string;
   uiScale: number;
+  sftpSide: "left" | "right";
+  sftpStart: string;
+  terminalPalette: "auto" | "dark" | "light";
 }
 
-export const defaults = (shell: string): Preferences => ({ schemaVersion: 2, setupComplete: false, setupVersion: 0, defaultShell: shell, fontSize: 15, language: "en", theme: "system", accent: "#71c9bd", editor: "integrated", editorPath: "", uiScale: 100 });
+export const defaults = (shell: string): Preferences => ({ schemaVersion: 2, setupComplete: false, setupVersion: 0, defaultShell: shell, fontSize: 15, language: "en", theme: "system", accent: "#71c9bd", editor: "integrated", editorPath: "", uiScale: 100, sftpSide: "left", sftpStart: ".", terminalPalette: "auto" });
 
 export const getPreferences = () => invoke<Preferences | null>("get_preferences");
 export const savePreferences = (preferences: Preferences) => invoke<Preferences>("save_preferences", { preferences });

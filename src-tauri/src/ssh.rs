@@ -407,6 +407,7 @@ impl SshManager {
             }),
             closed: AtomicBool::new(false),
             remote: crate::sftp::Remote::default(),
+            documents: crate::document::Documents::default(),
         });
         let mut sessions = self.sessions.lock().map_err(|_| "ssh_state")?;
         if sessions.len() >= LIMIT {
@@ -458,6 +459,7 @@ struct SshIo {
 }
 pub struct SshTerminal {
     pub remote: crate::sftp::Remote,
+    pub documents: crate::document::Documents,
     socket: TcpStream,
     session: ssh2::Session,
     io: Mutex<SshIo>,

@@ -49,6 +49,10 @@ export async function mockDesktop(page: Page, configured = false, legacy = false
       }
       if (command === "pick_session_import") { if (mock.failImport) throw "session_import_fields"; return mock.importCatalog ?? null; }
       if (command === "export_sessions") { mock.exportedCatalog = structuredClone(mock.catalog); return true; }
+      if (command === "editor_open") return { token: args.path, path: args.path, text: mock.editorText ?? "original text\n" };
+      if (command === "editor_save") { if (mock.editorConflict) throw "editor_conflict"; mock.editorSaved = args.text; return; }
+      if (command === "editor_reload_external") return "external edit";
+      if (command === "sftp_mkdir") { mock.createdFolder = args.name; return; }
       if (command === "sftp_list") { if (mock.sftpFailure) throw mock.sftpFailure; return { path: args.path === "." ? "/home/test" : args.path, entries: [{ name: "docs", path: "/home/test/docs", directory: true, link: false }, { name: "hello.txt", path: "/home/test/hello.txt", size: 15, directory: false, link: false }] }; }
       if (command === "sftp_progress") return mock.sftpProgress ?? null;
       if (command === "sftp_upload" || command === "sftp_download") { mock.sftpProgress = { id: "transfer-test", name: "hello.txt", direction: command === "sftp_upload" ? "upload" : "download", state: "running", bytes: 5, total: 15 }; return "transfer-test"; }

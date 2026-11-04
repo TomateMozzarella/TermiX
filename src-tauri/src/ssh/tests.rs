@@ -447,3 +447,58 @@ fn sftp_listing_streaming_transfers_overwrite_and_cancel() {
     receive(&terminal, "remote:still-live");
     manager.close(&id);
 }
+#[test]
+fn remote_editor_roundtrip_conflicts_and_session_bound_tokens() {
+    let Some((port, fixture)) = fixture() else {
+        return;
+    };
+    let dir = directory();
+    let manager = SshManager::new(dir.join("pins.json"));
+    let probe = manager.probe("127.0.0.1", port).unwrap();
+    let id = manager
+        .open(
+            &probe.ticket,
+            "trust",
+            "",
+            auth("password", "editor-test"),
+            80,
+            24,
+        )
+        .unwrap();
+    let terminal = manager.get(&id).unwrap();
+    let name = format!("editor-{}.txt", uuid::Uuid::new_v4());
+    let remote = format!("/{name}");
+    let fixture_file = fixture.join("remote-files").join(&name);
+    std::fs::write(&fixture_file, "original ö\r\n").unwrap();
+    let doc = crate::document::open(&terminal, &remote).unwrap();
+    assert_eq!(doc.text, "original ö\r\n");
+    let saved = crate::document::save(&terminal, &doc.token, "updated\r\n".into());
+    if saved.is_ok() {
+        assert_eq!(
+            std::fs::read_to_string(&fixture_file).unwrap(),
+            "updated\r\n"
+        );
+    } else {
+        assert_eq!(saved.unwrap_err(), "sftp_failed");
+        assert_eq!(
+            std::fs::read_to_string(&fixture_file).unwrap(),
+            "original ö\r\n"
+        );
+    }
+    std::fs::write(&fixture_file, "remote change").unwrap();
+    assert_eq!(
+        crate::document::save(&terminal, &doc.token, "my edit".into()).unwrap_err(),
+        "editor_conflict"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&fixture_file).unwrap(),
+        "remote change"
+    );
+    assert!(crate::document::save(&terminal, "another-token", "no".into()).is_err());
+    std::fs::write(&fixture_file, [0, 255, 0]).unwrap();
+    assert!(crate::document::open(&terminal, &remote).is_err());
+    assert!(crate::document::open(&terminal, "/large.bin").is_err());
+    crate::document::close(&terminal, &doc.token).unwrap();
+    assert!(crate::document::save(&terminal, &doc.token, "closed".into()).is_err());
+    manager.close(&id);
+}

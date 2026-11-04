@@ -1,6 +1,6 @@
 [package]
 name = "termix"
-version = "0.5.0"
+version = "0.6.0"
 description = "Cross-platform remote connection manager"
 authors = ["TermiX contributors"]
 edition = "2021"

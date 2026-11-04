@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Clock, Copy, Download, Folder, FolderPlus, HardDrive, Laptop, MoreHorizontal, Pencil, Plus, Search, Server, Shield, Star, Trash2, Upload } from "lucide-react";
+import { ContextMenu } from "./ContextMenu";
 import { t, type Language } from "./i18n";
 import type { Session, SessionCatalog, SessionFolder } from "./types";
 export type SessionView = "all" | "favorites" | "recent" | "unassigned" | `folder:${string}`;
@@ -8,6 +9,7 @@ export function SessionSidebar({ catalog, sessions, language, view, setView, que
   catalog: SessionCatalog; sessions: Session[]; language: Language; view: SessionView; setView: (view: SessionView) => void; query: string; setQuery: (value: string) => void; configured: boolean; busy: boolean;
   onFiles: () => void; hasSsh: boolean; onMove: (session: Session, folder: string) => void; onNew: () => void; onOpen: (s: Session) => void; onEdit: (s: Session) => void; onDuplicate: (s: Session) => void; onFavorite: (s: Session) => void; onDelete: (s: Session) => void; onLocal: () => void; onFolder: (folder?: SessionFolder) => void; onDeleteFolder: (folder: SessionFolder) => void; onImport: () => void; onExport: () => void;
 }) {
+  const [context, setContext] = useState<{ x: number; y: number } | null>(null);
   const [menu, setMenu] = useState<string | null>(null), menuRoot = useRef<HTMLDivElement>(null), menuButton = useRef<HTMLButtonElement | null>(null);
   const menuContent = useRef<HTMLDivElement>(null), [menuPosition, setMenuPosition] = useState({ left: 0, top: 0 });
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -18,7 +20,7 @@ export function SessionSidebar({ catalog, sessions, language, view, setView, que
   useEffect(() => { if (menu) menuContent.current?.querySelector<HTMLButtonElement>("button")?.focus(); }, [menu]);
   useEffect(() => { setMenu(null); }, [view, query, catalog]);
   const action = (callback: () => void) => { setMenu(null); callback(); };
-  return <aside className="sidebar"><div className="sidebar-scroll">
+  return <aside className="sidebar" onContextMenu={e => { if (busy) return; e.preventDefault(); setContext({ x: e.clientX, y: e.clientY }); }}><div className="sidebar-scroll">
     <div className="side-heading"><span>{tr("workspace")}</span><div className="side-actions"><button className="icon-button" disabled={!configured || busy} onClick={() => onFolder()} aria-label={tr("addFolder")} title={tr("addFolder")}><FolderPlus size={19}/></button><button className="icon-button" disabled={!configured || busy} onClick={onNew} aria-label={tr("addSession")} title={tr("addSession")}><Plus size={20}/></button></div></div>
     <div className="search"><Search size={18}/><input aria-label={tr("search")} placeholder={tr("search")} value={query} onChange={e => setQuery(e.target.value)}/></div>
     <nav className="nav-section" aria-label={tr("connections")}>{heading("connections")}<div hidden={collapsed.connections}>
@@ -41,5 +43,5 @@ export function SessionSidebar({ catalog, sessions, language, view, setView, que
         }}><button role="menuitem" onClick={() => action(() => onDuplicate(session))}><Copy size={16}/>{tr("duplicateSession")}</button><button role="menuitem" className="danger-text" onClick={() => action(() => onDelete(session))}><Trash2 size={16}/>{tr("deleteSession")}</button></div>, document.body)}
       </div>
     </div>)}{!sessions.length && <div className="empty">{tr(catalog.sessions.length ? "noFolderSessions" : "noSessions")}</div>}</div></section>
-  </div><div className="sidebar-bottom"><div className="library-transfer"><button className="btn secondary" disabled={busy} onClick={onImport} title={tr("importSessions")}><Download size={17}/>{tr("importAction")}</button><button className="btn secondary" disabled={busy || !catalog.sessions.length} onClick={onExport} title={tr("exportSessions")}><Upload size={17}/>{tr("exportAction")}</button></div><div className="secure"><Shield size={15}/>{tr("localStorage")}</div><div className="sidebar-version">{tr("tagline")}</div></div></aside>;
+  </div>{context && <ContextMenu {...context} onClose={() => setContext(null)} items={[{ label: tr("addSession"), action: onNew, disabled: !configured }, { label: tr("addFolder"), action: () => onFolder(), disabled: !configured }, { label: tr("importSessions"), action: onImport }, { label: tr("exportSessions"), action: onExport, disabled: !catalog.sessions.length }, { label: language === "de" ? "Alle Gruppen einklappen" : "Collapse all sections", action: () => setCollapsed({ connections: true, folders: true, savedSessions: true }) }]}/> }<div className="sidebar-bottom"><div className="library-transfer"><button className="btn secondary" disabled={busy} onClick={onImport} title={tr("importSessions")}><Download size={17}/>{tr("importAction")}</button><button className="btn secondary" disabled={busy || !catalog.sessions.length} onClick={onExport} title={tr("exportSessions")}><Upload size={17}/>{tr("exportAction")}</button></div><div className="secure"><Shield size={15}/>{tr("localStorage")}</div><div className="sidebar-version">{tr("tagline")}</div></div></aside>;
 }

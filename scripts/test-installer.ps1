@@ -28,4 +28,29 @@ if ((Get-FileHash $installedIcon).Hash -ne (Get-FileHash 'src-tauri/icons/icon.i
 $shortcut = $shell.CreateShortcut($linkPath)
 if ($shortcut.TargetPath -ne (Join-Path $installDir 'termix.exe')) { throw 'Shortcut target changed' }
 if ($shortcut.IconLocation -notlike "$installedIcon,*") { throw "Desktop shortcut still has old icon: $($shortcut.IconLocation)" }
+
+# Upgrade with a live installed application and seeded per-user metadata.
+$dataDir = Join-Path $env:APPDATA 'dev.termix.desktop'
+New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
+$seed = @{
+ 'sessions.json' = '{"schemaVersion":2,"revision":1,"folders":[],"sessions":[]}'
+ 'preferences.json' = '{"schemaVersion":2,"setupVersion":2,"setupComplete":true,"defaultShell":"powershell","fontSize":15,"language":"en","theme":"dark","accent":"#71c9bd","editor":"integrated","editorPath":"","uiScale":100}'
+ 'known-hosts.json' = '{}'
+}
+$before = @{}
+foreach ($fileName in $seed.Keys) {
+ [IO.File]::WriteAllText((Join-Path $dataDir $fileName), $seed[$fileName])
+ $before[$fileName] = (Get-FileHash (Join-Path $dataDir $fileName)).Hash
+}
+$appProcess = Start-Process -FilePath (Join-Path $installDir 'termix.exe') -WindowStyle Hidden -PassThru
+try {
+ Start-Sleep -Seconds 4
+ if ($appProcess.HasExited) { throw 'Installed app failed to remain running before upgrade' }
+ $upgrade = Start-Process -FilePath $installer -ArgumentList @('/S', "/D=$installDir") -WindowStyle Hidden -Wait -PassThru
+ if ($upgrade.ExitCode -ne 0) { throw 'Upgrade of running application failed' }
+ $appProcess.Refresh()
+ if (!$appProcess.HasExited) { throw 'Upgrade did not close the exact installed application' }
+ foreach ($fileName in $seed.Keys) { if ((Get-FileHash (Join-Path $dataDir $fileName)).Hash -ne $before[$fileName]) { throw "Upgrade changed user data: $fileName" } }
+} finally { $appProcess.Refresh(); if (!$appProcess.HasExited) { $appProcess.Kill() } }
+Write-Output 'Upgrade closes the running installed app and preserves catalog, preferences and known hosts byte-for-byte.'
 Write-Output "Silent installation of $version, executable version, bundled licenses and existing desktop shortcut icon verified."

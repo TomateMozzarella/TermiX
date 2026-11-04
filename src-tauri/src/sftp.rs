@@ -15,14 +15,14 @@ use std::{
 #[derive(Default)]
 pub struct Remote {
     pub gate: Mutex<()>,
-    subsystem: Mutex<Option<ssh2::Sftp>>,
+    pub(crate) subsystem: Mutex<Option<ssh2::Sftp>>,
     pub transfer: Mutex<Option<Arc<Transfer>>>,
 }
 // Explicit nonblocking close avoids ssh2::File's blocking Drop path while a
 // terminal shares the transport. The subsystem is retained until TCP shutdown.
-struct Handle<'a> {
-    file: ssh2::File,
-    terminal: &'a SshTerminal,
+pub(crate) struct Handle<'a> {
+    pub(crate) file: ssh2::File,
+    pub(crate) terminal: &'a SshTerminal,
 }
 impl std::ops::Deref for Handle<'_> {
     type Target = ssh2::File;
@@ -249,15 +249,15 @@ pub fn start(
     });
     Ok(id)
 }
-fn io_retry<T>(
+pub(crate) fn io_retry<T>(
     terminal: &SshTerminal,
-    task: &Transfer,
+    cancel: Option<&AtomicBool>,
     mut op: impl FnMut() -> std::io::Result<T>,
 ) -> Result<T, String> {
     let deadline = Instant::now() + Duration::from_secs(10);
     let mut pending = false;
     loop {
-        if terminal.is_closed() || (!pending && task.cancel.load(Ordering::Acquire)) {
+        if terminal.is_closed() || (!pending && cancel.is_some_and(|c| c.load(Ordering::Acquire))) {
             return Err("sftp_cancelled".into());
         }
         match op() {
@@ -338,8 +338,9 @@ fn transfer(
                 }
                 let mut offset = 0;
                 while offset < n {
-                    let written =
-                        io_retry(terminal, task, || destination.write(&buffer[offset..n]))?;
+                    let written = io_retry(terminal, Some(&task.cancel), || {
+                        destination.write(&buffer[offset..n])
+                    })?;
                     if written == 0 {
                         return Err("sftp_failed".into());
                     }
@@ -404,7 +405,7 @@ fn transfer(
             .map_err(|_| "sftp_local")?;
         let result = (|| -> Result<(), String> {
             loop {
-                let n = io_retry(terminal, task, || source.read(&mut buffer))?;
+                let n = io_retry(terminal, Some(&task.cancel), || source.read(&mut buffer))?;
                 if n == 0 {
                     break;
                 }
