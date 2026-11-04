@@ -17,5 +17,5 @@ for package in ['ssh2', 'libssh2-sys', 'openssl-src', 'zeroize', 'sha2', 'base64
 for name in ['monaco-editor/LICENSE', 'monaco-editor/ThirdPartyNotices.txt']:
     notice = pathlib.Path('node_modules') / name
     if not notice.is_file(): raise RuntimeError('Missing editor license: ' + name)
-    parts.append('\\n=== ' + name + ' ===\\n' + notice.read_text(encoding='utf8'))
+    parts.append('\n=== ' + name + ' ===\n' + notice.read_text(encoding='utf8'))
 output.write_text('\n'.join(parts), encoding='utf8')
