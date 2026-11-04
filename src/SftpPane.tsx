@@ -36,7 +36,7 @@ export function SftpPane({ id, language, initialPath, onEdit, onClose }: { id: s
     try { const result = await invoke<Listing>("sftp_list", { id, path: entry.path }); if (alive.current && epoch.current === request) { if (listing.entries.length + Object.values(tree).reduce((n, entries) => n + entries.length, 0) + result.entries.length > 5000) throw new Error("sftp_too_many"); setTree(old => ({ ...old, [entry.path]: result.entries })); setExpanded(old => ({ ...old, [entry.path]: true })); } }
     catch (e) { failure(e); } finally { if (alive.current) setBusy(false); }
   }
-  const rows = (entries: Entry[], depth = 0): { entry: Entry; depth: number }[] => entries.flatMap(entry => [{ entry, depth }, ...(depth < 12 && expanded[entry.path] ? rows(tree[entry.path] ?? [], depth + 1) : [])]);
+  const rows = (entries: Entry[]) => { const result: {entry: Entry; depth: number}[] = [], seen = new Set<string>(); const visit = (items: Entry[], depth: number) => { for (const entry of items) { if (result.length >= 5000) break; if (seen.has(entry.path)) continue; seen.add(entry.path); result.push({entry, depth}); if (depth < 12 && expanded[entry.path]) visit(tree[entry.path] ?? [], depth + 1); } }; visit(entries, 0); return result; };
   const message = (code: string) => remoteText(language, code as RemoteKey);
   return <section className="sftp-pane" aria-label={tr("files")}>
     <header className="sftp-heading"><span><Folder size={18}/> SFTP <small>{tr("sameConnection")}</small></span><button className="icon-button" aria-label={tr("closeFiles")} onClick={onClose}><X size={18}/></button></header><div className="sftp-body">
