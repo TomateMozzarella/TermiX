@@ -108,8 +108,8 @@ pub fn save(terminal: &SshTerminal, token: &str, text: String) -> Result<(), Str
     let document = docs.get_mut(token).ok_or("editor_closed")?;
     let subsystem = terminal.remote.subsystem.lock().map_err(|_| "ssh_state")?;
     let sftp = subsystem.as_ref().ok_or("sftp_failed")?;
-    let (before, _) = read(terminal, sftp, &document.path)?;
-    if digest(&before) != document.hash {
+    let (before, before_mode) = read(terminal, sftp, &document.path)?;
+    if digest(&before) != document.hash || before_mode != document.mode {
         return Err("editor_conflict".into());
     }
     let parent = document
@@ -143,8 +143,8 @@ pub fn save(terminal: &SshTerminal, token: &str, text: String) -> Result<(), Str
             offset += n;
         }
         retry(terminal, None, || handle.close())?;
-        let (now, _) = read(terminal, sftp, &document.path)?;
-        if digest(&now) != document.hash {
+        let (now, now_mode) = read(terminal, sftp, &document.path)?;
+        if digest(&now) != document.hash || now_mode != document.mode {
             return Err("editor_conflict".into());
         }
         retry(terminal, None, || {

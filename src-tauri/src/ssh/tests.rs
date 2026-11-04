@@ -485,6 +485,30 @@ fn remote_editor_roundtrip_conflicts_and_session_bound_tokens() {
             "original ö\r\n"
         );
     }
+
+    if let Some(executable) = std::env::var_os("TERMIX_EDITOR_TEST_EXE") {
+        crate::document::external(
+            &terminal,
+            &doc.token,
+            executable.to_string_lossy().into_owned(),
+        )
+        .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            if crate::document::reload_external(&terminal, &doc.token).unwrap()
+                == "external fixture edit"
+            {
+                break;
+            }
+            assert!(Instant::now() < deadline);
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        assert_ne!(
+            std::fs::read_to_string(&fixture_file).unwrap(),
+            "external fixture edit",
+            "External editor must not auto-upload"
+        );
+    }
     std::fs::write(&fixture_file, "remote change").unwrap();
     assert_eq!(
         crate::document::save(&terminal, &doc.token, "my edit".into()).unwrap_err(),

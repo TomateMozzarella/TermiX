@@ -20,6 +20,22 @@ try {
     & "$env:WINDIR/System32/OpenSSH/ssh-add.exe" $key
     if ($LASTEXITCODE -ne 0) { throw 'Could not add isolated test key to SSH agent' }
   }
+
+  $helperSource = Join-Path $fixtureDir 'editor-helper.cs'
+  $helperExe = Join-Path $fixtureDir 'editor-helper.exe'
+  @'
+using System;
+using System.IO;
+class EditorFixture {
+ [STAThread] static void Main(string[] args) {
+  if (args.Length != 1 || !Path.GetFullPath(args[0]).StartsWith(Path.GetTempPath(), StringComparison.OrdinalIgnoreCase)) Environment.Exit(2);
+  File.WriteAllText(args[0], "external fixture edit");
+ }
+}
+'@ | Set-Content -LiteralPath $helperSource
+  & "$env:WINDIR/Microsoft.NET/Framework64/v4.0.30319/csc.exe" /nologo /target:winexe "/out:$helperExe" $helperSource
+  if ($LASTEXITCODE -ne 0) { throw 'External editor fixture compilation failed' }
+  $env:TERMIX_EDITOR_TEST_EXE = $helperExe
   $env:TERMIX_SSH_AGENT_TEST = '1'
   # Keep the fixture's parent alive throughout the tests. Windows may terminate
   # a hidden child when the earlier runner step's console closes.

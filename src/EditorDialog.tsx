@@ -2,11 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import "monaco-editor/esm/vs/basic-languages/monaco.contribution";
 import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { remoteText, type RemoteKey } from "./remoteText";
 import type { Language } from "./i18n";
 import { Modal } from "./Modal";
 import { X } from "lucide-react";
+monaco.languages.register({ id: "json" });
+monaco.languages.setMonarchTokensProvider("json", { tokenizer: { root: [[/"(?:[^"\\]|\\.)*"(?=\s*:)/, "key"], [/"(?:[^"\\]|\\.)*"/, "string"], [/-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/, "number"], [/\b(?:true|false|null)\b/, "keyword"], [/[{}\[\],:]/, "delimiter"]] } });
 type Document = { token: string; path: string; text: string; saved: string; external?: boolean; model?: monaco.editor.ITextModel };
 (self as typeof self & { MonacoEnvironment: unknown }).MonacoEnvironment = { getWorker: () => new EditorWorker() };
 export function EditorDialog({ id, initialPath, language, theme, externalAvailable, onClose }: { id: string; initialPath: string; language: Language; theme: "light" | "dark"; externalAvailable: boolean; onClose: () => void }) {
@@ -19,6 +22,7 @@ export function EditorDialog({ id, initialPath, language, theme, externalAvailab
   useEffect(() => { live.current = true; editor.current = monaco.editor.create(host.current!, { automaticLayout: true, fontSize: 15, minimap: { enabled: false }, scrollBeyondLastLine: false, theme: theme === "dark" ? "vs-dark" : "vs", model: null }); const changed = editor.current.onDidChangeModelContent(() => { const model = editor.current?.getModel(); setDocs(old => old.map(d => d.model === model ? { ...d, text: model!.getValue(undefined, true) } : d)); }); editor.current.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => saveAction.current()); void open(initialPath); return () => { live.current = false; changed.dispose(); editor.current?.dispose(); for (const d of current.current) { d.model?.dispose(); void invoke("editor_close", { id, token: d.token }).catch(() => {}); } }; }, [id]);
   useEffect(() => { monaco.editor.setTheme(theme === "dark" ? "vs-dark" : "vs"); }, [theme]);
   useEffect(() => { editor.current?.setModel(docs.find(d => d.token === active)?.model ?? null); editor.current?.focus(); }, [active]);
+  useEffect(() => { let stop: (() => void) | undefined; let cancelled = false; try { void getCurrentWindow().onCloseRequested(event => { if (current.current.some(d => d.text !== d.saved || d.external) && !window.confirm(tr("Close TermiX and discard unsaved editor buffers?", "TermiX schließen und ungespeicherte Editor-Inhalte verwerfen?"))) event.preventDefault(); }).then(unlisten => { if (cancelled) unlisten(); else stop = unlisten; }).catch(() => {}); } catch { /* browser tests */ } return () => { cancelled = true; stop?.(); }; }, []);
   const document = docs.find(d => d.token === active);
   async function save() { if (!document || busy) return; setBusy(true); setError(""); const text = document.text; try { await invoke("editor_save", { id, token: document.token, text }); if (live.current) { setDocs(old => old.map(d => d.token === document.token ? { ...d, saved: text } : d)); setNote(tr("Saved to server", "Auf dem Server gespeichert")); } } catch (e) { setError(String(e)); } finally { if (live.current) setBusy(false); } }
   saveAction.current = () => void save();
