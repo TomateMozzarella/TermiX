@@ -96,6 +96,9 @@ jobs:
           path: src-tauri/target
           key: ${{ steps.release-cache.outputs.cache-primary-key }}
       - name: Verify installed files and refresh of an existing desktop shortcut
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: ./scripts/test-installer.ps1
       - name: Record installer checksums and source commit
         run: python scripts/release-manifest.py
