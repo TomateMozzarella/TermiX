@@ -21,6 +21,8 @@ test('Monaco editing saves explicitly and a server conflict preserves the dirty 
  const editor = dialog.locator('.monaco-editor textarea').first(); await editor.focus(); await page.keyboard.press('Control+A'); await page.keyboard.type('my new content');
  expect(await page.evaluate(() => (window as any).editorSaved)).toBeUndefined(); await dialog.getByRole('button', { name: 'Save to server', exact: true }).click(); await expect.poll(() => page.evaluate(() => (window as any).editorSaved)).toBe('my new content');
  await editor.focus(); await page.keyboard.press('Control+End'); await page.keyboard.type(' pending'); await page.evaluate(() => { (window as any).editorConflict = true; }); await dialog.getByRole('button', { name: 'Save to server', exact: true }).click(); await expect(dialog.getByRole('alert')).toContainText('server file changed'); await expect(dialog.getByRole('tab')).toContainText('•'); await preview(page, 'TermiX-0.6.0-Editor');
+ await page.setViewportSize({ width: 900, height: 600 }); await page.evaluate(() => document.documentElement.style.setProperty('--ui-scale', '1.5')); await expect(dialog.getByRole('button', { name: 'Save to server', exact: true })).toBeInViewport({ ratio: 1 });
+
  page.once('dialog', d => d.dismiss()); await dialog.getByRole('button', { name: 'Close editor', exact: true }).click(); await expect(dialog).toBeVisible();
  page.once('dialog', d => d.accept()); await dialog.getByRole('button', { name: 'Reload server file', exact: true }).click(); await expect(dialog.getByRole('button', { name: 'Save to server', exact: true })).toBeDisabled(); await expect(dialog.getByRole('tab')).not.toContainText('•');
 });
