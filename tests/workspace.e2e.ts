@@ -31,8 +31,9 @@ test("browse SFTP through verified SSH, transfer progress, cancel and report err
   await page.getByRole("button", { name: "Open session: Server", exact: true }).click(); await page.getByRole("button", { name: "Connect", exact: true }).click();
   await page.getByRole("button", { name: "Files", exact: true }).click(); const files = page.getByRole("region", { name: "Files", exact: true }); await expect(files.getByText("hello.txt", { exact: true })).toBeVisible();
   await files.getByRole("button", { name: "docs", exact: true }).click(); await expect(files.getByRole("textbox", { name: "Remote directory" })).toHaveValue("/home/test/docs");
-  await preview(page, "TermiX-0.5.0-SFTP");
+  await preview(page, "TermiX-0.6.0-SFTP");
   await files.getByRole("button", { name: "Download: hello.txt", exact: true }).click(); await expect(files.getByRole("progressbar")).toHaveAttribute("value", "5");
+  await page.setViewportSize({ width: 900, height: 600 }); await page.evaluate(() => document.documentElement.style.setProperty("--ui-scale", "1.5")); await expect(files.getByRole("button", { name: "Cancel", exact: true })).toBeInViewport({ ratio: 1 }); await preview(page, "TermiX-0.6.0-Transfer-150pct");
   await files.getByRole("button", { name: "Cancel", exact: true }).click(); await expect(files.getByRole("status")).toContainText("Cancelled");
   await page.evaluate(() => { (window as any).sftpFailure = "sftp_permission"; }); await files.getByRole("button", { name: "Open / refresh directory" }).click(); await expect(files.getByRole("alert")).toContainText("Access denied");
   const calls = await page.evaluate(() => (window as any).testCalls); expect(calls.filter((c: any) => c.command === "ssh_open")).toHaveLength(1); expect(calls.filter((c: any) => c.command === "sftp_list").every((c: any) => c.args.id === "ssh-test-connection")).toBe(true);
