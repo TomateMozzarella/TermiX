@@ -1,7 +1,7 @@
 # TermiX – Product Roadmap and Project Handoff
 
-Last updated: 2026-11-03
-Status: v0.4.0 implemented, tested, integrated into main and published as a GitHub development prerelease on 2026-11-03. Next planned milestone: v0.5.0 SFTP/file browsing. Installed interactive validation and independent security review remain separate from automated CI checks.
+Last updated: 2026-11-04
+Status: v0.5.0 implemented, tested, integrated into main and published as a GitHub development prerelease on 2026-11-04. Next: Linux-first SSH monitoring in a v0.5.x follow-up, before v0.6 editors. Installed interactive validation and independent security review remain separate from automated CI checks.
 Repository: https://github.com/TomateMozzarella/TermiX
 
 The user resumed v0.4 implementation/main/release work on 2026-11-03, revoking the preceding feedback-turn pause. That milestone is complete. SQLite is deferred: the existing JSON library was upgraded to a versioned catalog with atomic writes, OS writer locking, stale-snapshot checks and a legacy backup, covering the folder/session scope without a database migration dependency.
@@ -90,12 +90,15 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Evaluate migration from current sessions.json to SQLite with backward-compatible migration and backup.
 - Validation, atomic writes, import/export of non-secret metadata; clear UX around missing credentials.
 
-### v0.5.0 – SFTP and workspace interaction [IN DEVELOPMENT]
+### v0.5.0 – SFTP and workspace interaction [IMPLEMENTED; WINDOWS PRERELEASE PUBLISHED]
+- Application/tag commit: `df84e11e0bccee832cb0b643bf65981d0655ef2a`. [Build 41692187212](https://github.com/TomateMozzarella/TermiX/actions/runs/41692187212) passed 27 native Windows, 31 frontend, 20 browser and 7 release-receipt tests (85 total). SFTP integration covers listing, upload/download, refusal of unconfirmed replacement, safe atomic-overwrite fallback, mid-download cancellation with destination preservation/partial cleanup, and subsequent terminal use. Browser cases cover folder drag/drop, collapsible groups, resizing, tab reorder/middle-click and SFTP controls/errors.
+- EXE/MSI packaging and silent installation passed, including executable version 0.5.0, licenses and desktop-shortcut icon. [Publication 41871779129](https://github.com/TomateMozzarella/TermiX/actions/runs/41871779129) published [v0.5.0](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.5.0) from the exact tested PR head. PR #2 was integrated into main. EXE SHA-256 `ad92f81c88ff438d25497eb8ab50b7d344ca76134fb6dd6af1921ba05aa9b4f0` matches the direct chat copy and published asset digest. Installed interactive file dialogs, wider server interoperability and independent security review remain separate.
+- Sidebar/file-panel widths, collapse states and tab order currently last for the running workspace; persistent layout restoration remains v0.7.
 - SFTP browser on the existing verified SSH connection: remote path navigation, bounded directory listing, streamed uploads/downloads, progress/cancellation and explicit replacement control. Native Windows Open/Save dialogs provide local navigation and grant the specific local file, rather than exposing arbitrary frontend filesystem access. Internal remote-file drag-to-download is included; OS Explorer drag/drop, a dual-pane local browser, recursive folders and resumable transfers remain follow-ups.
 - 2026-11-03 user feedback: drag saved sessions into folders/unassigned, resize sidebar and file-browser panel, collapse Connections/Folders/Saved Sessions, reorder terminal tabs by drag and drop and close tabs with the middle mouse button. Include these in v0.5 without restarting active terminals. The native window is already resizable; split terminal panes remain v0.7.
 - Transfers use exclusive sibling partial files and commit only after successful completion; never truncate the destination at start. Report permissions, existing targets, changed source/destination, unsupported SFTP/atomic replacement and cancellation. Best-effort partial cleanup; a lost connection may leave a clearly named .termix-UUID.part file. No automatic resume.
 - SSH monitoring requested: show CPU usage, RAM used/total, disk used/total and connected SSH users. Schedule a dedicated v0.5.x follow-up before v0.6, initially Linux with capability detection, opt-in low-frequency bounded polling, separate channel, no credentials/sudo, pause when hidden, explicit unsupported/unavailable states. Count SSH sessions separately from distinct users; do not claim who(1) entries are all SSH connections. Windows/BSD need platform-specific support. This is recorded, not implemented by the SFTP release.
-- Secure path handling, permission/error reporting, safe partial transfer recovery.
+- Secure path handling and permission/error reporting are implemented. Failed transfers clean their partial files when possible; automatic recovery/resume remains planned.
 - Integrate SFTP browsing with SSH sessions.
 
 ### v0.6.0 – Editors
@@ -132,7 +135,7 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 ## Release and quality workflow
 - Work incrementally by milestone, use small reviewable commits/PRs, keep documentation updated.
 - User feedback (2026-11-02): prefer integrating completed, tested development milestones into main and publishing versioned GitHub Releases with downloadable installer assets and release notes, rather than indefinitely keeping everything in a draft branch/Actions artifacts. Use prereleases for experimental development builds and identify remaining limitations honestly. Retain checks and short-lived branches for unfinished work; avoid publishing every intermediate commit as a release.
-- Current delivered state: PR #1 is merged, main contains v0.4 and GitHub prerelease v0.4.0 is published. The earlier planning-only restriction applied to the feedback turn and was revoked by the user's subsequent implementation request. Future work starts from main; verify a complete PR build at its exact head before fast-forward integration. Existing same-version releases remain immutable across documentation follow-ups.
+- Current delivered state: PR #2 is merged, main contains v0.5 and GitHub prerelease v0.5.0 is published; v0.4 remains available unchanged. The earlier planning-only restriction applied to the feedback turn and was revoked by the user's subsequent implementation request. Future work starts from main; verify a complete PR build at its exact head before fast-forward integration. Existing same-version releases remain immutable across documentation follow-ups.
 - GitHub Actions must produce a working Windows installer artifact; do not ask the user to compile locally.
 - Build success is not functional correctness: test new functionality, not only compilation.
 - Keep Rust, TypeScript, Tauri and Windows bundle paths consistent. Preserve .ico bundling fix.
@@ -145,6 +148,7 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Decide these during implementation with tests and threat-model awareness rather than presenting them as already settled.
 
 ## User preferences / decisions from discussions
+- 2026-11-03/04: the user requested folder drag/drop, adjustable areas, collapsible groups, tab reorder/middle-click and SSH monitoring, then resumed completion on 2026-11-04. Workspace items shipped in v0.5; monitoring is next in v0.5.x.
 - 2026-11-02 feedback: editing sessions, folder assignment, readable/scalable UI, editor EXE detection plus manual override, friendly URL-to-SSH-host input, macros, clearer terminal/editor/file-browser milestone communication, and tested main integration/GitHub Releases are recorded above. No application code was requested in this feedback turn.
 - User approved milestone order above.
 - Wants strong security for SSH passwords and keys.

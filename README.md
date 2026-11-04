@@ -2,11 +2,15 @@
 
 TermiX is an independent, cross-platform remote connection manager built with Tauri 2, Rust, React, TypeScript and xterm.js.
 
-## v0.5 development
-
-The next milestone adds a resizable SFTP browser on an authenticated SSH tab (Files button), streamed file transfers with native local file selection, progress/cancellation and safe partial files. Workspace updates include folder drag/drop, collapsible sidebar groups, sidebar resizing, tab reordering and middle-click close. SSH monitoring (Linux CPU/RAM/disk/SSH-session counts) is recorded for a v0.5.x follow-up; it is not yet delivered. See the roadmap for scope and verification status.
-
 ## Current status
+
+**[v0.5.0 Windows development prerelease](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.5.0) is published and integrated into main.** [Build 41692187212](https://github.com/TomateMozzarella/TermiX/actions/runs/41692187212) passed 85 tests (27 native Windows, 31 frontend, 20 browser and 7 release-receipt checks), EXE/MSI packaging and silent installation of version 0.5.0 with the shortcut icon. [Publication 41871779129](https://github.com/TomateMozzarella/TermiX/actions/runs/41871779129) published the exact tested application/tag commit `df84e11e0bccee832cb0b643bf65981d0655ef2a`.
+
+Open **Files** on an authenticated SSH tab to browse the server through the same verified connection. Upload/download individual regular files using native local file selection, watch progress and cancel transfers. Exclusive partial files protect existing destinations until successful completion; remote replacement requires explicit opt-in. Internal remote-file drag-to-download is supported. Explorer drag/drop, a separate local file tree, recursive folders and automatic resume remain planned. Interrupted connections can leave named partial files. Native-picker interaction and broader server interoperability still need installed manual checks.
+
+Drag sessions onto folders or Unassigned, collapse sidebar groups, resize the sidebar/file panel, reorder tabs by dragging and close tabs with the middle mouse button. These layout choices currently last for the running workspace. Terminal processes keep running during layout changes. SSH monitoring (Linux CPU/RAM/disk/SSH-session and user counts) is recorded for the next v0.5.x follow-up; it is not yet delivered. Editing remains v0.6 and macros/split terminals v0.7. See [release notes](docs/releases/v0.5.0.md) and the roadmap.
+
+## Previously delivered v0.4.0
 
 **[v0.4.0 Windows development prerelease](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.4.0) is published and its application source is integrated into main.** [Build 41681128357](https://github.com/TomateMozzarella/TermiX/actions/runs/41681128357) passed all 80 tests (25 native Windows, 31 frontend, 17 browser, 7 release-receipt checks), built EXE/MSI installers and verified a silent installation of executable version 0.4.0 plus the desktop-shortcut icon. [Publication 41684183118](https://github.com/TomateMozzarella/TermiX/actions/runs/41684183118) verified the artifacts and published tag/source commit fb51f303d07f3ea375156be3af57679d3a6720ac. Subsequent documentation changes do not alter that application source or overwrite its release assets.
 
@@ -16,7 +20,7 @@ UI labels and controls are larger and support independent 100–150% interface s
 
 SSH address entry accepts hostnames, IPs and pasted http(s)/ssh URLs. The preview shows the normalized SSH destination and explicit port. HTTP(S) prefixes do not imply port 80/443; paths, embedded credentials, queries and fragments require correction. Rust validates the normalized values independently of the interface.
 
-Completed milestones are integrated into `main` at the exact tested PR commit. The release workflow publishes a GitHub development prerelease only after verifying that commit's successful build artifact, receipt and checksums; existing releases are not overwritten. See [v0.4.0 release notes](docs/releases/v0.4.0.md). SFTP, actual editing and macros remain later milestones.
+Completed milestones are integrated into `main` at the exact tested PR commit. The release workflow publishes a GitHub development prerelease only after verifying that commit's successful build artifact, receipt and checksums; existing releases are not overwritten. See [v0.4.0 release notes](docs/releases/v0.4.0.md). SFTP arrived in v0.5; actual editing and macros remain later milestones.
 
 ### Previously delivered v0.3.0
 
@@ -35,7 +39,7 @@ v0.3.0 is available as a Windows test build. It extends the user-tested local te
 - System/dark/light appearance, custom accent colours, matching title bar and terminal scrollbars
 - Windows/Linux-oriented project configuration
 
-**Still planned:** SFTP, actual embedded/external file editing, port forwarding, RDP, serial and X11. Optional pwsh/WSL/Git Bash discovery is deferred. Linux has a /bin/sh profile but has not received desktop validation. The editor choice is saved for the later editor milestone; setup never launches a program.
+**Still planned:** actual embedded/external file editing, port forwarding, RDP, serial and X11. Optional pwsh/WSL/Git Bash discovery is deferred. Linux has a /bin/sh profile but has not received desktop validation. The editor choice is saved for the later editor milestone; setup never launches a program.
 
 ## v0.3.0 setup and SSH
 
@@ -49,9 +53,9 @@ The Windows EXE installer uses matching artwork and English/German pages. It ref
 
 ## Windows downloads and verification
 
-Open **[GitHub Release v0.4.0](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.4.0)** and choose `TermiX_0.4.0_x64-setup.exe` (guided installation) or the MSI. The prerelease includes SHA256SUMS and release-manifest.json. Private-repository downloads require a signed-in account with repository access; the chat provides the same EXE directly as well.
+Open **[GitHub Release v0.5.0](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.5.0)** and choose `TermiX_0.5.0_x64-setup.exe` (guided installation) or the MSI. The prerelease includes SHA256SUMS and release-manifest.json. Private-repository downloads require a signed-in account with repository access; the chat provides the same EXE directly as well.
 
-Delivered v0.4 EXE SHA-256: `6757b55828e97cddbc1d68efba6024a8ca130061e73042b4a61a9efa5f3d86e9`. It matches GitHub's published asset digest and the locally transferred installer. Close TermiX before upgrading. The next planned milestone is v0.5.0 SFTP; actual editing follows in v0.6.0 and macros in v0.7.0.
+Delivered v0.5 EXE SHA-256: `ad92f81c88ff438d25497eb8ab50b7d344ca76134fb6dd6af1921ba05aa9b4f0`. It matches GitHub's published asset digest and the locally transferred installer. Close TermiX before upgrading. SSH monitoring is next in v0.5.x; actual editing follows in v0.6.0 and macros in v0.7.0.
 
 Open the latest successful [Windows Actions run](https://github.com/TomateMozzarella/TermiX/actions/workflows/windows-build.yml) and download **TermiX-Windows-Installer** from Artifacts while signed into an account with repository access. Pull requests also build installers after running tests. v0.2.0 is the user-confirmed baseline; newer builds require their own installed-app check.
 
