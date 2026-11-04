@@ -518,6 +518,10 @@ fn remote_editor_roundtrip_conflicts_and_session_bound_tokens() {
         std::fs::read_to_string(&fixture_file).unwrap(),
         "remote change"
     );
+    assert_eq!(
+        crate::document::reload(&terminal, &doc.token).unwrap().text,
+        "remote change"
+    );
     assert!(crate::document::save(&terminal, "another-token", "no".into()).is_err());
     std::fs::write(&fixture_file, [0, 255, 0]).unwrap();
     assert!(crate::document::open(&terminal, &remote).is_err());

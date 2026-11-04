@@ -50,6 +50,7 @@ export async function mockDesktop(page: Page, configured = false, legacy = false
       if (command === "pick_session_import") { if (mock.failImport) throw "session_import_fields"; return mock.importCatalog ?? null; }
       if (command === "export_sessions") { mock.exportedCatalog = structuredClone(mock.catalog); return true; }
       if (command === "editor_open") return { token: args.path, path: args.path, text: mock.editorText ?? "original text\n" };
+      if (command === "editor_reload") return { token: args.token, path: args.token, text: "server changes" };
       if (command === "editor_save") { if (mock.editorConflict) throw "editor_conflict"; mock.editorSaved = args.text; return; }
       if (command === "editor_reload_external") return "external edit";
       if (command === "sftp_mkdir") { mock.createdFolder = args.name; return; }

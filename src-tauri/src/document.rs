@@ -142,6 +142,16 @@ pub fn save(terminal: &SshTerminal, token: &str, text: String) -> Result<(), Str
             }
             offset += n;
         }
+        retry(terminal, None, || {
+            handle.setstat(ssh2::FileStat {
+                size: None,
+                uid: None,
+                gid: None,
+                perm: Some(document.mode as u32),
+                atime: None,
+                mtime: None,
+            })
+        })?;
         retry(terminal, None, || handle.close())?;
         let (now, now_mode) = read(terminal, sftp, &document.path)?;
         if digest(&now) != document.hash || now_mode != document.mode {
@@ -257,4 +267,28 @@ pub fn reload_external(terminal: &SshTerminal, token: &str) -> Result<String, St
         return Err("editor_type".into());
     }
     String::from_utf8(bytes).map_err(|_| "editor_encoding".into())
+}
+pub fn reload(terminal: &SshTerminal, token: &str) -> Result<View, String> {
+    let _gate = terminal.remote.gate.try_lock().map_err(|_| "sftp_busy")?;
+    let mut docs = terminal.documents.0.lock().map_err(|_| "ssh_state")?;
+    let doc = docs.get_mut(token).ok_or("editor_closed")?;
+    let subsystem = terminal.remote.subsystem.lock().map_err(|_| "ssh_state")?;
+    let (bytes, mode) = read(
+        terminal,
+        subsystem.as_ref().ok_or("sftp_failed")?,
+        &doc.path,
+    )?;
+    let text = std::str::from_utf8(&bytes)
+        .map_err(|_| "editor_encoding")?
+        .to_owned();
+    if text.contains('\0') {
+        return Err("editor_encoding".into());
+    }
+    doc.hash = digest(&bytes);
+    doc.mode = mode;
+    Ok(View {
+        token: token.into(),
+        path: doc.path.to_str().ok_or("sftp_path")?.replace('\\', "/"),
+        text,
+    })
 }

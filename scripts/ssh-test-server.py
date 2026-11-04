@@ -34,7 +34,12 @@ remote_root.mkdir(exist_ok=True)
 (remote_root / 'large.bin').write_bytes(b'x' * (1024 * 1024 * 4))
 (remote_root / 'folder').mkdir(exist_ok=True)
 
-class SlowHandle(paramiko.SFTPHandle):
+class FileHandle(paramiko.SFTPHandle):
+    def chattr(self, attr):
+        try: paramiko.SFTPServer.set_file_attr(str(self.path), attr); return paramiko.SFTP_OK
+        except OSError as e: return paramiko.SFTPServer.convert_errno(e.errno)
+
+class SlowHandle(FileHandle):
     def read(self, offset, length):
         time.sleep(.01)
         return super().read(offset, length)
@@ -63,7 +68,8 @@ class Files(paramiko.SFTPServerInterface):
         try:
             fd = os.open(self.local(value), flags, 0o600)
             stream = os.fdopen(fd, 'r+b' if flags & os.O_RDWR else 'wb' if flags & os.O_WRONLY else 'rb')
-            handle = SlowHandle(flags) if value.endswith("large.bin") else paramiko.SFTPHandle(flags)
+            handle = SlowHandle(flags) if value.endswith("large.bin") else FileHandle(flags)
+            handle.path = self.local(value)
             if not flags & os.O_WRONLY: handle.readfile = stream
             if flags & (os.O_RDWR | os.O_WRONLY): handle.writefile = stream
             return handle

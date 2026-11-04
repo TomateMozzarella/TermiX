@@ -468,3 +468,14 @@ pub async fn sftp_mkdir(
     .await
     .map_err(|_| "sftp_failed".to_owned())?
 }
+#[tauri::command]
+pub async fn editor_reload(
+    state: State<'_, crate::ssh::SshManager>,
+    id: String,
+    token: String,
+) -> Result<crate::document::View, String> {
+    let terminal = state.get(&id)?;
+    tauri::async_runtime::spawn_blocking(move || crate::document::reload(&terminal, &token))
+        .await
+        .map_err(|_| "sftp_failed".to_owned())?
+}

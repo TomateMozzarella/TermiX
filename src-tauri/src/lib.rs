@@ -77,6 +77,7 @@ pub fn run() {
             commands::save_preferences,
             commands::editor_open,
             commands::editor_save,
+            commands::editor_reload,
             commands::editor_close,
             commands::editor_external,
             commands::editor_reload_external,
