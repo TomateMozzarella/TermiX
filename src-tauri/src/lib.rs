@@ -12,6 +12,7 @@ mod ssh;
 mod storage;
 mod terminal;
 mod vault;
+mod workspace;
 
 use std::sync::Mutex;
 use storage::SessionStore;
@@ -73,6 +74,8 @@ pub fn run() {
             commands::write_terminal,
             commands::resize_terminal,
             commands::close_terminal,
+            commands::get_workspace,
+            commands::save_workspace,
             commands::get_preferences,
             commands::save_preferences,
             commands::editor_open,

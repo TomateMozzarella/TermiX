@@ -10,14 +10,14 @@ if (!$installer) { throw 'Installer missing' }
 
 $bootstrapInstaller = $installer
 $bootstrapVersion = $version
-if ($version -eq '0.6.0') {
- $baselineDir = Join-Path $env:RUNNER_TEMP 'termix-baseline-0.5.0'
+if ($version -eq '0.7.0') {
+ $baselineDir = Join-Path $env:RUNNER_TEMP 'termix-baseline-0.6.0'
  New-Item -ItemType Directory -Force -Path $baselineDir | Out-Null
- gh release download v0.5.0 --repo $env:GH_REPO --pattern 'TermiX_0.5.0_x64-setup.exe' --dir $baselineDir
- if ($LASTEXITCODE -ne 0) { throw 'Could not download the immutable v0.5 upgrade baseline' }
- $bootstrapInstaller = Join-Path $baselineDir 'TermiX_0.5.0_x64-setup.exe'
- if ((Get-FileHash $bootstrapInstaller -Algorithm SHA256).Hash -ne 'AD92F81C88FF438D25497EB8AB50B7D344CA76134FB6DD6AF1921BA05AA9B4F0') { throw 'Upgrade baseline checksum mismatch' }
- $bootstrapVersion = '0.5.0'
+ gh release download v0.6.0 --repo $env:GH_REPO --pattern 'TermiX_0.6.0_x64-setup.exe' --dir $baselineDir
+ if ($LASTEXITCODE -ne 0) { throw 'Could not download the immutable v0.6 upgrade baseline' }
+ $bootstrapInstaller = Join-Path $baselineDir 'TermiX_0.6.0_x64-setup.exe'
+ if ((Get-FileHash $bootstrapInstaller -Algorithm SHA256).Hash -ne '2778527934F3BE61B16C3C696CE926EC8D3CC57653D40A6DE47E65E1555A372C') { throw 'Upgrade baseline checksum mismatch' }
+ $bootstrapVersion = '0.6.0'
 }
 $desktop = [Environment]::GetFolderPath('Desktop')
 $linkPath = Join-Path $desktop 'TermiX.lnk'

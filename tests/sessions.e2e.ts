@@ -79,8 +79,8 @@ test("UI scaling and editor discovery/manual override preserve terminal font and
   await start(page); await expect.poll(() => page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(1);
   const initialSize = await page.getByRole("button", { name: "All sessions", exact: true }).evaluate(e => parseFloat(getComputedStyle(e).fontSize));
   await page.evaluate(() => { (window as any).detectedEditorPath = "C:\\Tools\\Notepad++\\notepad++.exe"; (window as any).editorPickedPath = "C:\\Other\\Editor.exe"; });
-  await page.getByRole("button", { name: "Settings", exact: true }).click(); await page.getByRole("slider", { name: "Interface size", exact: true }).fill("150");
-  await page.getByLabel("Preferred editor", { exact: true }).selectOption("notepad++"); await expect(page.getByLabel("Full path to the editor executable", { exact: true })).toHaveValue("C:\\Tools\\Notepad++\\notepad++.exe");
+  await page.getByRole("button", { name: "Settings", exact: true }).click(); await page.getByRole("tab", {name: "Appearance", exact: true}).click(); await page.getByRole("slider", { name: "Interface size", exact: true }).fill("150");
+  await page.getByRole("tab", {name: "Preferred editor", exact: true}).click(); await page.getByLabel("Preferred editor", { exact: true }).selectOption("notepad++"); await expect(page.getByLabel("Full path to the editor executable", { exact: true })).toHaveValue("C:\\Tools\\Notepad++\\notepad++.exe");
   await page.getByRole("button", { name: "Browse…", exact: true }).click(); await expect(page.getByLabel("Full path to the editor executable", { exact: true })).toHaveValue("C:\\Other\\Editor.exe");
   await page.setViewportSize({ width: 900, height: 600 }); await expect(page.getByRole("button", { name: "Save changes", exact: true })).toBeInViewport({ ratio: 1 }); await preview(page, "TermiX-0.4.0-Settings-150pct");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();

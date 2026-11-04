@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: { include: ["monaco-editor/esm/vs/editor/editor.api", "monaco-editor/esm/vs/basic-languages/monaco.contribution", "monaco-editor/esm/vs/editor/contrib/find/browser/findController"] },
   clearScreen: false,
   server: { port: 1420, strictPort: true },
   envPrefix: ["VITE_", "TAURI_"],

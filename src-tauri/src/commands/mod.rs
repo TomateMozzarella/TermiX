@@ -479,3 +479,27 @@ pub async fn editor_reload(
         .await
         .map_err(|_| "sftp_failed".to_owned())?
 }
+#[tauri::command]
+pub fn get_workspace(app: tauri::AppHandle) -> Result<Option<crate::workspace::Workspace>, String> {
+    use tauri::Manager;
+    crate::workspace::read(
+        &app.path()
+            .app_data_dir()
+            .map_err(|_| "workspace_invalid")?
+            .join("workspace.json"),
+    )
+}
+#[tauri::command]
+pub fn save_workspace(
+    app: tauri::AppHandle,
+    workspace: crate::workspace::Workspace,
+) -> Result<(), String> {
+    use tauri::Manager;
+    crate::workspace::save(
+        &app.path()
+            .app_data_dir()
+            .map_err(|_| "workspace_invalid")?
+            .join("workspace.json"),
+        workspace,
+    )
+}

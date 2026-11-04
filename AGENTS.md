@@ -2,6 +2,9 @@
 
 Read [docs/ROADMAP.md](docs/ROADMAP.md) and [README.md](README.md) before changing code. The roadmap is the authoritative handoff for product goals, verified current state, milestone ordering, security requirements, and decisions from user discussions.
 
+## v0.7 work in progress
+The user explicitly requested implementation of v0.7 on 2026-11-04 after testing v0.6. Record new feedback and verify direct external opening (no Monaco import), optional shared SFTP/library sidebar, expandable folders, settings categories, visible search/replace, compare and editor maximize, context menus, split terminals, explicit-target snippets and safe metadata-only restoration. See the v0.7 roadmap section. Do not mark v0.7 released before all checks and publication finish.
+
 ## Current focus
 **v0.6.0 is implemented, tested, integrated into main and published as a GitHub development prerelease (2026-11-04).** Application/tag commit: 003aa027d8d6440089a10023ce109a383d8b6169. Build 41885597244 passed 92 tests (28 native Windows, 34 frontend, 23 browser, 7 receipt checks), EXE/MSI packaging and a real upgrade from running v0.5 to v0.6. Catalog/folders, preferences and known-hosts files remained byte-identical. Publication 41887809158 published those exact assets; EXE SHA-256 2778527934f3be61b16c3c696ce926ec8d3cc57653d40a6de47e65e1555a372c matches the chat copy and asset digest.
 

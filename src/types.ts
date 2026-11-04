@@ -20,6 +20,8 @@ export interface SessionFolder { id: string; name: string }
 export interface SessionCatalog { schemaVersion: 2; revision: number; folders: SessionFolder[]; sessions: Session[] }
 
 export interface TerminalTab {
+  pinned?: boolean;
+  color?: string;
   transportId?: string;
   profile?: string;
   fontSize?: number;

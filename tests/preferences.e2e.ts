@@ -36,7 +36,7 @@ test("appearance and language apply without respawning terminals, cancellation r
   const count = await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Deutsch", exact: true }).click();
-  await page.getByRole("radio", { name: /CMD/ }).check(); await page.getByRole("slider", { name: "Schriftgröße", exact: true }).fill("18");
+  await page.getByRole("tab", { name: "Standard-Terminal", exact: true }).click(); await page.getByRole("radio", { name: /CMD/ }).check(); await page.getByRole("tab", { name: "Darstellung", exact: true }).click(); await page.getByRole("slider", { name: "Schriftgröße", exact: true }).fill("18");
   await page.getByRole("button", { name: "Hell", exact: true }).click();
   await page.setViewportSize({ width: 900, height: 600 });
   await expect(page.getByRole("button", { name: "Änderungen speichern" })).toBeInViewport({ ratio: 1 });
@@ -47,7 +47,7 @@ test("appearance and language apply without respawning terminals, cancellation r
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.getByRole("button", { name: "Neuer Tab", exact: true }).click(); await expect(page.getByRole("tab", { name: /^CMD/ })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").at(-1)?.args.profile)).toBe("cmd");
-  await page.getByRole("button", { name: "Einstellungen", exact: true }).click(); await page.getByRole("button", { name: "Dunkel", exact: true }).click(); await page.getByRole("button", { name: "English", exact: true }).click();
+  await page.getByRole("button", { name: "Einstellungen", exact: true }).click(); await page.getByRole("tab", { name: "Darstellung", exact: true }).click(); await page.getByRole("button", { name: "Dunkel", exact: true }).click(); await page.getByRole("tab", { name: "Sprache", exact: true }).click(); await page.getByRole("button", { name: "English", exact: true }).click();
   await page.getByRole("button", { name: "Cancel", exact: true }).click(); await expect(page.locator("html")).toHaveAttribute("data-theme", "light"); await expect(page.getByRole("button", { name: "Einstellungen", exact: true })).toBeVisible();
 });
 

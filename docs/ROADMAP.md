@@ -118,7 +118,11 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Detect remote modifications/conflicts; avoid silently overwriting remote changes.
 - Protect temporary working files and clean up securely; clearly communicate editor trust boundaries.
 
-### v0.7.0 – Terminal productivity
+### v0.7.0 – Terminal productivity [IN DEVELOPMENT]
+- 2026-11-04 installed v0.6 feedback accepted: direct external editor preference; shared Sessions/SFTP sidebar (default) or a separate left/right panel; expandable session and remote folders; categorized settings; visible search/replace (single/all), two-file read-only comparison; editor maximize; richer terminal/tab context menus and subtle rounding. MobaXterm screenshots are workflow references, not a requirement to clone every tool.
+- Current implementation being verified: two existing terminal panes without reconnecting, terminal search, command palette (Ctrl+Shift+P), tab rename/pin/colour/bulk close, clipboard/font/scrollback menus, explicit-target named snippets kept in memory for the current app session, and an explicit restore offer for tab references/order/colours/pins and widths. Restoring SSH tabs never authenticates automatically. No command/history/output/credentials are persisted in workspace.json.
+- Follow-ups: persistent non-secret snippet library after a dedicated storage design, macro recording, customizable shortcut mapping, draggable split divider, detached/multi-monitor windows, formatted clipboard/printing/output recording and SSH monitoring. Do not advertise these as delivered by the first v0.7 prerelease. Existing standard terminal/editor shortcuts remain supported.
+
 - Split panes, search, themes, fonts, font size, key bindings, session/tab restoration, context menus, command palette.
 - Add named command snippets/macros with explicit execution in a clearly identified target session and optional shortcuts. Never store passwords/private keys in macros, auto-run them on connection, or run commands in a different/local session by surprise. Macro recording/advanced scripting needs separate scope decisions.
 - Accessibility, performance, error states and responsive sizing.
@@ -169,4 +173,3 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - For private GitHub artifact links, also provide the installer directly in this chat's outputs when possible; the user encountered a browser 404 on the private artifact URL.
 - Default shell belongs in first-run setup and later settings, not a raw always-visible sidebar dropdown. Unify the logo and remove redundant/disconnected status text.
 - 2026-11-04 installed v0.5 feedback and v0.6 delivery: drag interception, SFTP upload alignment/side/start directory, terminal contrast, context menus, GitHub EXE assets and tested upgrade preservation are recorded in the v0.6 section. Terminal prompt/true-colour output still depends on the remote shell/application; no remote startup files are modified automatically.
-

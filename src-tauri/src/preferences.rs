@@ -20,6 +20,10 @@ pub struct Preferences {
     pub editor: String,
     #[serde(default)]
     pub editor_path: String,
+    #[serde(default = "default_editor")]
+    pub editor_open_mode: String,
+    #[serde(default = "default_sftp_layout")]
+    pub sftp_layout: String,
     #[serde(default = "default_ui_scale")]
     pub ui_scale: u16,
     #[serde(default = "default_sftp_side")]
@@ -30,6 +34,9 @@ pub struct Preferences {
     pub terminal_palette: String,
 }
 
+fn default_sftp_layout() -> String {
+    "shared".into()
+}
 fn default_sftp_side() -> String {
     "left".into()
 }
@@ -127,6 +134,13 @@ fn validate(value: &Preferences, check_file: bool) -> Result<(), String> {
     {
         return Err("invalid_editor".into());
     }
+    if !["integrated", "external"].contains(&value.editor_open_mode.as_str())
+        || !["shared", "panel"].contains(&value.sftp_layout.as_str())
+        || (value.editor_open_mode == "external"
+            && (value.editor == "integrated" || value.editor_path.is_empty()))
+    {
+        return Err("invalid_editor".into());
+    }
     if value.editor == "custom" && !PathBuf::from(&value.editor_path).is_absolute() {
         return Err("invalid_editor".into());
     }
@@ -151,6 +165,8 @@ mod tests {
             accent: default_accent(),
             editor: default_editor(),
             editor_path: String::new(),
+            editor_open_mode: default_editor(),
+            sftp_layout: default_sftp_layout(),
             ui_scale: 100,
             sftp_side: default_sftp_side(),
             sftp_start: default_sftp_start(),
@@ -197,6 +213,24 @@ mod tests {
         assert!(store.read().is_err());
         assert_eq!(fs::read(&store.path).unwrap(), b"corrupt");
         fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn v7_defaults_and_choices_preserve_previous_settings() {
+        let mut old = serde_json::to_value(value()).unwrap();
+        old.as_object_mut().unwrap().remove("editorOpenMode");
+        old.as_object_mut().unwrap().remove("sftpLayout");
+        let migrated: Preferences = serde_json::from_value(old).unwrap();
+        assert_eq!(migrated.editor_open_mode, "integrated");
+        assert_eq!(migrated.sftp_layout, "shared");
+        let mut bad = migrated.clone();
+        bad.sftp_layout = "arbitrary".into();
+        assert!(validate(&bad, false).is_err());
+        let mut bad = migrated.clone();
+        bad.editor_open_mode = "external".into();
+        assert!(validate(&bad, false).is_err());
+        let mut panel = migrated;
+        panel.sftp_layout = "panel".into();
+        assert!(validate(&panel, false).is_ok());
     }
     #[test]
     fn reports_write_failure() {
