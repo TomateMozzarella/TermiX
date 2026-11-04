@@ -2,11 +2,15 @@
 
 TermiX is an independent, cross-platform remote connection manager built with Tauri 2, Rust, React, TypeScript and xterm.js.
 
-## v0.7 work in progress
-
-The next milestone adds direct external opening, shared/optional separate SFTP layout, expandable folders, categorized settings, visible editor search/replace, read-only comparison and maximize, terminal search, richer tab/terminal menus, two-pane terminals and a command palette. Named snippets currently live only in memory and require explicit target confirmation. Workspace restoration stores only bounded session/profile references and layout metadata; SSH reconnection remains manual. Verification and Windows packaging are in progress; v0.6 remains the latest published installer until a tested v0.7 release is available.
-
 ## Current status
+
+**[v0.7.0 Windows development prerelease](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.7.0) is published and integrated into main.** [Build 41901000165](https://github.com/TomateMozzarella/TermiX/actions/runs/41901000165) passed all 101 checks: 31 native Windows tests, 34 frontend tests, 29 browser workflows and 7 release-receipt checks. EXE/MSI packaging and a real upgrade from a running, checksum-verified v0.6 installation passed; catalog/folders, preferences and known SSH hosts remained byte-identical. [Publication 41905892456](https://github.com/TomateMozzarella/TermiX/actions/runs/41905892456) published application/tag commit `1fe2f84a0412fb268b569351477f6cf25ef46131`.
+
+Choose direct external opening or the integrated editor in Settings → Preferred editor. External edits still require explicit reload/review and server save; no automatic upload. Sessions and SFTP share one sidebar by default; Settings → Files also offers a separate left/right panel. Session folders and bounded remote directory trees expand. Settings use five categories. Editor tools expose Find/Replace (next/all), read-only comparison of two open files and maximize/restore.
+
+Right-click tabs or the terminal for productivity actions. Split two existing terminal tabs without restarting them, search terminal output, and open the command palette with Ctrl+Shift+P. Named command snippets require an explicit target and confirmation and live only in memory for this app session. Workspace restoration explicitly reopens bounded tab references/order, pins/colours and widths; SSH reconnection remains manual. No commands, output, history or credentials are saved in workspace.json. Monitoring, persistent snippets, custom shortcut maps and detached windows remain planned. See [release notes](docs/releases/v0.7.0.md) and [security scope](docs/SECURITY.md).
+
+## Previously delivered v0.6.0
 
 **[v0.6.0 Windows development prerelease](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.6.0) is published and integrated into main.** [Build 41885597244](https://github.com/TomateMozzarella/TermiX/actions/runs/41885597244) passed all 92 tests (28 native Windows, 34 frontend, 23 browser, 7 release-receipt checks), EXE/MSI packaging and a real upgrade from running v0.5 to v0.6. Session/folder metadata, settings and known SSH hosts remained byte-identical. [Publication 41887809158](https://github.com/TomateMozzarella/TermiX/actions/runs/41887809158) published the exact tested application/tag commit `003aa027d8d6440089a10023ce109a383d8b6169`.
 
@@ -67,9 +71,9 @@ The Windows EXE installer uses matching artwork and English/German pages. It ref
 
 ## Windows downloads and verification
 
-Open **[GitHub Release v0.6.0](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.6.0)** and choose `TermiX_0.6.0_x64-setup.exe` (guided installation) or the MSI. The prerelease includes SHA256SUMS and release-manifest.json. Private-repository downloads require a signed-in account with repository access; the chat provides the same EXE directly as well.
+Open **[GitHub Release v0.7.0](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.7.0)** and choose `TermiX_0.7.0_x64-setup.exe` (guided installation) or the MSI. The prerelease includes SHA256SUMS and release-manifest.json. Private-repository downloads require a signed-in account with repository access; the chat provides the same EXE directly as well.
 
-Delivered v0.6 EXE SHA-256: `2778527934f3be61b16c3c696ce926ec8d3cc57653d40a6de47e65e1555a372c`. It matches GitHub's published asset digest and the locally transferred installer. Close TermiX before upgrading. SSH monitoring remains pending; editing is included in v0.6 and macros remain planned for v0.7.
+Delivered v0.7 EXE SHA-256: `f632c2141da8e5847b1f9e2fda0fd93ead580991613cc1ac21c1ee7c4c94edf1`. It matches GitHub's published asset digest and the locally transferred installer. Close TermiX before upgrading. SSH monitoring remains pending. v0.7 command snippets are memory-only and require explicit execution.
 
 Open the latest successful [Windows Actions run](https://github.com/TomateMozzarella/TermiX/actions/workflows/windows-build.yml) and download **TermiX-Windows-Installer** from Artifacts while signed into an account with repository access. Pull requests also build installers after running tests. v0.2.0 is the user-confirmed baseline; newer builds require their own installed-app check.
 
