@@ -2,11 +2,17 @@
 
 TermiX is an independent, cross-platform remote connection manager built with Tauri 2, Rust, React, TypeScript and xterm.js.
 
-## v0.6 development
-
-Active work adds Monaco remote editing and explicit external-editor working copies, WebView2 drag fixes, configurable SFTP side/start directory, context menus, independent terminal colours and upgrade verification. SSH monitoring remains pending after the user advanced to this milestone. See docs/ROADMAP.md for scope and verified delivery status.
-
 ## Current status
+
+**[v0.6.0 Windows development prerelease](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.6.0) is published and integrated into main.** [Build 41885597244](https://github.com/TomateMozzarella/TermiX/actions/runs/41885597244) passed all 92 tests (28 native Windows, 34 frontend, 23 browser, 7 release-receipt checks), EXE/MSI packaging and a real upgrade from running v0.5 to v0.6. Session/folder metadata, settings and known SSH hosts remained byte-identical. [Publication 41887809158](https://github.com/TomateMozzarella/TermiX/actions/runs/41887809158) published the exact tested application/tag commit `003aa027d8d6440089a10023ce109a383d8b6169`.
+
+Open a regular UTF-8 file (up to 2 MiB) from SFTP to edit it in the bundled lazy-loaded Monaco editor: eight file tabs, highlighting, find/replace and explicit Save to server / Ctrl+S. Server content or permission changes block replacement; copy your changes or explicitly reload the server version after a discard confirmation. The configured external editor can open a temporary working copy; reload those edits, review them and save explicitly. No automatic upload occurs. Working copies can remain in user temp after interrupted editing/crashes; closing a buffer removes its known copy. Extra encodings, recursive transfers and auto-sync remain planned.
+
+Windows session/folder and tab dragging now passes through WebView2 rather than native file interception. Settings offer SFTP on the left/right, an initial directory and an independent light/dark terminal palette with readable ANSI colours. A dot uses the authenticated user's server starting directory (often /root for root); terminal cd is independent. Context menus create library/SFTP folders and expose file actions. Upload alignment and save/cancel controls at compact UI scales are checked. The installer offers to close the exact installed app; save unsaved editor work before updating. Native GUI gestures/installer cancellation and wider server/editor interoperability remain manual checks.
+
+SSH monitoring remains pending; macros/split panes remain v0.7. See [v0.6 release notes](docs/releases/v0.6.0.md) and [security scope](docs/SECURITY.md).
+
+## Previously delivered v0.5.0
 
 **[v0.5.0 Windows development prerelease](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.5.0) is published and integrated into main.** [Build 41692187212](https://github.com/TomateMozzarella/TermiX/actions/runs/41692187212) passed 85 tests (27 native Windows, 31 frontend, 20 browser and 7 release-receipt checks), EXE/MSI packaging and silent installation of version 0.5.0 with the shortcut icon. [Publication 41871779129](https://github.com/TomateMozzarella/TermiX/actions/runs/41871779129) published the exact tested application/tag commit `df84e11e0bccee832cb0b643bf65981d0655ef2a`.
 
@@ -43,7 +49,7 @@ v0.3.0 is available as a Windows test build. It extends the user-tested local te
 - System/dark/light appearance, custom accent colours, matching title bar and terminal scrollbars
 - Windows/Linux-oriented project configuration
 
-**Still planned:** actual embedded/external file editing, port forwarding, RDP, serial and X11. Optional pwsh/WSL/Git Bash discovery is deferred. Linux has a /bin/sh profile but has not received desktop validation. The editor choice is saved for the later editor milestone; setup never launches a program.
+**Still planned:** port forwarding, RDP, serial and X11. Optional pwsh/WSL/Git Bash discovery is deferred. Linux has a /bin/sh profile but has not received desktop validation. The editor choice is used by v0.6 file editing; setup never launches a program.
 
 ## v0.3.0 setup and SSH
 
@@ -57,9 +63,9 @@ The Windows EXE installer uses matching artwork and English/German pages. It ref
 
 ## Windows downloads and verification
 
-Open **[GitHub Release v0.5.0](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.5.0)** and choose `TermiX_0.5.0_x64-setup.exe` (guided installation) or the MSI. The prerelease includes SHA256SUMS and release-manifest.json. Private-repository downloads require a signed-in account with repository access; the chat provides the same EXE directly as well.
+Open **[GitHub Release v0.6.0](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.6.0)** and choose `TermiX_0.6.0_x64-setup.exe` (guided installation) or the MSI. The prerelease includes SHA256SUMS and release-manifest.json. Private-repository downloads require a signed-in account with repository access; the chat provides the same EXE directly as well.
 
-Delivered v0.5 EXE SHA-256: `ad92f81c88ff438d25497eb8ab50b7d344ca76134fb6dd6af1921ba05aa9b4f0`. It matches GitHub's published asset digest and the locally transferred installer. Close TermiX before upgrading. SSH monitoring is next in v0.5.x; actual editing follows in v0.6.0 and macros in v0.7.0.
+Delivered v0.6 EXE SHA-256: `2778527934f3be61b16c3c696ce926ec8d3cc57653d40a6de47e65e1555a372c`. It matches GitHub's published asset digest and the locally transferred installer. Close TermiX before upgrading. SSH monitoring remains pending; editing is included in v0.6 and macros remain planned for v0.7.
 
 Open the latest successful [Windows Actions run](https://github.com/TomateMozzarella/TermiX/actions/workflows/windows-build.yml) and download **TermiX-Windows-Installer** from Artifacts while signed into an account with repository access. Pull requests also build installers after running tests. v0.2.0 is the user-confirmed baseline; newer builds require their own installed-app check.
 

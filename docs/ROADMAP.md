@@ -1,7 +1,7 @@
 # TermiX – Product Roadmap and Project Handoff
 
 Last updated: 2026-11-04
-Status: v0.5.0 implemented, tested, integrated into main and published as a GitHub development prerelease on 2026-11-04. Active: v0.6 editors and installed-app fixes requested on 2026-11-04. Linux-first SSH monitoring remains pending; the user advanced to v0.6 before it shipped. Installed interactive validation and independent security review remain separate from automated CI checks.
+Status: v0.6.0 implemented, tested, integrated into main and published on 2026-11-04. Linux-first SSH monitoring remains pending; macros/split panes remain v0.7. Installed interactive validation and independent security review remain separate from automated CI checks.
 Repository: https://github.com/TomateMozzarella/TermiX
 
 The user resumed v0.4 implementation/main/release work on 2026-11-03, revoking the preceding feedback-turn pause. That milestone is complete. SQLite is deferred: the existing JSON library was upgraded to a versioned catalog with atomic writes, OS writer locking, stale-snapshot checks and a legacy backup, covering the folder/session scope without a database migration dependency.
@@ -18,7 +18,7 @@ Build a polished, modern, cross-platform MobaXterm-style terminal and remote-con
 - The user installed and opened the Windows build successfully and provided a screenshot. The UI runs.
 - GitHub Actions Windows installer build SUCCESS: https://github.com/TomateMozzarella/TermiX/actions/runs/41336575518
 - The previous packaging issue was a missing Windows .ico bundle icon. Preserve bundle.icon = ["icons/icon.ico", "icons/icon.png"] in src-tauri/tauri.conf.json. v0.2.1 generates these from the shared public/termix.svg with the Tauri icon CLI, replacing the temporary TX artwork.
-- Historical v0.1 baseline had placeholder output. Real local terminals arrived in v0.2 and SSH in v0.3. SFTP, actual editing, tunnels, RDP, serial and X11 remain planned.
+- Historical v0.1 baseline had placeholder output. Real local terminals arrived in v0.2 and SSH in v0.3. SFTP arrived in v0.5 and editing in v0.6; tunnels, RDP, serial and X11 remain planned.
 - Windows build artifacts are uploaded as TermiX-Windows-Installer by .github/workflows/windows-build.yml.
 - v0.3.0 adds a working SSH engine to the local-terminal baseline. It remains a test build with manual failure-path checks and independent security review outstanding.
 
@@ -97,11 +97,15 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - SFTP browser on the existing verified SSH connection: remote path navigation, bounded directory listing, streamed uploads/downloads, progress/cancellation and explicit replacement control. Native Windows Open/Save dialogs provide local navigation and grant the specific local file, rather than exposing arbitrary frontend filesystem access. Internal remote-file drag-to-download is included; OS Explorer drag/drop, a dual-pane local browser, recursive folders and resumable transfers remain follow-ups.
 - 2026-11-03 user feedback: drag saved sessions into folders/unassigned, resize sidebar and file-browser panel, collapse Connections/Folders/Saved Sessions, reorder terminal tabs by drag and drop and close tabs with the middle mouse button. Include these in v0.5 without restarting active terminals. The native window is already resizable; split terminal panes remain v0.7.
 - Transfers use exclusive sibling partial files and commit only after successful completion; never truncate the destination at start. Report permissions, existing targets, changed source/destination, unsupported SFTP/atomic replacement and cancellation. Best-effort partial cleanup; a lost connection may leave a clearly named .termix-UUID.part file. No automatic resume.
-- SSH monitoring requested: show CPU usage, RAM used/total, disk used/total and connected SSH users. Schedule a dedicated v0.5.x follow-up before v0.6, initially Linux with capability detection, opt-in low-frequency bounded polling, separate channel, no credentials/sudo, pause when hidden, explicit unsupported/unavailable states. Count SSH sessions separately from distinct users; do not claim who(1) entries are all SSH connections. Windows/BSD need platform-specific support. This is recorded, not implemented by the SFTP release.
+- SSH monitoring requested: show CPU usage, RAM used/total, disk used/total and connected SSH users. Originally scheduled before v0.6; still pending after the user advanced to editors, initially Linux with capability detection, opt-in low-frequency bounded polling, separate channel, no credentials/sudo, pause when hidden, explicit unsupported/unavailable states. Count SSH sessions separately from distinct users; do not claim who(1) entries are all SSH connections. Windows/BSD need platform-specific support. This is recorded, not implemented by the SFTP release.
 - Secure path handling and permission/error reporting are implemented. Failed transfers clean their partial files when possible; automatic recovery/resume remains planned.
 - Integrate SFTP browsing with SSH sessions.
 
-### v0.6.0 – Editors and installed Windows fixes [IN DEVELOPMENT]
+### v0.6.0 – Editors and installed Windows fixes [IMPLEMENTED; WINDOWS PRERELEASE PUBLISHED]
+- Application/tag commit: `003aa027d8d6440089a10023ce109a383d8b6169`. [Build 41885597244](https://github.com/TomateMozzarella/TermiX/actions/runs/41885597244) passed all 92 tests: 28 native Windows, 34 frontend, 23 browser and 7 release-receipt checks. Native tests include remote editing, content conflicts, explicit reload, binary/size rejection and an external-editor fixture proving no automatic upload. Browser coverage includes editor save/conflict/discard, context menus, SFTP side/start preferences and compact editor save/transfer cancellation at 900x600/150%.
+- EXE/MSI and the actual v0.5-to-v0.6 upgrade passed. The baseline v0.5 EXE was checksum-verified, started, then upgraded; process closure and byte-identical catalog/folders/preferences/known-hosts were verified alongside executable version/icon/licenses. [Publication 41887809158](https://github.com/TomateMozzarella/TermiX/actions/runs/41887809158) published [v0.6.0](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.6.0). PR #3 was integrated at the tested head. EXE SHA-256 `2778527934f3be61b16c3c696ce926ec8d3cc57653d40a6de47e65e1555a372c` matches GitHub and the direct chat copy.
+- Native drag gestures are not covered by the mocked browser surface. The Windows integration cause was identified in Tauri's documented native file-drop interception; app.windows[].dragDropEnabled=false is protected by a configuration regression test. Interactive installer OK/Cancel, further real editors/servers and independent security review remain manual.
+
 - 2026-11-04 feedback: fix installed session/folder and tab drag/drop (Tauri WebView2 native file interception must be disabled for HTML5 dragging), align upload controls, offer left/right SFTP placement, configurable SFTP starting directory, readable independent terminal palettes, session-list/SFTP context menus including folder creation, running-app close offer in the installer, upgrade data preservation and published GitHub EXE assets.
 - Root SFTP startup is the authenticated user/server starting directory, not a hardcoded /root. A global path preference now selects another initial directory; it does not follow terminal cd automatically.
 - Integrated editing supports bounded UTF-8 regular files (2 MiB, eight documents), language highlighting, tabs/search and explicit Ctrl+S; content hashes detect remote conflicts before atomic replacement. Unsupported atomic replacement fails safely.
@@ -140,7 +144,7 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 ## Release and quality workflow
 - Work incrementally by milestone, use small reviewable commits/PRs, keep documentation updated.
 - User feedback (2026-11-02): prefer integrating completed, tested development milestones into main and publishing versioned GitHub Releases with downloadable installer assets and release notes, rather than indefinitely keeping everything in a draft branch/Actions artifacts. Use prereleases for experimental development builds and identify remaining limitations honestly. Retain checks and short-lived branches for unfinished work; avoid publishing every intermediate commit as a release.
-- Current delivered state: PR #2 is merged, main contains v0.5 and GitHub prerelease v0.5.0 is published; v0.4 remains available unchanged. The earlier planning-only restriction applied to the feedback turn and was revoked by the user's subsequent implementation request. Future work starts from main; verify a complete PR build at its exact head before fast-forward integration. Existing same-version releases remain immutable across documentation follow-ups.
+- Current delivered state: PR #3 is merged, main contains v0.6 and GitHub prerelease v0.6.0 is published; earlier releases remain unchanged. The earlier planning-only restriction applied to the feedback turn and was revoked by the user's subsequent implementation request. Future work starts from main; verify a complete PR build at its exact head before fast-forward integration. Existing same-version releases remain immutable across documentation follow-ups.
 - GitHub Actions must produce a working Windows installer artifact; do not ask the user to compile locally.
 - Build success is not functional correctness: test new functionality, not only compilation.
 - Keep Rust, TypeScript, Tauri and Windows bundle paths consistent. Preserve .ico bundling fix.
@@ -153,7 +157,7 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Decide these during implementation with tests and threat-model awareness rather than presenting them as already settled.
 
 ## User preferences / decisions from discussions
-- 2026-11-03/04: the user requested folder drag/drop, adjustable areas, collapsible groups, tab reorder/middle-click and SSH monitoring, then resumed completion on 2026-11-04. Workspace items shipped in v0.5; monitoring is next in v0.5.x.
+- 2026-11-03/04: the user requested folder drag/drop, adjustable areas, collapsible groups, tab reorder/middle-click and SSH monitoring, then resumed completion on 2026-11-04. Initial workspace items shipped in v0.5; the installed drag issue and additional requests were fixed in v0.6. Monitoring remains pending.
 - 2026-11-02 feedback: editing sessions, folder assignment, readable/scalable UI, editor EXE detection plus manual override, friendly URL-to-SSH-host input, macros, clearer terminal/editor/file-browser milestone communication, and tested main integration/GitHub Releases are recorded above. No application code was requested in this feedback turn.
 - User approved milestone order above.
 - Wants strong security for SSH passwords and keys.
@@ -164,3 +168,5 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Build and distribute using GitHub Actions; user does not want local builds.
 - For private GitHub artifact links, also provide the installer directly in this chat's outputs when possible; the user encountered a browser 404 on the private artifact URL.
 - Default shell belongs in first-run setup and later settings, not a raw always-visible sidebar dropdown. Unify the logo and remove redundant/disconnected status text.
+- 2026-11-04 installed v0.5 feedback and v0.6 delivery: drag interception, SFTP upload alignment/side/start directory, terminal contrast, context menus, GitHub EXE assets and tested upgrade preservation are recorded in the v0.6 section. Terminal prompt/true-colour output still depends on the remote shell/application; no remote startup files are modified automatically.
+
