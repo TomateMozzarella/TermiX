@@ -42,6 +42,7 @@ export default function App() {
   const activeTerminal = tabs.find(tab => tab.id === activeTab);
   const activeTerminalRef=useRef(activeTerminal);activeTerminalRef.current=activeTerminal;
   const activeTransport = activeTerminal?.transportId;
+  const tunnelTarget=tabs.find(tab=>tab.transportId===tunnelId);
   const [sidebarWidth, setSidebarWidth] = useState(310);
   const [previousWorkspace, setPreviousWorkspace] = useState<Workspace | null>(null), [workspaceReady, setWorkspaceReady] = useState(false);
   useEffect(() => { let alive = true; void invoke<Workspace | null>("get_workspace").then(value => { if (alive) setPreviousWorkspace(value); }).catch(() => {}).finally(() => { if (alive) setWorkspaceReady(true); }); return () => { alive = false; }; }, []);
@@ -197,7 +198,7 @@ export default function App() {
     ]}/>}
     {rename && <Modal title={lang === "de" ? "Tab umbenennen" : "Rename tab"} closeLabel={tr("cancel")} onClose={() => setRename(null)} footer={<button className="btn primary" disabled={!rename.title.trim()} onClick={() => { setTabs(old => old.map(t => t.id === rename.id ? {...t, title: rename.title.trim()} : t)); setRename(null); }}>{tr("saveChanges")}</button>}><input aria-label={lang === "de" ? "Tabname" : "Tab name"} maxLength={100} value={rename.title} onChange={e => setRename({...rename, title: e.target.value})}/></Modal>}
     <Suspense fallback={null}><ExternalEditManager reminders={visible.externalFileReminders ?? true} request={externalRequest} language={lang} onHandled={nonce=>{if(externalRequest?.nonce===nonce){const target=activeTerminalRef.current;if(target?.transportId===externalRequest.id)inputs.current.get(target.id)?.("");}setExternalRequest(old=>old?.nonce===nonce?null:old);}}/></Suspense>
-    {tunnelId&&<Suspense fallback={null}><TunnelDialog id={tunnelId} title={activeTerminal?.title??"SSH"} language={lang} onClose={()=>setTunnelId(null)}/></Suspense>}
+    {tunnelId&&<Suspense fallback={null}><TunnelDialog id={tunnelId} title={tunnelTarget?.connection?`${tunnelTarget.title} · ${tunnelTarget.connection.username}@${tunnelTarget.connection.host}:${tunnelTarget.connection.port}`:tunnelTarget?.title??"SSH"} language={lang} onClose={()=>setTunnelId(null)}/></Suspense>}
     {remoteEditor && <Suspense fallback={<div role="status">Editor…</div>}><EditorDialog id={remoteEditor.id} initialPath={remoteEditor.path} language={lang} theme={theme} externalAvailable={visible.editor !== "integrated" && !!visible.editorPath} onClose={() => setRemoteEditor(null)}/></Suspense>}
     {preferencesMode && preferences && <PreferencesDialog mode={preferencesMode} profiles={profiles} initial={preferences} onSave={applyPreferences} onPreview={setPreview} onClose={() => { setPreview(null); setPreferencesMode(null); }}/ >}
     {editor && <SessionDialog key={editor.session.id} initial={editor.session} editing={editor.editing} folders={catalog.folders} profiles={profiles} language={lang} onSave={persistSession} onClose={() => setEditor(null)}/>}
