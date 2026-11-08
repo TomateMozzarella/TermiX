@@ -651,6 +651,8 @@ fn tcp_tunnels_forward_both_directions_and_stop_without_restarting_ssh() {
         .unwrap();
     let terminal = manager.get(&id).unwrap();
     receive(&terminal, "fixture ready");
+    // Exercise forwarding after an idle keepalive on the same transport.
+    terminal.ssh_session().keepalive_send().unwrap();
     let tunnels = crate::tunnels::Tunnels::default();
     for direction in ["local", "remote"] {
         let info = tunnels

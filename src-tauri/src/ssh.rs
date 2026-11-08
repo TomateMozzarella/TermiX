@@ -394,7 +394,10 @@ impl SshManager {
             }
             crate::vault::save(&pending.host, pending.port, &auth.username, &password)?;
         }
-        session.set_keepalive(true, 15);
+        // libssh2 does not consume keepalive replies separately from other
+        // global requests. Avoid stale SUCCESS/FAILURE packets being mistaken
+        // for a later remote-forwarding response; normal I/O reports disconnects.
+        session.set_keepalive(false, 15);
         session.set_blocking(false);
         let terminal = Arc::new(SshTerminal {
             socket: pending.socket,
