@@ -36,10 +36,12 @@ struct Tunnel {
     terminal: Arc<SshTerminal>,
     stop: AtomicBool,
     peers: AtomicUsize,
+    global_peers: Arc<AtomicUsize>,
 }
 #[derive(Default)]
 pub struct Tunnels {
-    opening: AtomicUsize,
+    listeners: Arc<AtomicUsize>,
+    peers: Arc<AtomicUsize>,
     entries: Mutex<HashMap<String, Arc<Tunnel>>>,
 }
 fn validate(c: &mut Config) -> Result<IpAddr, String> {
@@ -70,9 +72,27 @@ fn ssh_retry<T>(
             Err(e) if e.code() == ssh2::ErrorCode::Session(-37) && Instant::now() < end => {
                 thread::sleep(Duration::from_millis(10))
             }
+            Err(e) if e.code() == ssh2::ErrorCode::Session(-37) => {
+                terminal.close();
+                return Err("tunnel_timeout".into());
+            }
             _ => return Err("tunnel_refused".into()),
         }
     }
+}
+struct Permit(Arc<AtomicUsize>);
+impl Drop for Permit {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+fn claim(counter: &Arc<AtomicUsize>, limit: usize) -> Result<Permit, String> {
+    counter
+        .fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| {
+            (n < limit).then_some(n + 1)
+        })
+        .map_err(|_| "tunnel_limit")?;
+    Ok(Permit(counter.clone()))
 }
 enum Bound {
     Local(TcpListener),
@@ -86,24 +106,13 @@ impl Tunnels {
         mut config: Config,
     ) -> Result<Info, String> {
         let ip = validate(&mut config)?;
-        struct Opening<'a>(&'a AtomicUsize);
-        impl Drop for Opening<'_> {
-            fn drop(&mut self) {
-                self.0.fetch_sub(1, Ordering::AcqRel);
-            }
-        }
-        self.opening
-            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| {
-                (n < 8).then_some(n + 1)
-            })
-            .map_err(|_| "tunnel_limit")?;
-        let _opening = Opening(&self.opening);
+        let permit = claim(&self.listeners, 8)?;
         if terminal.is_closed() {
             return Err("tunnel_closed".into());
         }
         let mut entries = self.entries.lock().map_err(|_| "tunnel_state")?;
         entries.retain(|_, t| !t.stop.load(Ordering::Acquire) && !t.terminal.is_closed());
-        if entries.len() + self.opening.load(Ordering::Acquire) > 8 {
+        if entries.len() >= 8 {
             return Err("tunnel_limit".into());
         }
         drop(entries);
@@ -138,12 +147,16 @@ impl Tunnels {
             terminal,
             stop: AtomicBool::new(false),
             peers: AtomicUsize::new(0),
+            global_peers: self.peers.clone(),
         });
         self.entries
             .lock()
             .map_err(|_| "tunnel_state")?
             .insert(info.id.clone(), tunnel.clone());
-        thread::spawn(move || listen(tunnel, bound));
+        thread::spawn(move || {
+            let _permit = permit;
+            listen(tunnel, bound)
+        });
         Ok(info)
     }
     pub fn list(&self, ssh_id: &str) -> Vec<Info> {
@@ -189,7 +202,7 @@ impl Drop for Tunnels {
 }
 fn listen(t: Arc<Tunnel>, mut listener: Bound) {
     while !t.stop.load(Ordering::Acquire) && !t.terminal.is_closed() {
-        if t.peers.load(Ordering::Acquire) >= 8 {
+        if t.peers.load(Ordering::Acquire) >= 8 || t.global_peers.load(Ordering::Acquire) >= 64 {
             thread::sleep(Duration::from_millis(25));
             continue;
         }
@@ -218,7 +231,7 @@ fn listen(t: Arc<Tunnel>, mut listener: Bound) {
                 Err(_) => break,
             },
             Bound::Remote(l) => match l.accept() {
-                Ok(channel) => {
+                Ok(mut channel) => {
                     let address =
                         SocketAddr::new(config.target_host.parse().unwrap(), config.target_port);
                     match TcpStream::connect_timeout(&address, Duration::from_secs(2)) {
@@ -227,6 +240,7 @@ fn listen(t: Arc<Tunnel>, mut listener: Bound) {
                             if let Ok(mut i) = t.info.lock() {
                                 i.error = Some("tunnel_target".into())
                             }
+                            close_channel(&t.terminal, &mut channel);
                             None
                         }
                     }
@@ -235,13 +249,23 @@ fn listen(t: Arc<Tunnel>, mut listener: Bound) {
                 Err(_) => break,
             },
         };
-        if let Some((tcp, channel)) = pair {
+        if let Some((tcp, mut channel)) = pair {
             if let Ok(mut i) = t.info.lock() {
                 i.error = None;
             }
             t.peers.fetch_add(1, Ordering::AcqRel);
+            let slot = match claim(&t.global_peers, 64) {
+                Ok(slot) => slot,
+                Err(_) => {
+                    t.peers.fetch_sub(1, Ordering::AcqRel);
+                    let _ = tcp.shutdown(Shutdown::Both);
+                    close_channel(&t.terminal, &mut channel);
+                    continue;
+                }
+            };
             let owned = t.clone();
             thread::spawn(move || {
+                let _slot = slot;
                 bridge(&owned, tcp, channel);
                 owned.peers.fetch_sub(1, Ordering::AcqRel);
             });
@@ -256,8 +280,14 @@ fn listen(t: Arc<Tunnel>, mut listener: Bound) {
     // ssh2 cancels a remote listener on Drop. On transport failure the SSH
     // disconnect also releases it; cancellation acknowledgement is server-owned.
 }
+fn close_channel(terminal: &SshTerminal, channel: &mut ssh2::Channel) {
+    if ssh_retry(terminal, || channel.close()).is_ok() {
+        let _ = ssh_retry(terminal, || channel.wait_close());
+    }
+}
 fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
     if tcp.set_nonblocking(true).is_err() {
+        close_channel(&t.terminal, &mut channel);
         return;
     }
     let (mut to_remote, mut to_local) = (Vec::new(), Vec::new());
@@ -334,7 +364,7 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
         }
     }
     let _ = tcp.shutdown(Shutdown::Both);
-    let _ = channel.close();
+    close_channel(&t.terminal, &mut channel);
 }
 #[cfg(test)]
 mod tests {
