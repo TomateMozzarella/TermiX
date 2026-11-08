@@ -2,6 +2,9 @@
 
 Read [docs/ROADMAP.md](docs/ROADMAP.md) and [README.md](README.md) before changing code. The roadmap is the authoritative handoff for product goals, verified current state, milestone ordering, security requirements, and decisions from user discussions.
 
+## Planning-only pause after v0.9 feedback
+On 2026-11-08 the user requested documentation only: improve light-mode readability, enlarge the stable-size scrollable settings dialog, run saved-command Play directly without confirmation, and make open-file informational reminders optional and aggregated. Record details in ROADMAP. Do not implement these changes or start another milestone until the user resumes programming. The direct-Play decision supersedes earlier single-target confirmation guidance for that action; Multi-Execute remains a separate planned workflow.
+
 ## Current focus: v0.9 delivered
 v0.9.0 is implemented, integrated into main and published on 2026-11-08. It fixes the installed terminal/Monaco runtime-style regressions and main-window close permission/guard coordination. Delivered: read-only Linux SSH monitoring, compact commands/context/double-click actions, SFTP mouse-back history, original safe external filenames, fixed-size scrollable settings, consistent rounded UI and up to six named existing terminal panes in a 3x2/2x3 grid. The displayed app version now derives from package.json.
 

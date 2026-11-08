@@ -6,6 +6,13 @@ Repository: https://github.com/TomateMozzarella/TermiX
 
 The user resumed v0.4 implementation/main/release work on 2026-11-03, revoking the preceding feedback-turn pause. That milestone is complete. SQLite is deferred: the existing JSON library was upgraded to a versioned catalog with atomic writes, OS writer locking, stale-snapshot checks and a legacy backup, covering the folder/session scope without a database migration dependency.
 
+## Feedback recorded 2026-11-08 after v0.9 — planning only
+The user explicitly requested recording these items without programming. Implementation is paused until a subsequent instruction to proceed. These are planned changes, not delivered behavior:
+1. Improve light-mode readability throughout the interface: text/background contrast, muted and disabled text, controls, status/monitoring, terminal colours and editor/popover surfaces. The user reports dark mode is readable; retain its readability while checking both themes.
+2. Make the settings dialog larger. Keep its dimensions stable across categories, bounded by the available viewport, with scrolling content and reachable navigation/footer.
+3. Clicking Play on a saved command/macro should run it directly in the selected terminal, without another confirmation dialog. This explicitly supersedes the earlier confirmation requirement for that single-target Play action. Keep the active target clear; this does not decide the separate planned Multi-Execute workflow.
+4. Make informational reminders about files still being edited optional in settings. Aggregate multiple open external files into one compact indicator/count with an expandable list, rather than accumulating per-file messages or a permanently expanded overlay. The attached dark-mode screenshot illustrates the current external-file status area. Hiding reminders does not imply automatic transfer or discarding edits.
+
 ## Vision
 Build a polished, modern, cross-platform MobaXterm-style terminal and remote-connection manager, initially optimized for Windows 11, with Linux support later. The user prefers downloadable GitHub Actions installers and does not want to compile locally. Keep a compact desktop interface with automatic/dark/light appearance and customizable accents.
 
