@@ -1,5 +1,7 @@
 name: Build TermiX for Windows
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -138,4 +140,3 @@ jobs:
           path: installer
       - name: Export verified installer for the connected desktop
         run: python scripts/export-installer.py
-

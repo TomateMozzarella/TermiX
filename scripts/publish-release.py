@@ -1,6 +1,6 @@
-"""Publish immutable prereleases only from an exact, successful PR build.
+"""Publish immutable prereleases only from an exact, successful same-repository build.
 
-main is fast-forwarded to the tested PR commit. No artifact from another SHA,
+main is built and validated before publication. No artifact from another SHA,
 fork, failed workflow or expired run may be substituted. Existing releases are
 never overwritten. GH_TOKEN is used only by the normal GitHub CLI/API client.
 """
@@ -30,10 +30,11 @@ if tag_ref.returncode == 0 and tag_ref.stdout.strip() != commit: raise RuntimeEr
 notes = pathlib.Path('docs/releases') / (tag + '.md')
 if not notes.is_file(): raise RuntimeError('Versioned release notes are missing')
 repository_id = api(f'repos/{repo}')['id']
-runs = api(f'repos/{repo}/actions/workflows/windows-build.yml/runs?head_sha={commit}&event=pull_request&status=success&per_page=100')['workflow_runs']
+runs = api(f'repos/{repo}/actions/workflows/windows-build.yml/runs?head_sha={commit}&status=success&per_page=100')['workflow_runs']
 runs = [run for run in runs if run['head_sha'] == commit and run['status'] == 'completed' and run['conclusion'] == 'success'
-        and run['head_repository']['id'] == repository_id]
-if not runs: raise RuntimeError('No successful same-repository PR build exists for this exact commit')
+        and run['head_repository']['id'] == repository_id
+        and ((run['event'] in ('push', 'workflow_dispatch') and run['head_branch'] == 'main') or run['event'] == 'pull_request')]
+if not runs: raise RuntimeError('No successful same-repository build exists for this exact commit')
 run = runs[0]
 jobs = api(f'repos/{repo}/actions/runs/{run["id"]}/jobs?per_page=100')['jobs']
 if any(job['conclusion'] != 'success' for job in jobs) or not {'frontend', 'windows'}.issubset({job['name'] for job in jobs}):

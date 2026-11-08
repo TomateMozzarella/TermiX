@@ -212,3 +212,5 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 
 ### Recursive SFTP folder upload (2026-11-08)
 Added to v0.10: native folder selection, nested files and empty directories, aggregate byte progress and cancellation. Replacement remains opt-in. Links and special files are skipped and counted; traversal is bounded to 10,000 entries and 32 levels. Completed files/directories remain after cancellation; the current partial file is cleaned up. No automatic resume or Explorer folder drag/drop. Native Windows integration validation is pending.
+
+2026-11-08 workflow decision: user explicitly requests working directly on main and retiring old version branches. This supersedes PR-only work. Build the exact main commit and publish only after all required CI jobs and the source/hash receipt pass. Immutable tags/releases remain. Cleanup only expected old tips already contained in main. A redesigned README/project showcase with real UI captures and a labelled demonstration GIF is requested.

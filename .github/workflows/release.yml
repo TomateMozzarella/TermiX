@@ -1,7 +1,8 @@
 name: Publish verified Windows prerelease
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["Build TermiX for Windows"]
+    types: [completed]
   workflow_dispatch:
 permissions:
   contents: read
@@ -10,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   release:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -19,11 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
       - name: Publish the installers tested at this exact main commit
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TERMIX_COMMIT: ${{ github.sha }}
+          TERMIX_COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: python scripts/publish-release.py
