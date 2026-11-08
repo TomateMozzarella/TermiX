@@ -74,11 +74,14 @@ Remote file creation is exclusive and never truncates an existing file. Deletion
 
 Application/tag commit `81205dc3de017a3772955ecb9814ee8540efb8e9`; [build 42468504906](https://github.com/TomateMozzarella/TermiX/actions/runs/42468504906) passed 110 checks (35 native Windows, 35 frontend, 32 browser, 8 release-receipt), EXE/MSI packaging, a running-v0.7 upgrade with byte-identical catalog/preferences/known-hosts and portable startup from another working directory with isolated data/WebView. [Publication 42469661873](https://github.com/TomateMozzarella/TermiX/actions/runs/42469661873) published the exact EXE/MSI/portable ZIP. EXE SHA-256 `37cb0677fe93849221ecbb7e88774f922fc75d58e833092ec08af0a660244e24` matches GitHub and the chat copy. Portable ZIP SHA-256 `75a9db775685bea7eb9f96a1b6a9bd3ab14b5152d6e362c62c5e90597d45bf5e`. Interactive uninstall choices, wider editor/server interoperability and real startup timing remain manual validation items.
 
-## v0.9 verification pending
+## Verified v0.9 scope
 
 Runtime style elements/attributes have explicit CSS-only CSP directives because startup hashes cause browsers to ignore unsafe-inline in the parent style-src. Scripts remain self-only with Tauri asset hashing; no inline JavaScript/eval/CDN is enabled. Main-only window destroy supports the SDK close guard; one listener combines unsaved editor warnings rather than independently destroying from multiple listeners.
 
 Monitoring runs one fixed read-only Linux command on a separate channel of the already verified SSH session, gated against concurrent file operations, bounded to five seconds/16 KiB and typed validated numeric values. It never accepts command text/paths, uses sudo, installs software or persists metrics. Process/user counts depend on namespace/permissions and visible sshd/login records; multiplexed channels are not counted. Unsupported hosts show unavailable metrics. Terminal emphasis uses bounded display-only decorations for uncoloured normal-buffer text, not server-side prompt modification. Native GUI interoperability remains a manual follow-up.
+
+Application/tag commit `4e54ab96b2ce798b1c0ee3aadc39ff1f65c041b2`; [build 42473674531](https://github.com/TomateMozzarella/TermiX/actions/runs/42473674531) passed 118 checks (37 native Windows, 36 frontend, 36 production browser, 8 receipt checks and one exact-collector check on real Linux). EXE/MSI packaging, a running-v0.8 upgrade preserving catalog/preferences/known-hosts/commands bytes, portable data/WebView isolation and a real native main-window close of the shipped portable app passed. [Publication 42475873920](https://github.com/TomateMozzarella/TermiX/actions/runs/42475873920) published the exact EXE/MSI/portable ZIP. EXE SHA-256 `38d79115a06f675ef9b2d3fc24f895debab99f2103a5d98a5fbdd347447616be` matches GitHub and the chat copy; portable ZIP SHA-256 `b352b8983c7185e279c7673d61a27944a47845fd1818712a61ee47bec7537c45`. Wider native gesture/editor/server interoperability, interactive uninstall choices, measured startup latency and independent review remain separate manual work.
+
 
 
 

@@ -2,11 +2,19 @@
 
 TermiX is an independent, cross-platform remote connection manager built with Tauri 2, Rust, React, TypeScript and xterm.js.
 
-## v0.9 in progress
+## Current status — v0.9.0
 
-Fixing installed terminal cursor/font and Monaco layout under Tauri's hash-augmented style policy, and native window close permission/guard coordination. Adds bounded read-only Linux monitoring on verified SSH, compact commands with context/double-click actions, SFTP back history, original external filenames, fixed-size scrolling settings, consistent rounded controls and up to six existing tabs in a terminal grid. Multi-Execute remains planned. Windows tests and publication are pending; v0.8 remains the latest published release.
+**[v0.9.0 Windows development prerelease](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.9.0) is published and integrated into main.**
 
-## Current published status — v0.8.0
+Application/tag commit `4e54ab96b2ce798b1c0ee3aadc39ff1f65c041b2`; [build 42473674531](https://github.com/TomateMozzarella/TermiX/actions/runs/42473674531) passed 118 checks (37 native Windows, 36 frontend, 36 production browser, 8 receipt checks and one exact-collector check on real Linux). EXE/MSI packaging, a running-v0.8 upgrade preserving catalog/preferences/known-hosts/commands bytes, portable data/WebView isolation and a real native main-window close of the shipped portable app passed. [Publication 42475873920](https://github.com/TomateMozzarella/TermiX/actions/runs/42475873920) published the exact EXE/MSI/portable ZIP. EXE SHA-256 `38d79115a06f675ef9b2d3fc24f895debab99f2103a5d98a5fbdd347447616be` matches GitHub and the chat copy; portable ZIP SHA-256 `b352b8983c7185e279c7673d61a27944a47845fd1818712a61ee47bec7537c45`. Wider native gesture/editor/server interoperability, interactive uninstall choices, measured startup latency and independent review remain separate manual work.
+
+Terminal cursor/font and Monaco line layout work under the installed hash-augmented CSP. Window closing uses one coordinated unsaved-work guard and the required main-only permission. Linux SSH monitoring shows CPU/RAM/root disk/network/uptime/visible sshd sessions/logged-in users, with pause and retry. Metrics depend on Linux tools and server visibility; the first CPU/network delta needs a second sample.
+
+Named commands are compact, with hover, context run/edit/delete and confirmed double-click execution. The mouse back button traverses visited SFTP directories. Settings keep the same viewport-bounded size across categories and scroll their content. Controls/menus/panels share calmer rounded geometry. Tab context menu → Show up to 6 terminals arranges existing transports without restarting them; each pane is named and can return to a single view. Multi-Execute, draggable split ratios and persistent grid geometry remain planned.
+
+External editors now show the safe original filename. A local SFTP copy is still necessary; explicit transfer and remote-conflict checks remain. See [v0.9 release notes](docs/releases/v0.9.0.md).
+
+## Previously delivered v0.8.0
 
 **[v0.8.0 Windows development prerelease](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.8.0) is published and integrated into main.**
 
@@ -85,9 +93,9 @@ The Windows EXE installer uses matching artwork and English/German pages. It ref
 
 ## Windows downloads and verification
 
-Open **[GitHub Release v0.8.0](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.8.0)** and choose `TermiX_0.8.0_x64-setup.exe` (guided installation), `TermiX_0.8.0_x64-portable.zip` (extract the complete ZIP, keep portable.flag, start TermiX.exe), or the MSI. The prerelease includes SHA256SUMS and release-manifest.json. Private-repository downloads require a signed-in account with repository access; the chat provides the same EXE directly as well.
+Open **[GitHub Release v0.9.0](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.9.0)** and choose `TermiX_0.9.0_x64-setup.exe` (guided installation), `TermiX_0.9.0_x64-portable.zip` (extract the complete ZIP, keep portable.flag, start TermiX.exe), or the MSI. The prerelease includes SHA256SUMS and release-manifest.json. Private-repository downloads require a signed-in account with repository access; the chat provides the same EXE directly as well.
 
-Delivered v0.8 EXE SHA-256: `37cb0677fe93849221ecbb7e88774f922fc75d58e833092ec08af0a660244e24`. It matches GitHub and the chat copy. Close TermiX before upgrading. Portable updates keep data beside the EXE. Saved commands require explicit execution; SSH monitoring remains pending.
+Delivered v0.9 EXE SHA-256: `38d79115a06f675ef9b2d3fc24f895debab99f2103a5d98a5fbdd347447616be`. It matches GitHub and the chat copy. Close TermiX before upgrading; the installer can close the running installed app. Portable updates keep data beside the EXE. Saved commands require explicit execution; monitoring currently targets Linux.
 
 Open the latest successful [Windows Actions run](https://github.com/TomateMozzarella/TermiX/actions/workflows/windows-build.yml) and download **TermiX-Windows-Installer** from Artifacts while signed into an account with repository access. Pull requests also build installers after running tests. v0.2.0 is the user-confirmed baseline; newer builds require their own installed-app check.
 
