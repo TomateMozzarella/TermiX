@@ -688,7 +688,12 @@ fn tcp_tunnels_forward_both_directions_and_stop_without_restarting_ssh() {
         let mut got = Vec::new();
         stream.read_to_end(&mut got).unwrap();
         send.join().unwrap();
-        assert_eq!(got, payload);
+        assert_eq!(
+            got.len(),
+            payload.len(),
+            "Forwarded byte count differs for {direction}"
+        );
+        assert!(got == payload, "Forwarded content differs for {direction}");
         let mut active = TcpStream::connect(&address).unwrap();
         active
             .set_read_timeout(Some(Duration::from_secs(5)))

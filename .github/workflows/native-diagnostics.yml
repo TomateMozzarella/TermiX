@@ -1,0 +1,23 @@
+name: Summarize failed native checks
+on:
+  workflow_run:
+    workflows: ["Build TermiX for Windows"]
+    types: [completed]
+  push:
+    branches: [main]
+    paths: ['.github/workflows/native-diagnostics.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  summary:
+    if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print bounded native diagnostics
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TERMIX_FAILED_RUN: ${{ github.event.workflow_run.id }}
+        run: python scripts/summarize-native.py
