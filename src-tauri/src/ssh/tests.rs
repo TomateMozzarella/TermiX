@@ -645,7 +645,25 @@ fn tcp_tunnels_forward_both_directions_and_stop_without_restarting_ssh() {
         let mut got = Vec::new();
         stream.read_to_end(&mut got).unwrap();
         assert_eq!(got, payload);
+        let mut active = TcpStream::connect(&address).unwrap();
+        active
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        active.write_all(b"active").unwrap();
+        let mut check = [0u8; 6];
+        active.read_exact(&mut check).unwrap();
+        assert_eq!(&check, b"active");
         tunnels.stop(&info.id);
+        let mut end = [0u8; 1];
+        match active.read(&mut end) {
+            Ok(0) => {}
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::ConnectionReset | std::io::ErrorKind::ConnectionAborted
+                ) => {}
+            other => panic!("Active forward did not stop: {:?}", other),
+        }
         let until = Instant::now() + Duration::from_secs(3);
         while TcpStream::connect(&address).is_ok() {
             assert!(

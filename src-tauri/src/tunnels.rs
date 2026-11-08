@@ -264,11 +264,15 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
     let (mut tcp_eof, mut ssh_eof, mut sent_eof, mut local_eof) = (false, false, false, false);
     let mut buf = [0u8; 16384];
     while !t.stop.load(Ordering::Acquire) && !t.terminal.is_closed() {
+        let mut progressed = false;
         if !tcp_eof && to_remote.len() < 65536 {
             let available = (65536 - to_remote.len()).min(buf.len());
             match tcp.read(&mut buf[..available]) {
                 Ok(0) => tcp_eof = true,
-                Ok(n) => to_remote.extend_from_slice(&buf[..n]),
+                Ok(n) => {
+                    to_remote.extend_from_slice(&buf[..n]);
+                    progressed = true;
+                }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
                 Err(_) => break,
             }
@@ -278,6 +282,7 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
                 Ok(0) => break,
                 Ok(n) => {
                     to_remote.drain(..n);
+                    progressed = true;
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
                 Err(_) => break,
@@ -294,7 +299,10 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
             let available = (65536 - to_local.len()).min(buf.len());
             match channel.read(&mut buf[..available]) {
                 Ok(0) => ssh_eof = true,
-                Ok(n) => to_local.extend_from_slice(&buf[..n]),
+                Ok(n) => {
+                    to_local.extend_from_slice(&buf[..n]);
+                    progressed = true;
+                }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
                 Err(_) => break,
             }
@@ -304,6 +312,7 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
                 Ok(0) => break,
                 Ok(n) => {
                     to_local.drain(..n);
+                    progressed = true;
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
                 Err(_) => break,
@@ -316,7 +325,9 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
         if sent_eof && local_eof {
             break;
         }
-        thread::sleep(Duration::from_millis(5));
+        if !progressed {
+            thread::sleep(Duration::from_millis(5));
+        }
     }
     let _ = tcp.shutdown(Shutdown::Both);
     let _ = channel.close();
