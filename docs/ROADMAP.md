@@ -1,7 +1,7 @@
 # TermiX – Product Roadmap and Project Handoff
 
 Last updated: 2026-11-08
-Status: v0.7.0 implemented, tested, integrated into main and published on 2026-11-04. Linux-first SSH monitoring, persistent snippets and advanced workspace features remain pending. Installed interactive validation and independent security review remain separate from automated CI checks.
+Status: v0.8.0 implemented, tested, integrated into main and published on 2026-11-08. Saved commands and portable distribution are delivered. SSH monitoring and advanced workspace features remain pending; interactive installed validation and independent security review remain separate from automated CI checks.
 Repository: https://github.com/TomateMozzarella/TermiX
 
 The user resumed v0.4 implementation/main/release work on 2026-11-03, revoking the preceding feedback-turn pause. That milestone is complete. SQLite is deferred: the existing JSON library was upgraded to a versioned catalog with atomic writes, OS writer locking, stale-snapshot checks and a legacy backup, covering the folder/session scope without a database migration dependency.
@@ -131,14 +131,15 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Accessibility, performance, error states and responsive sizing.
 - The embedded terminal already exists since v0.2.0 (xterm.js display, Rust PTY transport, PowerShell/CMD shell); SSH arrives in v0.3.0. A new shell interpreter or terminal emulator written from scratch is not currently planned. If "own terminal" means a bundled Unix environment like MobaXterm's, clarify that separately; optional WSL/pwsh/Git Bash discovery remains planned but is not a delivered bundled Unix environment.
 
-### v0.8.0 – Portable delivery and everyday workflows [IN DEVELOPMENT]
+### v0.8.0 – Portable delivery and everyday workflows [DELIVERED; WINDOWS PACKAGE AND PORTABLE VERIFIED]
 - 2026-11-08 user feedback takes priority over the earlier tunnel-only milestone. Ship portable Windows ZIP and EXE as verified GitHub Release assets; retain the MSI as an alternative. A portable marker selects executable-relative data/WebView storage and an isolated Windows-vault namespace. The ZIP never includes user data. WebView2 Runtime remains required on Windows.
 - NSIS EXE uninstall: ask whether to remove only installed TermiX:ssh credentials, default No; silent uninstall/upgrade retains them. Never remove other apps, portable credentials or private-key files. MSI uninstall retains credentials; interactive credential removal is currently specific to the EXE uninstaller.
 - Replace memory-only snippets with a saved Commands tab beside Sessions/SFTP: create, edit, delete, search and explicitly execute in the identified terminal. Typed bounded local command definitions, no automatic execution; never store secrets. Basic secret-pattern rejection is not a general secret detector.
 - Compact one-row SFTP icon toolbar with tooltips: download/upload/refresh/create file/create folder/delete selection. Exclusive file creation, nonrecursive deletion with confirmation, symbolic-link protection. Keep replacement opt-in under concise options; remove the long persistent help paragraph and duplicate top-right Files button.
 - Show a themed startup surface and keep the native window hidden until the styled interface is ready, with a bounded fallback. Do not claim measured installed startup latency from browser mocks.
 - External editing becomes nonmodal: unchanged return goes straight to the terminal; foreground/focus checks detect stable saved changes, then request server-transfer confirmation. No automatic upload; existing conflict checks remain. Working copies can remain in temp after a crash/disconnect and require explicit completion; external editors are trusted applications.
-- These items are implemented locally and undergoing native Windows/package verification. Test v0.7-to-v0.8 upgrades including command-file retention and portable startup from another working directory.
+- Application/tag commit `81205dc3de017a3772955ecb9814ee8540efb8e9`; [build 42468504906](https://github.com/TomateMozzarella/TermiX/actions/runs/42468504906) passed 110 checks (35 native Windows, 35 frontend, 32 browser, 8 release-receipt), EXE/MSI packaging, a running-v0.7 upgrade with byte-identical catalog/preferences/known-hosts and portable startup from another working directory with isolated data/WebView. [Publication 42469661873](https://github.com/TomateMozzarella/TermiX/actions/runs/42469661873) published the exact EXE/MSI/portable ZIP. EXE SHA-256 `37cb0677fe93849221ecbb7e88774f922fc75d58e833092ec08af0a660244e24` matches GitHub and the chat copy. Portable ZIP SHA-256 `75a9db775685bea7eb9f96a1b6a9bd3ab14b5152d6e362c62c5e90597d45bf5e`. Interactive uninstall choices, wider editor/server interoperability and real startup timing remain manual validation items.
+- Saved commands were verified across relaunch in native storage/browser workflows. The upgrade check covers existing catalog/preferences/known-hosts; wider portable update/move and interactive credential-uninstall scenarios remain manual. Official bundler downloads use pinned Tauri hashes and bounded retries after repeated transient HTTP-504 failures.
 
 ### v0.9.0 – SSH tunnels
 - Local and remote port forwarding, lifecycle UI, explicit binding configuration, secure defaults and errors.
@@ -185,3 +186,6 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - For private GitHub artifact links, also provide the installer directly in this chat's outputs when possible; the user encountered a browser 404 on the private artifact URL.
 - Default shell belongs in first-run setup and later settings, not a raw always-visible sidebar dropdown. Unify the logo and remove redundant/disconnected status text.
 - 2026-11-04 installed v0.5 feedback and v0.6 delivery: drag interception, SFTP upload alignment/side/start directory, terminal contrast, context menus, GitHub EXE assets and tested upgrade preservation are recorded in the v0.6 section. Terminal prompt/true-colour output still depends on the remote shell/application; no remote startup files are modified automatically.
+
+
+

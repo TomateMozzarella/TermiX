@@ -2,15 +2,17 @@
 
 Read [docs/ROADMAP.md](docs/ROADMAP.md) and [README.md](README.md) before changing code. The roadmap is the authoritative handoff for product goals, verified current state, milestone ordering, security requirements, and decisions from user discussions.
 
-## v0.8 work in progress
-The user requested v0.8 implementation on 2026-11-08: portable ZIP + installer in GitHub Releases, opt-in credential cleanup on EXE uninstall, saved command sidebar, compact SFTP icons/actions, no duplicate Files top button, styled first paint and nonmodal external editing with explicit transfer confirmation. This reprioritizes SSH tunnels to the following milestone. Portable data/WebView storage is executable-relative; Windows credentials remain on the PC in a separate portable namespace. Never package user data or auto-upload external edits. See ROADMAP for limits and verification still required. v0.7 remains the latest published baseline until v0.8 passes all checks.
+## Current focus: v0.8 delivered
+The user requested v0.8 implementation on 2026-11-08: portable ZIP + installer in GitHub Releases, opt-in credential cleanup on EXE uninstall, saved command sidebar, compact SFTP icons/actions, no duplicate Files top button, styled first paint and nonmodal external editing with explicit transfer confirmation. This reprioritizes SSH tunnels to the following milestone. Portable data/WebView storage is executable-relative; Windows credentials remain on the PC in a separate portable namespace. Never package user data or auto-upload external edits. v0.8.0 is implemented, integrated into main and published on 2026-11-08.
 
-## Current focus
+Application/tag commit `81205dc3de017a3772955ecb9814ee8540efb8e9`; [build 42468504906](https://github.com/TomateMozzarella/TermiX/actions/runs/42468504906) passed 110 checks (35 native Windows, 35 frontend, 32 browser, 8 release-receipt), EXE/MSI packaging, a running-v0.7 upgrade with byte-identical catalog/preferences/known-hosts and portable startup from another working directory with isolated data/WebView. [Publication 42469661873](https://github.com/TomateMozzarella/TermiX/actions/runs/42469661873) published the exact EXE/MSI/portable ZIP. EXE SHA-256 `37cb0677fe93849221ecbb7e88774f922fc75d58e833092ec08af0a660244e24` matches GitHub and the chat copy. Portable ZIP SHA-256 `75a9db775685bea7eb9f96a1b6a9bd3ab14b5152d6e362c62c5e90597d45bf5e`. Interactive uninstall choices, wider editor/server interoperability and real startup timing remain manual validation items.
+
+## Previous baseline: v0.7
 **v0.7.0 is implemented, tested, integrated into main and published as a GitHub development prerelease (2026-11-04).** Application/tag commit: 1fe2f84a0412fb268b569351477f6cf25ef46131. Build 41901000165 passed 101 checks (31 native Windows, 34 frontend, 29 browser, 7 receipt tests), EXE/MSI packaging and an actual running-v0.6-to-v0.7 upgrade. Catalog/folders, preferences and known-hosts stayed byte-identical. Publication 41905892456 published the exact assets; EXE SHA-256 f632c2141da8e5847b1f9e2fda0fd93ead580991613cc1ac21c1ee7c4c94edf1 matches GitHub and the chat copy.
 
 v0.7 adds direct external opening without Monaco or auto-upload; optional shared Sessions/SFTP navigation; expandable session/remote folders; categorized settings; visible find/replace, read-only comparison and editor maximize; richer context menus; two existing terminal panes; terminal search; a command palette and explicit-target memory-only snippets. Restoration saves bounded tab references/order/pins/colours and widths, never terminal output, commands or credentials. SSH reconnection always requires the normal explicit verification/authentication flow. Remote rendering is bounded and filters duplicate/cyclic paths. Keyboard focus and shortcut consumption are tested.
 
-Monitoring, persistent snippets, configurable shortcut mappings, recording, draggable split ratios, persistent split/collapse state, detached/multi-monitor windows and printing/output recording remain follow-ups, not completed features. Native drag gestures, interactive installer cancellation, wider interoperability and independent security review remain manual. Start future work from main; never replace existing release assets. Browser tests use built production assets; the token-protected test preview lifecycle endpoint is not shipped.
+Monitoring, configurable shortcut mappings, recording, draggable split ratios, persistent split/collapse state, detached/multi-monitor windows and printing/output recording remain follow-ups, not completed features. Native drag gestures, interactive installer cancellation, wider interoperability and independent security review remain manual. Start future work from main; never replace existing release assets. Browser tests use built production assets; the token-protected test preview lifecycle endpoint is not shipped.
 
 ## Latest UX decisions
 - 2026-11-04 v0.7 feedback is recorded and delivered as described above. MobaXterm screenshots are workflow references, not instructions to copy every tool. Default shared navigation stays left; separate SFTP placement is configurable. Snippets are deliberately memory-only in this first release.
@@ -24,7 +26,7 @@ Monitoring, persistent snippets, configurable shortcut mappings, recording, drag
 - Theme choices: automatic/system (default), dark and light. Support a few calm accent presets plus a custom colour with readable contrast. Appearance changes must not restart shells.
 - Use a minimal flat >_ icon inspired by the user's terminal-symbol reference. Refresh this product's existing desktop/start-menu shortcuts with a separately named icon asset; do not clear global Windows icon caches or restart Explorer.
 - Improve the Windows NSIS installer with matching icon, restrained header/sidebar artwork and English/German language choices. Do not claim modern web-style UI is possible in every native installer page.
-- Preferred editor/path can be detected or selected manually. Monaco remains the default; v0.7 also offers direct configured external opening on a working copy. Reload and server save are manual; never execute editor paths during setup or auto-upload changes.
+- Preferred editor/path can be detected or selected manually. Monaco remains the default; v0.7 also offers direct configured external opening on a working copy. v0.8 detects stable external saves and asks to transfer; never execute editor paths during setup or auto-upload changes.
 - Choose the default local shell in a first-run setup assistant, then change it in working settings. No raw shell dropdown in the sidebar.
 - Use one shared logo source for the interface, title/taskbar icon and installer; preserve .ico bundling.
 - Remove the floating top-bar “Bereit” label; keep a single meaningful footer status.
@@ -49,3 +51,5 @@ Monitoring, persistent snippets, configurable shortcut mappings, recording, drag
 
 ## Definition of done for v0.2.0
 Real interactive local shell in the app, streaming bidirectional PTY data, resize support, correct terminal cleanup, multi-tab behavior, Windows installer build and tested error handling. WSL/pwsh/Git Bash can be optional discovery after PowerShell/CMD.
+
+

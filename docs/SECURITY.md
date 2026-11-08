@@ -56,11 +56,11 @@ The optional shared sidebar and split view reuse existing verified transports; e
 
 workspace.json stores bounded typed session IDs or allowlisted local profiles, order, pin/colour and widths. It contains no remote contents, terminal output/history, credentials or command snippets. Restore is an explicit action; SSH tabs remain disconnected until normal Reconnect/host-key/authentication flow. Deleted session references are skipped. Layout persistence is best effort, separate from the session catalog and its conflict handling.
 
-Named command snippets are memory-only in this release (50 snippets, 4,096 characters each), with a visible target and confirmation before each run. No recording, automatic execution or JSON storage. Do not enter secrets. Context-menu multiline paste requires confirmation; standard keyboard paste remains xterm behavior and may execute commands in the selected shell. Clipboard APIs may be unavailable under some desktop policies; normal keyboard shortcuts remain available. No automatic output logging is introduced.
+In v0.7, named command snippets were memory-only (50 snippets, 4,096 characters each), with a visible target and confirmation before each run. No recording, automatic execution or JSON storage. Do not enter secrets. Context-menu multiline paste requires confirmation; standard keyboard paste remains xterm behavior and may execute commands in the selected shell. Clipboard APIs may be unavailable under some desktop policies; normal keyboard shortcuts remain available. No automatic output logging is introduced.
 ### Verified v0.7 release evidence
 
 Build 41901000165 at application/tag commit 1fe2f84a0412fb268b569351477f6cf25ef46131 passed 31 native Windows, 34 frontend, 29 browser and 7 receipt checks (101 total). Both installers and the upgrade from a checksum-verified running v0.6 installation passed, preserving catalog/settings/known-hosts bytes. Publication 41905892456 published the exact EXE/MSI; EXE SHA-256 f632c2141da8e5847b1f9e2fda0fd93ead580991613cc1ac21c1ee7c4c94edf1 matches the chat copy and GitHub asset. Browser cases test actual replace-all/diff highlights, direct external routing without Monaco/auto-upload, cyclic/duplicate SFTP entries, focus, shortcut isolation and no automatic SSH restore. These automated checks are not an independent audit or a substitute for the manual native GUI/interoperability items above.
-## v0.8 work under verification
+## Verified v0.8 scope
 
 Portable mode requires portable.flag beside the executable. Data and WebView profile go to its adjacent data folder; no installed catalog is imported automatically. Its vault namespace includes a hash of the portable folder, so credentials remain machine/user/location-bound rather than travelling in the ZIP. Packaging uses an explicit distributable-file whitelist, and receipt validation rejects ZIPs containing user data.
 
@@ -71,3 +71,14 @@ Saved commands are bounded typed plaintext definitions. They are not a secret st
 External copies remain managed without a blocking opening dialog. Native/DOM focus and foreground-only checks hash bounded regular UTF-8 copies; changed content must be stable across two checks before asking to transfer. The approved snapshot is sent through the existing remote-conflict check. No automatic upload/watcher or arbitrary local paths are exposed. Closing the app warns about open external copies. Crash/disconnect leftovers and broad external-editor interoperability remain manual concerns.
 
 Remote file creation is exclusive and never truncates an existing file. Deletion requires a UI confirmation and is limited to regular files or empty directories; recursive deletion and link traversal are not provided.
+
+Application/tag commit `81205dc3de017a3772955ecb9814ee8540efb8e9`; [build 42468504906](https://github.com/TomateMozzarella/TermiX/actions/runs/42468504906) passed 110 checks (35 native Windows, 35 frontend, 32 browser, 8 release-receipt), EXE/MSI packaging, a running-v0.7 upgrade with byte-identical catalog/preferences/known-hosts and portable startup from another working directory with isolated data/WebView. [Publication 42469661873](https://github.com/TomateMozzarella/TermiX/actions/runs/42469661873) published the exact EXE/MSI/portable ZIP. EXE SHA-256 `37cb0677fe93849221ecbb7e88774f922fc75d58e833092ec08af0a660244e24` matches GitHub and the chat copy. Portable ZIP SHA-256 `75a9db775685bea7eb9f96a1b6a9bd3ab14b5152d6e362c62c5e90597d45bf5e`. Interactive uninstall choices, wider editor/server interoperability and real startup timing remain manual validation items.
+
+
+
+
+
+
+
+
+

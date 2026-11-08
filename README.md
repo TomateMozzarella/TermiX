@@ -2,11 +2,17 @@
 
 TermiX is an independent, cross-platform remote connection manager built with Tauri 2, Rust, React, TypeScript and xterm.js.
 
-## v0.8 work in progress
+## Current status — v0.8.0
 
-Next: verified portable ZIP plus installers in GitHub Releases; saved Commands beside Sessions/SFTP; compact SFTP toolbar with explicit create/delete; a themed first paint; and nonmodal external editing that offers transfer only after saved changes. Portable mode uses a data folder beside the EXE, including its WebView profile, and a separate machine-local vault namespace. It requires WebView2 Runtime. EXE uninstall offers credential cleanup with No as default; MSI/silent uninstall retain credentials. Windows validation and publication are still pending; v0.7 remains the latest release.
+**[v0.8.0 Windows development prerelease](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.8.0) is published and integrated into main.**
 
-## Current status
+Application/tag commit `81205dc3de017a3772955ecb9814ee8540efb8e9`; [build 42468504906](https://github.com/TomateMozzarella/TermiX/actions/runs/42468504906) passed 110 checks (35 native Windows, 35 frontend, 32 browser, 8 release-receipt), EXE/MSI packaging, a running-v0.7 upgrade with byte-identical catalog/preferences/known-hosts and portable startup from another working directory with isolated data/WebView. [Publication 42469661873](https://github.com/TomateMozzarella/TermiX/actions/runs/42469661873) published the exact EXE/MSI/portable ZIP. EXE SHA-256 `37cb0677fe93849221ecbb7e88774f922fc75d58e833092ec08af0a660244e24` matches GitHub and the chat copy. Portable ZIP SHA-256 `75a9db775685bea7eb9f96a1b6a9bd3ab14b5152d6e362c62c5e90597d45bf5e`. Interactive uninstall choices, wider editor/server interoperability and real startup timing remain manual validation items.
+
+Saved **Commands** now live beside Sessions/SFTP and survive restarts. SFTP has a compact six-icon toolbar for download/upload/refresh/new file/new folder/delete, with replacement under Options. The duplicate Files top button is removed. Startup shows a styled surface. Direct external editing is nonmodal: unchanged return leaves the terminal usable; stable saved changes prompt for transfer, with no automatic upload and existing conflict protection.
+
+Portable mode keeps sessions/settings/commands and the WebView profile in data beside the EXE. Keep that folder when replacing application files. WebView2 Runtime is required; passwords remain in the PC/user/location-bound Windows vault. Interactive EXE uninstall offers optional installed-credential removal, default No; silent/MSI uninstall keeps them. See [v0.8 release notes](docs/releases/v0.8.0.md).
+
+## Previously delivered v0.7.0
 
 **[v0.7.0 Windows development prerelease](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.7.0) is published and integrated into main.** [Build 41901000165](https://github.com/TomateMozzarella/TermiX/actions/runs/41901000165) passed all 101 checks: 31 native Windows tests, 34 frontend tests, 29 browser workflows and 7 release-receipt checks. EXE/MSI packaging and a real upgrade from a running, checksum-verified v0.6 installation passed; catalog/folders, preferences and known SSH hosts remained byte-identical. [Publication 41905892456](https://github.com/TomateMozzarella/TermiX/actions/runs/41905892456) published application/tag commit `1fe2f84a0412fb268b569351477f6cf25ef46131`.
 
@@ -75,9 +81,9 @@ The Windows EXE installer uses matching artwork and English/German pages. It ref
 
 ## Windows downloads and verification
 
-Open **[GitHub Release v0.7.0](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.7.0)** and choose `TermiX_0.7.0_x64-setup.exe` (guided installation) or the MSI. The prerelease includes SHA256SUMS and release-manifest.json. Private-repository downloads require a signed-in account with repository access; the chat provides the same EXE directly as well.
+Open **[GitHub Release v0.8.0](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.8.0)** and choose `TermiX_0.8.0_x64-setup.exe` (guided installation), `TermiX_0.8.0_x64-portable.zip` (extract the complete ZIP, keep portable.flag, start TermiX.exe), or the MSI. The prerelease includes SHA256SUMS and release-manifest.json. Private-repository downloads require a signed-in account with repository access; the chat provides the same EXE directly as well.
 
-Delivered v0.7 EXE SHA-256: `f632c2141da8e5847b1f9e2fda0fd93ead580991613cc1ac21c1ee7c4c94edf1`. It matches GitHub's published asset digest and the locally transferred installer. Close TermiX before upgrading. SSH monitoring remains pending. v0.7 command snippets are memory-only and require explicit execution.
+Delivered v0.8 EXE SHA-256: `37cb0677fe93849221ecbb7e88774f922fc75d58e833092ec08af0a660244e24`. It matches GitHub and the chat copy. Close TermiX before upgrading. Portable updates keep data beside the EXE. Saved commands require explicit execution; SSH monitoring remains pending.
 
 Open the latest successful [Windows Actions run](https://github.com/TomateMozzarella/TermiX/actions/workflows/windows-build.yml) and download **TermiX-Windows-Installer** from Artifacts while signed into an account with repository access. Pull requests also build installers after running tests. v0.2.0 is the user-confirmed baseline; newer builds require their own installed-app check.
 
@@ -128,3 +134,5 @@ See https://v2.tauri.app/start/prerequisites/
 - Keep protocol engines in Rust and UI presentation in React.
 - Use explicit Tauri capabilities and narrow IPC commands.
 - Keep protocol-specific functionality behind backend interfaces.
+
+
