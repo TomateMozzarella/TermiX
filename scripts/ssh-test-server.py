@@ -1,5 +1,5 @@
 """Loopback-only SSH protocol fixture. Never uses or prints real credentials."""
-import argparse, json, pathlib, socket, threading, time, os, errno
+import argparse, json, pathlib, socket, threading, time, os, errno, sys
 import paramiko
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption, BestAvailableEncryption
@@ -113,7 +113,7 @@ class Server(paramiko.ServerInterface):
         self.direct[chanid]=destination
         return paramiko.OPEN_SUCCEEDED
     def check_port_forward_request(self, address, port):
-        print("fixture forward request", repr(address), port, flush=True)
+        print("fixture forward request", repr(address), port, flush=True, file=sys.stderr)
         if address not in ("127.0.0.1", "::1"): return False
         listener=socket.socket(socket.AF_INET6 if address=="::1" else socket.AF_INET,socket.SOCK_STREAM)
         try: listener.bind((address,port)); listener.listen(8); listener.settimeout(.1)
@@ -122,7 +122,7 @@ class Server(paramiko.ServerInterface):
         def accept():
             while self.transport.is_active() and (address,bound) in self.listeners:
                 try:
-                    peer,origin=listener.accept(); channel=self.transport.open_forwarded_tcpip_channel((address,bound),origin)
+                    peer,origin=listener.accept(); channel=self.transport.open_forwarded_tcpip_channel(origin,(address,bound))
                     threading.Thread(target=forward_pair,args=(peer,channel),daemon=True).start()
                 except socket.timeout: continue
                 except (OSError,paramiko.SSHException): break
