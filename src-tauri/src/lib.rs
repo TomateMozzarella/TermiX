@@ -39,12 +39,15 @@ pub fn run() {
         .init();
 
     let mut context = tauri::generate_context!();
-    if let Some(root) = std::env::current_exe()
+    if std::env::current_exe()
         .ok()
         .and_then(|p| app_data::portable_root(&p))
+        .is_some()
     {
         for window in &mut context.config_mut().app.windows {
-            window.data_directory = Some(root.join("data/webview"));
+            // The config dataDirectory accepts relative paths only. Build the
+            // portable window explicitly below with the native absolute-path setter.
+            window.create = false;
         }
     }
     tauri::Builder::default()
@@ -74,6 +77,21 @@ pub fn run() {
                     root.join("preferences.json"),
                 )),
             });
+            if let Some(portable) = std::env::current_exe()
+                .ok()
+                .and_then(|p| app_data::portable_root(&p))
+            {
+                let config = app.config();
+                let window = config
+                    .app
+                    .windows
+                    .iter()
+                    .find(|w| w.label == "main")
+                    .ok_or("missing main window config")?;
+                tauri::WebviewWindowBuilder::from_config(app.handle(), window)?
+                    .data_directory(portable.join("data/webview"))
+                    .build()?;
+            }
             let window = app
                 .get_webview_window("main")
                 .ok_or("missing main window")?;
@@ -132,3 +150,4 @@ pub fn run() {
         .run(context)
         .expect("error while running TermiX");
 }
+
