@@ -88,6 +88,8 @@ jobs:
             windows-release-
       - name: Clear cached installer output before packaging
         run: ./scripts/clean-bundles.ps1
+      - name: Prepare checksum-verified Windows bundlers
+        run: ./scripts/prepare-bundlers.ps1
       - name: Build Windows installer
         run: ./scripts/build-windows.ps1
       - uses: actions/cache/save@v4
