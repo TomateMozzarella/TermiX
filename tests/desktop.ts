@@ -15,6 +15,9 @@ export async function mockDesktop(page: Page, configured = false, legacy = false
     mock.__TAURI_INTERNALS__ = { transformCallback:(fn:any)=>{const id=++mock.callbackId;mock.callbacks[id]=fn;return id;},unregisterCallback:(id:number)=>{delete mock.callbacks[id];}, metadata: { currentWindow: { label: "main" } }, invoke: async (command: string, args: any) => {
       if(command==="plugin:event|listen"){mock.listeners[args.handler]=args;return args.handler;}if(command==="plugin:event|unlisten")return;
       mock.testCalls.push({ command, args: args ? structuredClone(args) : args });
+      if(command==="tunnel_list")return mock.tunnels??[];
+      if(command==="tunnel_start"){if(mock.tunnelFailure)throw "tunnel_refused";const value={id:crypto.randomUUID(),config:args.config,state:"running",connections:0};mock.tunnels=[...(mock.tunnels??[]),value];return value;}
+      if(command==="tunnel_stop"){mock.tunnels=(mock.tunnels??[]).filter((t:any)=>t.id!==args.id);return;}
       if(command==="ssh_monitor"){if(mock.monitorFailure)throw "monitor_unavailable";mock.monitorTick=(mock.monitorTick??0)+1;return {cpuTotal:100+mock.monitorTick*10,cpuIdle:70+mock.monitorTick*5,memoryTotal:2147483648,memoryUsed:1073741824,diskTotal:100000,diskUsed:78000,uptime:172800,received:mock.monitorTick*1000000,sent:mock.monitorTick*500000,sshSessions:3,users:2};}
       if (command === "terminal_profiles") return [{ id: "powershell", name: "Windows PowerShell" }, { id: "cmd", name: "CMD" }];
       if (command === "get_snippets") return JSON.parse(localStorage.getItem("test-commands") ?? '{"schemaVersion":1,"entries":[]}');

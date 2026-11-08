@@ -19,6 +19,7 @@ import type { Session, SessionCatalog, SessionFolder, TerminalTab } from "./type
 
 type Workspace = {schemaVersion: 1; tabs: {sessionId: string | null; profile: string | null; pinned: boolean; color: string | null}[]; active: number; sidebarWidth: number; filesWidth: number; verticalSplit: boolean};
 const makeId = () => crypto.randomUUID();
+const TunnelDialog=lazy(()=>import("./TunnelDialog").then(m=>({default:m.TunnelDialog})));
 const RemoteMonitor=lazy(()=>import("./RemoteMonitor").then(m=>({default:m.RemoteMonitor})));
 const TerminalPane = lazy(() => import("./TerminalPane").then(module => ({ default: module.TerminalPane })));
 const ExternalEditManager = lazy(() => import("./ExternalEditManager").then(module => ({ default: module.ExternalEditManager })));
@@ -34,6 +35,7 @@ export default function App() {
   const [systemDark, setSystemDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
   const [catalog, setCatalog] = useState(emptyCatalog), [view, setView] = useState<SessionView>("all"), [query, setQuery] = useState("");
   const [tabs, setTabs] = useState<TerminalTab[]>([]), [activeTab, setActiveTab] = useState("");
+  const [tunnelId,setTunnelId]=useState<string|null>(null);
   const [commandsOpen,setCommandsOpen]=useState(false),[externalRequest,setExternalRequest]=useState<{id:string;path:string;nonce:string}|null>(null);
   const [remoteEditor, setRemoteEditor] = useState<{ id: string; path: string } | null>(null);
   const [filesOpen, setFilesOpen] = useState(false), [filesWidth, setFilesWidth] = useState(390);
@@ -54,7 +56,7 @@ export default function App() {
   const [sshTarget, setSshTarget] = useState<{ session: Session; replaces?: string } | null>(null);
   const visible = preview ?? preferences ?? defaults("powershell"), lang = visible.language, tr = (key: Message) => t(lang, key), theme = resolvedTheme(visible.theme, systemDark);
   const configured = !!preferences?.setupComplete && preferences.setupVersion === 2;
-  const modalOpen = !!(preferencesMode || editor || folderEditor || confirm || incoming || sshTarget || remoteEditor || rename || palette);
+  const modalOpen = !!(preferencesMode || editor || folderEditor || confirm || incoming || sshTarget || remoteEditor || rename || palette || tunnelId);
   const updateCatalog = (value: SessionCatalog) => setCatalog(old => value.revision >= old.revision ? value : old);
   const library = <T,>(request: Promise<T>): Promise<T> => request.catch(e => { setStatus(String(e)); throw e; });
   useEffect(() => {
@@ -153,7 +155,7 @@ export default function App() {
   const splitVisible=splitItems&&splitItems.length>1&&splitItems.includes(activeTab)?splitItems:null;
   const splitColumns=splitVisible?.length===2?(verticalSplit?1:2):(verticalSplit?2:3),splitRows=Math.ceil((splitVisible?.length??1)/splitColumns);
   return <div className={`app-shell ${workspaceFull ? "workspace-full" : ""}`}>
-    <header className="topbar"><div className="brand"><img className="brand-logo" src="/termix.svg" alt=""/><span>Termi<span className="brand-x">X</span></span><span className="version">{version}</span></div><div className="topbar-actions">{previousWorkspace?.tabs.length ? <button className="settings-button" onClick={restoreWorkspace}>{lang === "de" ? "Workspace wiederherstellen" : "Restore workspace"}</button> : null}<button className="settings-button" disabled={!preferences} onClick={() => setPreferencesMode("settings")} title={tr("settings")}><Settings size={18}/><span>{tr("settings")}</span></button></div></header>
+    <header className="topbar"><div className="brand"><img className="brand-logo" src="/termix.svg" alt=""/><span>Termi<span className="brand-x">X</span></span><span className="version">{version}</span></div><div className="topbar-actions">{activeTransport&&<button className="settings-button" onClick={()=>setTunnelId(activeTransport)}>{lang==="de"?"SSH-Tunnel":"SSH tunnels"}</button>}{previousWorkspace?.tabs.length ? <button className="settings-button" onClick={restoreWorkspace}>{lang === "de" ? "Workspace wiederherstellen" : "Restore workspace"}</button> : null}<button className="settings-button" disabled={!preferences} onClick={() => setPreferencesMode("settings")} title={tr("settings")}><Settings size={18}/><span>{tr("settings")}</span></button></div></header>
     <div className="workspace" style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}><aside className="shared-sidebar" style={{ width: sidebarWidth }}><div className="settings-tabs"><button aria-pressed={!filesOpen && !commandsOpen} onClick={() => {setCommandsOpen(false);setFilesOpen(false);}}>{lang === "de" ? "Sessions" : "Sessions"}</button><button disabled={!activeTransport} aria-pressed={filesOpen&&!commandsOpen} onClick={() => {setCommandsOpen(false);setFilesOpen(true);}}>SFTP</button><button aria-pressed={commandsOpen} onClick={()=>{setCommandsOpen(true);setFilesOpen(false);}}>{lang==="de"?"Befehle":"Commands"}</button></div>{commandsOpen&&<Suspense fallback={<span>…</span>}><CommandsPane language={lang} target={activeTerminal?`${activeTerminal.title} · ${activeTerminal.connection?.host?`${activeTerminal.connection.username}@${activeTerminal.connection.host}:${activeTerminal.connection.port}`:activeTerminal.profile??activeTerminal.kind}`:""} onRun={text=>{const input=inputs.current.get(activeTab);if(!input)return false;input(text);return true;}}/></Suspense>}<div className="sidebar-library" hidden={commandsOpen || (visible.sftpLayout === "shared" && filesOpen && !!activeTransport)}><SessionSidebar catalog={catalog} sessions={filtered} language={lang} view={view} setView={setView} query={query} setQuery={setQuery} configured={configured} busy={busy}
       hasSsh={!!activeTransport} onFiles={() => {setCommandsOpen(false);setFilesOpen(true);}} onMove={(session, group) => void run(async () => { await saveSession({ ...session, group }); updateCatalog(await getCatalog()); })} onNew={createSession} onOpen={openSession} onEdit={session => setEditor({ session, editing: true })}
       onDuplicate={session => setEditor({ editing: false, session: { ...session, id: makeId(), name: `${session.name.slice(0, 100)} (${tr("copySuffix")})`, favorite: false, lastUsed: undefined } })}
@@ -177,20 +179,25 @@ export default function App() {
       {label: lang === "de" ? "Tab umbenennen" : "Rename tab", action: () => setRename({id: menuTab.id, title: menuTab.title})},
       {label: lang === "de" ? "Tab duplizieren" : "Duplicate tab", action: () => { if (menuTab.connection) openSession(menuTab.connection); else if (preferences) { const tab = localTab({...preferences, defaultShell: menuTab.profile ?? preferences.defaultShell}); setTabs(old => [...old, tab]); setActiveTab(tab.id); } }},
       {label: lang === "de" ? "Anheften / lösen" : "Pin / unpin tab", action: () => setTabs(old => old.map(t => t.id === menuTab.id ? {...t, pinned: !t.pinned} : t))},
-      ...["#5b9cf5", "#71c9bd", "#b692f6", "#ef9b63"].map(color => ({label: (lang === "de" ? "Tab-Farbe " : "Tab colour ") + color, action: () => setTabs(old => old.map(t => t.id === menuTab.id ? {...t, color} : t))})),
+      {label:lang==="de"?"Tab-Farbe":"Tab colour",swatches:[["#5b9cf5","Blue","Blau"],["#71c9bd","Teal","Türkis"],["#b692f6","Purple","Violett"],["#ef9b63","Orange","Orange"]].map(([colour,en,de])=>({colour,label:lang==="de"?de:en,selected:menuTab.color===colour,action:()=>setTabs(old=>old.map(t=>t.id===menuTab.id?{...t,color:colour}:t))}))},
+      {label:lang==="de"?"Anordnung":"Layout",children:[
       {label: lang === "de" ? "Terminals teilen" : "Split terminals", disabled: tabs.length < 2, action: () => startSplit(menuTab.id)},
       ...[3,4,6].map(count=>({label:lang==="de"?`Bis zu ${count} Terminals anzeigen`:`Show up to ${count} terminals`,disabled:tabs.length<2,action:()=>startSplit(menuTab.id,count)})),
       {label: lang === "de" ? "Teilung drehen" : "Rotate split", disabled: !splitVisible, action: () => setVerticalSplit(v => !v)},
       {label: lang === "de" ? "Teilung aufheben" : "Remove split", disabled: !splitVisible, action: () => setSplit(null)},
       {label: lang === "de" ? "Fokusansicht umschalten" : "Toggle focus view", action: () => setWorkspaceFull(v => !v)},
+      ]},
+      {label:lang==="de"?"Schließen":"Close",children:[
       {label: lang === "de" ? "Tabs links schließen" : "Close tabs to the left", action: () => closeMany(tabs.slice(0, tabs.indexOf(menuTab)).map(t => t.id))},
       {label: lang === "de" ? "Tabs rechts schließen" : "Close tabs to the right", action: () => closeMany(tabs.slice(tabs.indexOf(menuTab) + 1).map(t => t.id))},
       {label: lang === "de" ? "Andere Tabs schließen" : "Close other tabs", action: () => closeMany(tabs.filter(t => t.id !== menuTab.id).map(t => t.id))},
       {label: lang === "de" ? "Alle unangehefteten Tabs schließen" : "Close all unpinned tabs", action: () => closeMany(tabs.map(t => t.id))},
       {label: tr("closeTab"), action: () => closeTab(menuTab.id)}
+      ]}
     ]}/>}
     {rename && <Modal title={lang === "de" ? "Tab umbenennen" : "Rename tab"} closeLabel={tr("cancel")} onClose={() => setRename(null)} footer={<button className="btn primary" disabled={!rename.title.trim()} onClick={() => { setTabs(old => old.map(t => t.id === rename.id ? {...t, title: rename.title.trim()} : t)); setRename(null); }}>{tr("saveChanges")}</button>}><input aria-label={lang === "de" ? "Tabname" : "Tab name"} maxLength={100} value={rename.title} onChange={e => setRename({...rename, title: e.target.value})}/></Modal>}
-    <Suspense fallback={null}><ExternalEditManager request={externalRequest} language={lang} onHandled={nonce=>{if(externalRequest?.nonce===nonce){const target=activeTerminalRef.current;if(target?.transportId===externalRequest.id)inputs.current.get(target.id)?.("");}setExternalRequest(old=>old?.nonce===nonce?null:old);}}/></Suspense>
+    <Suspense fallback={null}><ExternalEditManager reminders={visible.externalFileReminders ?? true} request={externalRequest} language={lang} onHandled={nonce=>{if(externalRequest?.nonce===nonce){const target=activeTerminalRef.current;if(target?.transportId===externalRequest.id)inputs.current.get(target.id)?.("");}setExternalRequest(old=>old?.nonce===nonce?null:old);}}/></Suspense>
+    {tunnelId&&<Suspense fallback={null}><TunnelDialog id={tunnelId} title={activeTerminal?.title??"SSH"} language={lang} onClose={()=>setTunnelId(null)}/></Suspense>}
     {remoteEditor && <Suspense fallback={<div role="status">Editor…</div>}><EditorDialog id={remoteEditor.id} initialPath={remoteEditor.path} language={lang} theme={theme} externalAvailable={visible.editor !== "integrated" && !!visible.editorPath} onClose={() => setRemoteEditor(null)}/></Suspense>}
     {preferencesMode && preferences && <PreferencesDialog mode={preferencesMode} profiles={profiles} initial={preferences} onSave={applyPreferences} onPreview={setPreview} onClose={() => { setPreview(null); setPreferencesMode(null); }}/ >}
     {editor && <SessionDialog key={editor.session.id} initial={editor.session} editing={editor.editing} folders={catalog.folders} profiles={profiles} language={lang} onSave={persistSession} onClose={() => setEditor(null)}/>}

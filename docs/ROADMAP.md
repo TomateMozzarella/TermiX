@@ -6,8 +6,8 @@ Repository: https://github.com/TomateMozzarella/TermiX
 
 The user resumed v0.4 implementation/main/release work on 2026-11-03, revoking the preceding feedback-turn pause. That milestone is complete. SQLite is deferred: the existing JSON library was upgraded to a versioned catalog with atomic writes, OS writer locking, stale-snapshot checks and a legacy backup, covering the folder/session scope without a database migration dependency.
 
-## Feedback recorded 2026-11-08 after v0.9 — planning only
-The user explicitly requested recording these items without programming. Implementation is paused until a subsequent instruction to proceed. These are planned changes, not delivered behavior:
+## Feedback recorded 2026-11-08 after v0.9 — implementation resumed
+The initial documentation-only pause was revoked by the user's subsequent instruction to implement the new points and next version. Implementing in v0.10, pending verification:
 1. Improve light-mode readability throughout the interface: text/background contrast, muted and disabled text, controls, status/monitoring, terminal colours and editor/popover surfaces. The user reports dark mode is readable; retain its readability while checking both themes.
 2. Make the settings dialog larger. Keep its dimensions stable across categories, bounded by the available viewport, with scrolling content and reachable navigation/footer.
 3. Clicking Play on a saved command/macro should run it directly in the selected terminal, without another confirmation dialog. This explicitly supersedes the earlier confirmation requirement for that single-target Play action. Keep the active target clear; this does not decide the separate planned Multi-Execute workflow.
@@ -161,7 +161,10 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - The real Windows close test was added because the previous mocked browser checks did not exercise the SDK's final native destroy permission; the production-CSP test reproduces Tauri-style CSS hashes and checks visible terminal colours/cursor and Monaco line geometry.
 - Move SSH tunnels after these reported stability/UX issues.
 
-### v0.10.0 – SSH tunnels
+### v0.10.0 – SSH tunnels and daily workflow [IN DEVELOPMENT]
+- Implement the four post-v0.9 UI requests above. Retain language split; no rewrite just to reduce GitHub language counts.
+- Later screenshot feedback: compact tab menu, named colour circles instead of hex values, grouped layout/close actions, factual SSH connection welcome without claiming X11/compression support.
+- Tunnel scope: existing verified/authenticated SSH session, explicit local/remote directions, loopback-only requested binds, target host/port, start/list/stop, no persistence/automatic restoration, eight tunnels and eight peers each, bounded buffers and shutdown on SSH/window close. Local target is resolved by the server; remote target uses a numeric client-side IP. Remote server binding policy can affect actual exposure. Cancellation uses the library listener lifecycle; interrupted transports can require disconnect for final server cleanup.
 - Local and remote port forwarding, lifecycle UI, explicit binding configuration, secure defaults and errors.
 - Review security implications of exposing listening ports.
 

@@ -552,4 +552,30 @@ pub async fn ssh_monitor(
         .await
         .map_err(|_| "monitor_unavailable".to_string())?
 }
+#[tauri::command]
+pub async fn tunnel_start(
+    app: tauri::AppHandle,
+    id: String,
+    config: crate::tunnels::Config,
+) -> Result<crate::tunnels::Info, String> {
+    use tauri::Manager;
+    let terminal = app.state::<crate::ssh::SshManager>().get(&id)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<crate::tunnels::Tunnels>()
+            .start(id, terminal, config)
+    })
+    .await
+    .map_err(|_| "tunnel_state".to_string())?
+}
+#[tauri::command]
+pub fn tunnel_list(
+    state: State<'_, crate::tunnels::Tunnels>,
+    id: String,
+) -> Vec<crate::tunnels::Info> {
+    state.list(&id)
+}
+#[tauri::command]
+pub fn tunnel_stop(state: State<'_, crate::tunnels::Tunnels>, id: String) {
+    state.stop(&id)
+}
 

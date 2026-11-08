@@ -34,6 +34,7 @@ export function TerminalPane({ tab, active, focusOnActivate, fontSize, theme, ac
       terminal.writeln(t(visual.current.language, "unavailable"));
       return () => { appearance.current = () => {}; highlights.dispose();terminal.dispose(); };
     }
+    if(tab.kind==="ssh"&&tab.connection){const c=tab.connection;const clean=(s:string)=>s.replace(/[\x00-\x1f\x7f]/g,"").slice(0,200);terminal.writeln("\x1b[1;36mTermiX · SSH\x1b[0m");terminal.writeln("\x1b[32m"+clean(c.username)+"@"+clean(c.host)+":"+c.port+"\x1b[0m · "+(visual.current.language==="de"?"Hostschlüssel geprüft":"Host key verified"));terminal.writeln(visual.current.language==="de"?"Dateien bei Bedarf über SFTP öffnen.\r\n":"Open files through SFTP when needed.\r\n");}
     let alive = true;
     const api = tab.transportId ? { ...terminalApi, open: async () => tab.transportId! } : terminalApi;
     const connection = connectTerminal(api, tab.profile ?? "powershell",

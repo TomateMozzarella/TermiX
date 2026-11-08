@@ -93,7 +93,7 @@ class Files(paramiko.SFTPServerInterface):
         except OSError as e: return paramiko.SFTPServer.convert_errno(e.errno)
 
 class Server(paramiko.ServerInterface):
-    def __init__(self): self.ready = threading.Event(); self.channel = None
+    def __init__(self): self.ready = threading.Event(); self.channel = None; self.direct={}; self.listeners={}
     def get_allowed_auths(self, username): return 'password,publickey'
     def check_auth_password(self, username, password):
         event('password', username)
@@ -108,6 +108,29 @@ class Server(paramiko.ServerInterface):
             channel.send_exit_status(0); channel.shutdown_write()
         threading.Thread(target=metrics, daemon=True).start()
         return True
+    def check_channel_direct_tcpip_request(self, chanid, origin, destination):
+        if destination[0] not in ("127.0.0.1", "::1"): return paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
+        self.direct[chanid]=destination
+        return paramiko.OPEN_SUCCEEDED
+    def check_port_forward_request(self, address, port):
+        if address not in ("127.0.0.1", "::1"): return False
+        listener=socket.socket(socket.AF_INET6 if address=="::1" else socket.AF_INET,socket.SOCK_STREAM)
+        try: listener.bind((address,port)); listener.listen(8); listener.settimeout(.1)
+        except OSError: listener.close(); return False
+        bound=listener.getsockname()[1]; self.listeners[(address,bound)]=listener
+        def accept():
+            while self.transport.is_active() and (address,bound) in self.listeners:
+                try:
+                    peer,origin=listener.accept(); channel=self.transport.open_forwarded_tcpip_channel((address,bound),origin)
+                    threading.Thread(target=forward_pair,args=(peer,channel),daemon=True).start()
+                except socket.timeout: continue
+                except (OSError,paramiko.SSHException): break
+            listener.close()
+        threading.Thread(target=accept,daemon=True).start()
+        return bound
+    def cancel_port_forward_request(self,address,port):
+        listener=self.listeners.pop((address,port),None)
+        if listener: listener.close()
     def check_channel_request(self, kind, chanid):
         return paramiko.OPEN_SUCCEEDED if kind == 'session' else paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
     def check_channel_pty_request(self, channel, term, width, height, pw, ph, modes): return True
@@ -115,15 +138,41 @@ class Server(paramiko.ServerInterface):
     def check_channel_window_change_request(self, channel, width, height, pw, ph):
         channel.send(('\r\nsize:%d:%d\r\n' % (width, height)).encode()); return True
 
+def forward_pair(tcp,channel):
+    def copy(source,target):
+        try:
+            while True:
+                data=source.recv(16384)
+                if not data: break
+                target.sendall(data)
+        except (OSError,EOFError,paramiko.SSHException): pass
+        finally:
+            try:
+                if isinstance(target,paramiko.Channel): target.shutdown_write()
+                else: target.shutdown(socket.SHUT_WR)
+            except (OSError,EOFError,paramiko.SSHException): pass
+    a=threading.Thread(target=copy,args=(tcp,channel),daemon=True);b=threading.Thread(target=copy,args=(channel,tcp),daemon=True)
+    a.start();b.start();a.join(20);b.join(20);tcp.close();channel.close()
+
 def connection(sock):
     transport = paramiko.Transport(sock)
     transport.add_server_key(host_key)
     transport.set_subsystem_handler("sftp", paramiko.SFTPServer, Files)
-    server = Server()
+    server = Server(); server.transport=transport
     try:
         transport.start_server(server=server)
         channel = transport.accept(20)
         if channel is None or not server.ready.wait(10): return
+        def accept_extra():
+            while transport.is_active():
+                extra=transport.accept(.1)
+                if extra is None: continue
+                target=server.direct.pop(extra.get_id(),None)
+                if target:
+                    try: tcp=socket.create_connection(target,timeout=2);tcp.settimeout(None)
+                    except OSError: extra.close();continue
+                    threading.Thread(target=forward_pair,args=(tcp,extra),daemon=True).start()
+        threading.Thread(target=accept_extra,daemon=True).start()
         channel.send('SSH fixture ready · ö\r\n> '.encode())
         pending = b''
         while transport.is_active():

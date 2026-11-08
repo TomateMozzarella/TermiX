@@ -17,10 +17,12 @@ export interface Preferences {
   sftpLayout: "shared" | "panel";
   sftpSide: "left" | "right";
   sftpStart: string;
+  externalFileReminders: boolean;
   terminalPalette: "auto" | "dark" | "light";
 }
 
-export const defaults = (shell: string): Preferences => ({ schemaVersion: 2, setupComplete: false, setupVersion: 0, defaultShell: shell, fontSize: 15, language: "en", theme: "system", accent: "#71c9bd", editor: "integrated", editorPath: "", uiScale: 100, editorOpenMode: "integrated", sftpLayout: "shared", sftpSide: "left", sftpStart: ".", terminalPalette: "auto" });
+export const defaults = (shell: string): Preferences => ({ schemaVersion: 2, setupComplete: false, setupVersion: 0, defaultShell: shell, fontSize: 15, language: "en", theme: "system", accent: "#71c9bd", editor: "integrated", editorPath: "", uiScale: 100, editorOpenMode: "integrated", sftpLayout: "shared", sftpSide: "left", sftpStart: ".", externalFileReminders: true, terminalPalette: "auto" });
 
 export const getPreferences = () => invoke<Preferences | null>("get_preferences");
 export const savePreferences = (preferences: Preferences) => invoke<Preferences>("save_preferences", { preferences });
+

@@ -82,6 +82,12 @@ Monitoring runs one fixed read-only Linux command on a separate channel of the a
 
 Application/tag commit `4e54ab96b2ce798b1c0ee3aadc39ff1f65c041b2`; [build 42473674531](https://github.com/TomateMozzarella/TermiX/actions/runs/42473674531) passed 118 checks (37 native Windows, 36 frontend, 36 production browser, 8 receipt checks and one exact-collector check on real Linux). EXE/MSI packaging, a running-v0.8 upgrade preserving catalog/preferences/known-hosts/commands bytes, portable data/WebView isolation and a real native main-window close of the shipped portable app passed. [Publication 42475873920](https://github.com/TomateMozzarella/TermiX/actions/runs/42475873920) published the exact EXE/MSI/portable ZIP. EXE SHA-256 `38d79115a06f675ef9b2d3fc24f895debab99f2103a5d98a5fbdd347447616be` matches GitHub and the chat copy; portable ZIP SHA-256 `b352b8983c7185e279c7673d61a27944a47845fd1818712a61ee47bec7537c45`. Wider native gesture/editor/server interoperability, interactive uninstall choices, measured startup latency and independent review remain separate manual work.
 
+## v0.10 verification pending
+Single-target saved-command actions now execute directly by explicit user request; the visible target and typed bounded definitions remain. This does not enable recording/broadcast or automatic execution. Disabling open-file informational reminders preserves transfer confirmations, conflict checks and close/discard warnings. Theme changes preserve script CSP and native close permissions.
+
+Tunnel configuration is explicit and in-memory only. Requested bind addresses are numeric loopback; remote targets are numeric IPs, local targets are validated hostnames/IPs interpreted by the SSH server. Eight tunnels/eight peers each, bounded per-direction queues, fixed connect/open timeouts, no shell interpolation and no new authentication/host trust. Data channels reuse the verified SSH session and stop on disconnect/application shutdown. Remote server GatewayPorts/forwarding policy controls actual remote exposure; the client cannot override a server that changes the requested bind. Remote listener cancellation uses ssh2/libssh2's lifecycle; during interrupted/non-writable transport, disconnect may be needed to finish server-side cleanup. No persistent/automatic tunnel recreation is introduced.
+
+
 
 
 

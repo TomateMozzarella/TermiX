@@ -561,4 +561,122 @@ fn remote_editor_roundtrip_conflicts_and_session_bound_tokens() {
     assert!(crate::document::save(&terminal, &doc.token, "closed".into()).is_err());
     manager.close(&id);
 }
+#[test]
+fn tcp_tunnels_forward_both_directions_and_stop_without_restarting_ssh() {
+    let Some((port, _)) = fixture() else { return };
+    use std::{
+        io::{Read, Write},
+        net::{Shutdown, TcpListener, TcpStream},
+        sync::{
+            atomic::{AtomicBool, Ordering},
+            Arc,
+        },
+    };
+    let echo = TcpListener::bind("127.0.0.1:0").unwrap();
+    let echo_port = echo.local_addr().unwrap().port();
+    echo.set_nonblocking(true).unwrap();
+    let stop = Arc::new(AtomicBool::new(false));
+    let done = stop.clone();
+    let worker = std::thread::spawn(move || {
+        while !done.load(Ordering::Acquire) {
+            match echo.accept() {
+                Ok((mut peer, _)) => {
+                    std::thread::spawn(move || {
+                        peer.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
+                        let mut buf = [0u8; 8192];
+                        loop {
+                            match peer.read(&mut buf) {
+                                Ok(0) => break,
+                                Ok(n) => {
+                                    if peer.write_all(&buf[..n]).is_err() {
+                                        break;
+                                    }
+                                }
+                                Err(_) => break,
+                            }
+                        }
+                    });
+                }
+                Err(_) => std::thread::sleep(Duration::from_millis(10)),
+            }
+        }
+    });
+    let dir = directory();
+    let manager = SshManager::new(dir.join("known-hosts.json"));
+    let probe = manager.probe("127.0.0.1", port).unwrap();
+    let id = manager
+        .open(
+            &probe.ticket,
+            "trust",
+            "",
+            auth("password", "tunnel"),
+            80,
+            24,
+        )
+        .unwrap();
+    let terminal = manager.get(&id).unwrap();
+    receive(&terminal, "fixture ready");
+    let tunnels = crate::tunnels::Tunnels::default();
+    for direction in ["local", "remote"] {
+        let info = tunnels
+            .start(
+                id.clone(),
+                terminal.clone(),
+                crate::tunnels::Config {
+                    direction: direction.into(),
+                    bind_ip: "127.0.0.1".into(),
+                    bind_port: 0,
+                    target_host: "127.0.0.1".into(),
+                    target_port: echo_port,
+                },
+            )
+            .unwrap();
+        let address = format!("127.0.0.1:{}", info.config.bind_port);
+        let mut stream = TcpStream::connect(&address).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        stream
+            .set_write_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        let payload = vec![b'z'; 32768];
+        stream.write_all(&payload).unwrap();
+        stream.shutdown(Shutdown::Write).unwrap();
+        let mut got = Vec::new();
+        stream.read_to_end(&mut got).unwrap();
+        assert_eq!(got, payload);
+        tunnels.stop(&info.id);
+        let until = Instant::now() + Duration::from_secs(3);
+        while TcpStream::connect(&address).is_ok() {
+            assert!(
+                Instant::now() < until,
+                "Tunnel listener remained after stop"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        terminal.write(b"tunnel-still-alive\r").unwrap();
+        receive(&terminal, "remote:tunnel-still-alive");
+    }
+    let info = tunnels
+        .start(
+            id.clone(),
+            terminal.clone(),
+            crate::tunnels::Config {
+                direction: "local".into(),
+                bind_ip: "127.0.0.1".into(),
+                bind_port: 0,
+                target_host: "127.0.0.1".into(),
+                target_port: echo_port,
+            },
+        )
+        .unwrap();
+    manager.close(&id);
+    let until = Instant::now() + Duration::from_secs(3);
+    while TcpStream::connect(("127.0.0.1", info.config.bind_port)).is_ok() {
+        assert!(Instant::now() < until);
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    stop.store(true, Ordering::Release);
+    worker.join().unwrap();
+}
 

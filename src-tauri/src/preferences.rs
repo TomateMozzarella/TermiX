@@ -32,8 +32,13 @@ pub struct Preferences {
     pub sftp_start: String,
     #[serde(default = "default_terminal_palette")]
     pub terminal_palette: String,
+    #[serde(default = "default_reminders")]
+    pub external_file_reminders: bool,
 }
 
+fn default_reminders() -> bool {
+    true
+}
 fn default_sftp_layout() -> String {
     "shared".into()
 }
@@ -171,6 +176,7 @@ mod tests {
             sftp_side: default_sftp_side(),
             sftp_start: default_sftp_start(),
             terminal_palette: default_terminal_palette(),
+            external_file_reminders: true,
         }
     }
     #[test]
@@ -273,3 +279,20 @@ mod tests {
         fs::remove_dir_all(dir).unwrap();
     }
 }
+#[cfg(test)]
+mod reminder_tests {
+    #[test]
+    fn old_preferences_default_to_reminders_and_false_survives_save() {
+        let path =
+            std::env::temp_dir().join(format!("termix-reminders-{}.json", uuid::Uuid::new_v4()));
+        std::fs::write(&path,r#"{"schemaVersion":2,"setupComplete":false,"defaultShell":"powershell","fontSize":15}"#).unwrap();
+        let store = super::PreferencesStore::new(path.clone());
+        let mut prefs = store.read().unwrap().unwrap();
+        assert!(prefs.external_file_reminders);
+        prefs.external_file_reminders = false;
+        store.save(prefs).unwrap();
+        assert!(!store.read().unwrap().unwrap().external_file_reminders);
+        std::fs::remove_file(path).unwrap();
+    }
+}
+

@@ -38,7 +38,7 @@ export function CommandsPane({ language, target, onRun }: {
     finally {
         setBusy(false);
     } }
-    function run(c: Command) { if (window.confirm(`${tr("Run in", "Ausführen in")} ${target}?\n\n${c.text}`) && !onRun(c.text + "\r"))
+    function run(c: Command) { if (!onRun(c.text + "\r"))
         setError(tr("The terminal is not ready or has closed.", "Das Terminal ist noch nicht bereit oder geschlossen.")); }
     function remove(c: Command) { if (window.confirm(tr("Delete saved command?", "Gespeicherten Befehl löschen?")))
         void save(library.entries.filter(x => x.id !== c.id)); }

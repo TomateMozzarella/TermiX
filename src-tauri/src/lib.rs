@@ -14,6 +14,7 @@ mod snippets;
 mod ssh;
 mod storage;
 mod terminal;
+mod tunnels;
 mod vault;
 mod workspace;
 
@@ -53,9 +54,11 @@ pub fn run() {
     }
     tauri::Builder::default()
         .manage(terminal::TerminalManager::default())
+        .manage(tunnels::Tunnels::default())
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
                 window.state::<terminal::TerminalManager>().close_all();
+                window.state::<tunnels::Tunnels>().stop_all();
                 window.state::<ssh::SshManager>().close_all();
             }
         })
@@ -140,6 +143,9 @@ pub fn run() {
             commands::sftp_mkdir,
             commands::sftp_list,
             commands::ssh_monitor,
+            commands::tunnel_start,
+            commands::tunnel_list,
+            commands::tunnel_stop,
             commands::sftp_upload,
             commands::sftp_download,
             commands::sftp_progress,
