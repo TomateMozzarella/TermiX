@@ -60,3 +60,14 @@ Named command snippets are memory-only in this release (50 snippets, 4,096 chara
 ### Verified v0.7 release evidence
 
 Build 41901000165 at application/tag commit 1fe2f84a0412fb268b569351477f6cf25ef46131 passed 31 native Windows, 34 frontend, 29 browser and 7 receipt checks (101 total). Both installers and the upgrade from a checksum-verified running v0.6 installation passed, preserving catalog/settings/known-hosts bytes. Publication 41905892456 published the exact EXE/MSI; EXE SHA-256 f632c2141da8e5847b1f9e2fda0fd93ead580991613cc1ac21c1ee7c4c94edf1 matches the chat copy and GitHub asset. Browser cases test actual replace-all/diff highlights, direct external routing without Monaco/auto-upload, cyclic/duplicate SFTP entries, focus, shortcut isolation and no automatic SSH restore. These automated checks are not an independent audit or a substitute for the manual native GUI/interoperability items above.
+## v0.8 work under verification
+
+Portable mode requires portable.flag beside the executable. Data and WebView profile go to its adjacent data folder; no installed catalog is imported automatically. Its vault namespace includes a hash of the portable folder, so credentials remain machine/user/location-bound rather than travelling in the ZIP. Packaging uses an explicit distributable-file whitelist, and receipt validation rejects ZIPs containing user data.
+
+The EXE uninstaller asks before removing only generic TermiX:ssh:<64 hex> credentials, defaults to No and skips deletion on silent upgrades/uninstalls. The fixed cleanup CLI exits before creating a webview and refuses portable execution. MSI uninstall retains credentials. Other vault namespaces, users and private-key files are outside this cleanup.
+
+Saved commands are bounded typed plaintext definitions. They are not a secret store: the UI warns against secrets, and obvious private-key/assignment patterns are rejected, but arbitrary command text cannot be comprehensively classified. No automatic execution occurs. The selected target and command are confirmed at run time.
+
+External copies remain managed without a blocking opening dialog. Native/DOM focus and foreground-only checks hash bounded regular UTF-8 copies; changed content must be stable across two checks before asking to transfer. The approved snapshot is sent through the existing remote-conflict check. No automatic upload/watcher or arbitrary local paths are exposed. Closing the app warns about open external copies. Crash/disconnect leftovers and broad external-editor interoperability remain manual concerns.
+
+Remote file creation is exclusive and never truncates an existing file. Deletion requires a UI confirmation and is limited to regular files or empty directories; recursive deletion and link traversal are not provided.

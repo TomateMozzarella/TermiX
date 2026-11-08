@@ -2,6 +2,9 @@
 
 Read [docs/ROADMAP.md](docs/ROADMAP.md) and [README.md](README.md) before changing code. The roadmap is the authoritative handoff for product goals, verified current state, milestone ordering, security requirements, and decisions from user discussions.
 
+## v0.8 work in progress
+The user requested v0.8 implementation on 2026-11-08: portable ZIP + installer in GitHub Releases, opt-in credential cleanup on EXE uninstall, saved command sidebar, compact SFTP icons/actions, no duplicate Files top button, styled first paint and nonmodal external editing with explicit transfer confirmation. This reprioritizes SSH tunnels to the following milestone. Portable data/WebView storage is executable-relative; Windows credentials remain on the PC in a separate portable namespace. Never package user data or auto-upload external edits. See ROADMAP for limits and verification still required. v0.7 remains the latest published baseline until v0.8 passes all checks.
+
 ## Current focus
 **v0.7.0 is implemented, tested, integrated into main and published as a GitHub development prerelease (2026-11-04).** Application/tag commit: 1fe2f84a0412fb268b569351477f6cf25ef46131. Build 41901000165 passed 101 checks (31 native Windows, 34 frontend, 29 browser, 7 receipt tests), EXE/MSI packaging and an actual running-v0.6-to-v0.7 upgrade. Catalog/folders, preferences and known-hosts stayed byte-identical. Publication 41905892456 published the exact assets; EXE SHA-256 f632c2141da8e5847b1f9e2fda0fd93ead580991613cc1ac21c1ee7c4c94edf1 matches GitHub and the chat copy.
 

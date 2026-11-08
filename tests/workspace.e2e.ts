@@ -27,9 +27,9 @@ test("drag tabs and middle click closes exactly that tab", async ({ page }) => {
 
 test("browse SFTP through verified SSH, transfer progress, cancel and report errors", async ({ page }) => {
   await mockDesktop(page, true); await page.addInitScript(() => { (window as any).hostStatus = "known"; (window as any).savedSessions = [{ id: "s1", name: "Server", host: "example.test", port: 22, username: "test-user", kind: "ssh", group: "" }]; });
-  await page.goto("/"); await expect(page.getByRole("button", { name: "Files", exact: true })).toBeDisabled();
+  await page.goto("/"); await expect(page.getByRole("button", { name: "SFTP", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Open session: Server", exact: true }).click(); await page.getByRole("button", { name: "Connect", exact: true }).click();
-  await page.getByRole("button", { name: "Files", exact: true }).click(); const files = page.getByRole("region", { name: "Files", exact: true }); await expect(files.getByText("hello.txt", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "SFTP", exact: true }).click(); const files = page.getByRole("region", { name: "Files", exact: true }); await expect(files.getByText("hello.txt", { exact: true })).toBeVisible();
   await files.getByRole("button", { name: "docs", exact: true }).click(); await expect(files.getByRole("textbox", { name: "Remote directory" })).toHaveValue("/home/test/docs");
   await preview(page, "TermiX-0.6.0-SFTP");
   await files.getByRole("button", { name: "Download: hello.txt", exact: true }).click(); await expect(files.getByRole("progressbar")).toHaveAttribute("value", "5");

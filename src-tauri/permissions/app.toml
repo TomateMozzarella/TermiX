@@ -11,7 +11,7 @@ commands.allow = ["list_sessions", "get_catalog", "reload_catalog", "save_sessio
 [[permission]]
 identifier = "preferences"
 description = "Read and save non-secret setup and appearance preferences."
-commands.allow = ["get_preferences", "save_preferences", "get_workspace", "save_workspace", "choose_editor", "detect_editor"]
+commands.allow = ["get_preferences", "save_preferences", "get_workspace", "save_workspace", "get_snippets", "save_snippets", "ui_ready", "choose_editor", "detect_editor"]
 
 [[permission]]
 identifier = "ssh"
@@ -20,4 +20,4 @@ commands.allow = ["ssh_probe", "ssh_cancel", "ssh_open", "ssh_forget_password"]
 [[permission]]
 identifier = "sftp"
 description = "Browse verified SSH transports and transfer files chosen through native dialogs; no arbitrary local paths."
-commands.allow = ["sftp_list", "sftp_upload", "sftp_download", "sftp_progress", "sftp_cancel", "sftp_mkdir", "editor_open", "editor_save", "editor_reload", "editor_close", "editor_external", "editor_reload_external"]
+commands.allow = ["sftp_list", "sftp_upload", "sftp_download", "sftp_progress", "sftp_cancel", "sftp_mkdir", "sftp_file_action", "editor_external_state", "editor_open", "editor_save", "editor_reload", "editor_close", "editor_external", "editor_reload_external"]

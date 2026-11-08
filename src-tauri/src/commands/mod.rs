@@ -409,7 +409,7 @@ pub async fn editor_external(
     app: tauri::AppHandle,
     id: String,
     token: String,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let terminal = state.get(&id)?;
     use tauri::Manager;
     let preferences = app
@@ -482,12 +482,7 @@ pub async fn editor_reload(
 #[tauri::command]
 pub fn get_workspace(app: tauri::AppHandle) -> Result<Option<crate::workspace::Workspace>, String> {
     use tauri::Manager;
-    crate::workspace::read(
-        &app.path()
-            .app_data_dir()
-            .map_err(|_| "workspace_invalid")?
-            .join("workspace.json"),
-    )
+    crate::workspace::read(&crate::app_data::directory(&app)?.join("workspace.json"))
 }
 #[tauri::command]
 pub fn save_workspace(
@@ -496,10 +491,53 @@ pub fn save_workspace(
 ) -> Result<(), String> {
     use tauri::Manager;
     crate::workspace::save(
-        &app.path()
-            .app_data_dir()
-            .map_err(|_| "workspace_invalid")?
-            .join("workspace.json"),
+        &crate::app_data::directory(&app)?.join("workspace.json"),
         workspace,
     )
+}
+#[tauri::command]
+pub fn ui_ready(window: tauri::WebviewWindow) -> Result<(), String> {
+    window.show().map_err(|_| "window_unavailable".into())
+}
+#[tauri::command]
+pub fn get_snippets(app: tauri::AppHandle) -> Result<crate::snippets::Library, String> {
+    crate::snippets::read(&crate::app_data::directory(&app)?.join("commands.json"))
+}
+#[tauri::command]
+pub fn save_snippets(
+    app: tauri::AppHandle,
+    library: crate::snippets::Library,
+) -> Result<crate::snippets::Library, String> {
+    crate::snippets::save(
+        &crate::app_data::directory(&app)?.join("commands.json"),
+        library,
+    )
+}
+#[tauri::command]
+pub async fn editor_external_state(
+    state: State<'_, crate::ssh::SshManager>,
+    id: String,
+    token: String,
+    previous_digest: String,
+) -> Result<crate::document::ExternalState, String> {
+    let terminal = state.get(&id)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::document::external_state(&terminal, &token, &previous_digest)
+    })
+    .await
+    .map_err(|_| "sftp_failed".to_owned())?
+}
+#[tauri::command]
+pub async fn sftp_file_action(
+    state: State<'_, crate::ssh::SshManager>,
+    id: String,
+    path: String,
+    action: String,
+) -> Result<(), String> {
+    let terminal = state.get(&id)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::sftp::file_action(&terminal, &path, &action)
+    })
+    .await
+    .map_err(|_| "sftp_failed".to_owned())?
 }

@@ -14,6 +14,11 @@ export async function mockDesktop(page: Page, configured = false, legacy = false
     mock.__TAURI_INTERNALS__ = { metadata: { currentWindow: { label: "main" } }, invoke: async (command: string, args: any) => {
       mock.testCalls.push({ command, args: args ? structuredClone(args) : args });
       if (command === "terminal_profiles") return [{ id: "powershell", name: "Windows PowerShell" }, { id: "cmd", name: "CMD" }];
+      if (command === "get_snippets") return JSON.parse(localStorage.getItem("test-commands") ?? '{"schemaVersion":1,"entries":[]}');
+      if (command === "save_snippets") { if(mock.failCommands) throw "snippets_save_failed"; localStorage.setItem("test-commands",JSON.stringify(args.library)); return structuredClone(args.library); }
+      if (command === "editor_external") return "original";
+      if (command === "editor_external_state") { const digest=mock.externalVersion??"original"; return {digest,text:args.previousDigest===digest?null:mock.externalText??mock.editorText??"original text\n"}; }
+      if (command === "sftp_file_action") { mock.lastFileAction=structuredClone(args); return; }
       if (command === "get_workspace") return JSON.parse(localStorage.getItem("test-workspace") ?? "null");
       if (command === "save_workspace") { localStorage.setItem("test-workspace", JSON.stringify(args.workspace)); return; }
       if (command === "get_preferences") {

@@ -472,6 +472,24 @@ fn remote_editor_roundtrip_conflicts_and_session_bound_tokens() {
     std::fs::write(&fixture_file, "original ö\r\n").unwrap();
     let doc = crate::document::open(&terminal, &remote).unwrap();
     assert_eq!(doc.text, "original ö\r\n");
+    assert!(crate::sftp::file_action(&terminal, &remote, "create").is_err());
+    let fresh = format!("/empty-{}.txt", uuid::Uuid::new_v4());
+    crate::sftp::file_action(&terminal, &fresh, "create").unwrap();
+    let fresh_local = fixture
+        .join("remote-files")
+        .join(fresh.trim_start_matches('/'));
+    assert_eq!(std::fs::metadata(&fresh_local).unwrap().len(), 0);
+    crate::sftp::file_action(&terminal, &fresh, "delete").unwrap();
+    assert!(!fresh_local.exists());
+    let folder = format!("delete-{}", uuid::Uuid::new_v4());
+    let local_folder = fixture.join("remote-files").join(&folder);
+    std::fs::create_dir(&local_folder).unwrap();
+    std::fs::write(local_folder.join("keep.txt"), "keep").unwrap();
+    assert!(crate::sftp::file_action(&terminal, &format!("/{folder}"), "delete").is_err());
+    assert!(local_folder.join("keep.txt").is_file());
+    std::fs::remove_file(local_folder.join("keep.txt")).unwrap();
+    crate::sftp::file_action(&terminal, &format!("/{folder}"), "delete").unwrap();
+    assert!(!local_folder.exists());
     let saved = crate::document::save(&terminal, &doc.token, "updated\r\n".into());
     if saved.is_ok() {
         assert_eq!(
@@ -503,6 +521,14 @@ fn remote_editor_roundtrip_conflicts_and_session_bound_tokens() {
             assert!(Instant::now() < deadline);
             std::thread::sleep(Duration::from_millis(20));
         }
+        let changed = crate::document::external_state(&terminal, &doc.token, "").unwrap();
+        assert_eq!(changed.text.as_deref(), Some("external fixture edit"));
+        assert!(
+            crate::document::external_state(&terminal, &doc.token, &changed.digest)
+                .unwrap()
+                .text
+                .is_none()
+        );
         assert_ne!(
             std::fs::read_to_string(&fixture_file).unwrap(),
             "external fixture edit",

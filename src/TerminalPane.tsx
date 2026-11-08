@@ -40,7 +40,7 @@ export function TerminalPane({ tab, active, focusOnActivate, fontSize, theme, ac
       bytes => new Promise<void>(resolve => { if (alive) terminal.write(bytes, resolve); else resolve(); }),
       message => { if (alive) { terminal.writeln(`\r\n[${message}]`); setEnded(true); } },
       (kind, value) => kind === "exit" ? `${t(visual.current.language, "end")}${value === null ? "" : ` (Exit ${value})`}` : `${t(visual.current.language, "terminalError")}: ${errorText(value, visual.current.language)}`);
-    onInputReady?.(value => connection.write(value));
+    onInputReady?.(value => { connection.write(value); terminal.focus(); });
     const input = terminal.onData(text => connection.write(text));
     const resized = terminal.onResize(({ cols, rows }) => connection.resize(cols, rows));
     const observer = new ResizeObserver(fitVisible); observer.observe(element);

@@ -2,6 +2,10 @@
 
 TermiX is an independent, cross-platform remote connection manager built with Tauri 2, Rust, React, TypeScript and xterm.js.
 
+## v0.8 work in progress
+
+Next: verified portable ZIP plus installers in GitHub Releases; saved Commands beside Sessions/SFTP; compact SFTP toolbar with explicit create/delete; a themed first paint; and nonmodal external editing that offers transfer only after saved changes. Portable mode uses a data folder beside the EXE, including its WebView profile, and a separate machine-local vault namespace. It requires WebView2 Runtime. EXE uninstall offers credential cleanup with No as default; MSI/silent uninstall retain credentials. Windows validation and publication are still pending; v0.7 remains the latest release.
+
 ## Current status
 
 **[v0.7.0 Windows development prerelease](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.7.0) is published and integrated into main.** [Build 41901000165](https://github.com/TomateMozzarella/TermiX/actions/runs/41901000165) passed all 101 checks: 31 native Windows tests, 34 frontend tests, 29 browser workflows and 7 release-receipt checks. EXE/MSI packaging and a real upgrade from a running, checksum-verified v0.6 installation passed; catalog/folders, preferences and known SSH hosts remained byte-identical. [Publication 41905892456](https://github.com/TomateMozzarella/TermiX/actions/runs/41905892456) published application/tag commit `1fe2f84a0412fb268b569351477f6cf25ef46131`.

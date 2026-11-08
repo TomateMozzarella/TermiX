@@ -10,14 +10,14 @@ if (!$installer) { throw 'Installer missing' }
 
 $bootstrapInstaller = $installer
 $bootstrapVersion = $version
-if ($version -eq '0.7.0') {
- $baselineDir = Join-Path $env:RUNNER_TEMP 'termix-baseline-0.6.0'
+if ($version -eq '0.8.0') {
+ $baselineDir = Join-Path $env:RUNNER_TEMP 'termix-baseline-0.7.0'
  New-Item -ItemType Directory -Force -Path $baselineDir | Out-Null
- gh release download v0.6.0 --repo $env:GH_REPO --pattern 'TermiX_0.6.0_x64-setup.exe' --dir $baselineDir
- if ($LASTEXITCODE -ne 0) { throw 'Could not download the immutable v0.6 upgrade baseline' }
- $bootstrapInstaller = Join-Path $baselineDir 'TermiX_0.6.0_x64-setup.exe'
- if ((Get-FileHash $bootstrapInstaller -Algorithm SHA256).Hash -ne '2778527934F3BE61B16C3C696CE926EC8D3CC57653D40A6DE47E65E1555A372C') { throw 'Upgrade baseline checksum mismatch' }
- $bootstrapVersion = '0.6.0'
+ gh release download v0.7.0 --repo $env:GH_REPO --pattern 'TermiX_0.7.0_x64-setup.exe' --dir $baselineDir
+ if ($LASTEXITCODE -ne 0) { throw 'Could not download the immutable v0.7 upgrade baseline' }
+ $bootstrapInstaller = Join-Path $baselineDir 'TermiX_0.7.0_x64-setup.exe'
+ if ((Get-FileHash $bootstrapInstaller -Algorithm SHA256).Hash -ne 'F632C2141DA8E5847B1F9E2FDA0FD93EAD580991613CC1AC21C1EE7C4C94EDF1') { throw 'Upgrade baseline checksum mismatch' }
+ $bootstrapVersion = '0.7.0'
 }
 $desktop = [Environment]::GetFolderPath('Desktop')
 $linkPath = Join-Path $desktop 'TermiX.lnk'
@@ -48,6 +48,7 @@ $seed = @{
  'sessions.json' = '{"schemaVersion":2,"revision":1,"folders":[{"id":"retained-folder","name":"Operations"}],"sessions":[{"id":"retained-session","name":"Keep this server","kind":"ssh","host":"example.test","port":22,"username":"test","group":"retained-folder","favorite":true}]}'
  'preferences.json' = '{"schemaVersion":2,"setupVersion":2,"setupComplete":true,"defaultShell":"powershell","fontSize":15,"language":"en","theme":"dark","accent":"#71c9bd","editor":"integrated","editorPath":"","uiScale":100}'
  'known-hosts.json' = '{}'
+ 'commands.json' = '{"schemaVersion":1,"entries":[{"id":"92111111-1111-4111-8111-111111111111","name":"Keep command","text":"echo keep"}]}'
 }
 $before = @{}
 foreach ($fileName in $seed.Keys) {

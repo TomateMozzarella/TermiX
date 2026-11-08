@@ -457,3 +457,40 @@ mod tests {
         assert!(path("/home/user/ö space.txt").is_ok());
     }
 }
+pub fn file_action(terminal: &SshTerminal, value: &str, action: &str) -> Result<(), String> {
+    let target = path(value)?;
+    if target.parent().is_none() {
+        return Err("sftp_path".into());
+    }
+    let _gate = terminal.remote.gate.try_lock().map_err(|_| "sftp_busy")?;
+    let subsystem = terminal.remote.subsystem.lock().map_err(|_| "ssh_state")?;
+    let sftp = subsystem.as_ref().ok_or("sftp_failed")?;
+    match action {
+        "create" => {
+            let handle = Handle {
+                file: retry(terminal, None, || {
+                    sftp.open_mode(
+                        &target,
+                        ssh2::OpenFlags::WRITE
+                            | ssh2::OpenFlags::CREATE
+                            | ssh2::OpenFlags::EXCLUSIVE,
+                        0o600,
+                        ssh2::OpenType::File,
+                    )
+                })?,
+                terminal,
+            };
+            drop(handle);
+            Ok(())
+        }
+        "delete" => {
+            let stat = retry(terminal, None, || sftp.lstat(&target))?;
+            match stat.perm.unwrap_or(0) & 0o170000 {
+                0o100000 => retry(terminal, None, || sftp.unlink(&target)),
+                0o040000 => retry(terminal, None, || sftp.rmdir(&target)),
+                _ => Err("sftp_type".into()),
+            }
+        }
+        _ => Err("sftp_path".into()),
+    }
+}

@@ -1,4 +1,5 @@
 mod address;
+mod app_data;
 mod atomic;
 mod commands;
 mod document;
@@ -8,6 +9,7 @@ mod files;
 mod models;
 mod preferences;
 mod sftp;
+mod snippets;
 mod ssh;
 mod storage;
 mod terminal;
@@ -25,10 +27,26 @@ pub struct AppState {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    if std::env::args().nth(1).as_deref() == Some("--clear-saved-credentials") {
+        std::process::exit(if vault::clear_installed().is_ok() {
+            0
+        } else {
+            1
+        });
+    }
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
+    let mut context = tauri::generate_context!();
+    if let Some(root) = std::env::current_exe()
+        .ok()
+        .and_then(|p| app_data::portable_root(&p))
+    {
+        for window in &mut context.config_mut().app.windows {
+            window.data_directory = Some(root.join("data/webview"));
+        }
+    }
     tauri::Builder::default()
         .manage(terminal::TerminalManager::default())
         .on_window_event(|window, event| {
@@ -38,23 +56,39 @@ pub fn run() {
             }
         })
         .setup(|app| {
-            let path = app.path().app_data_dir()?.join("sessions.json");
+            let root = app_data::directory(app.handle()).map_err(std::io::Error::other)?;
+            vault::set_portable_namespace(
+                std::env::current_exe()
+                    .ok()
+                    .and_then(|p| app_data::portable_root(&p)),
+            );
+            let path = root.join("sessions.json");
             if let Some(parent) = path.parent() {
                 std::fs::create_dir_all(parent)?;
             }
             let store = SessionStore::load(path)?;
-            app.manage(ssh::SshManager::new(
-                app.path().app_data_dir()?.join("known-hosts.json"),
-            ));
+            app.manage(ssh::SshManager::new(root.join("known-hosts.json")));
             app.manage(AppState {
                 sessions: Mutex::new(store),
                 preferences: Mutex::new(preferences::PreferencesStore::new(
-                    app.path().app_data_dir()?.join("preferences.json"),
+                    root.join("preferences.json"),
                 )),
+            });
+            let window = app
+                .get_webview_window("main")
+                .ok_or("missing main window")?;
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(3));
+                let _ = window.show();
             });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::ui_ready,
+            commands::get_snippets,
+            commands::save_snippets,
+            commands::editor_external_state,
+            commands::sftp_file_action,
             commands::list_sessions,
             commands::save_session,
             commands::delete_session,
@@ -95,6 +129,6 @@ pub fn run() {
             commands::ssh_open,
             commands::ssh_forget_password
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running TermiX");
 }

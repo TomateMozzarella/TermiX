@@ -22,3 +22,17 @@
   !insertmacro TermiXRefreshShortcut "$SMPROGRAMS\TermiX.lnk"
   System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
 !macroend
+; Keep credentials by default, and never remove them during a silent uninstall.
+LangString TermiXCredentialsQuestion 1033 "Also delete saved TermiX passwords from Windows Credential Manager? Other applications and portable copies are not affected."
+LangString TermiXCredentialsQuestion 1031 "Auch gespeicherte TermiX-Passwoerter aus der Windows-Anmeldeinformationsverwaltung loeschen? Andere Programme und portable Kopien bleiben erhalten."
+LangString TermiXCredentialsFailed 1033 "Some saved TermiX credentials could not be removed. You can remove TermiX:ssh entries manually in Windows Credential Manager."
+LangString TermiXCredentialsFailed 1031 "Einige TermiX-Zugangsdaten konnten nicht entfernt werden. TermiX:ssh-Eintraege lassen sich in der Windows-Anmeldeinformationsverwaltung entfernen."
+!macro NSIS_HOOK_PREUNINSTALL
+  IfSilent termix_credentials_done
+  MessageBox MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2 "$(TermiXCredentialsQuestion)" IDNO termix_credentials_done
+  ExecWait '"$INSTDIR\${MAINBINARYNAME}.exe" --clear-saved-credentials' $0
+  ${If} $0 != 0
+    MessageBox MB_OK|MB_ICONEXCLAMATION "$(TermiXCredentialsFailed)"
+  ${EndIf}
+  termix_credentials_done:
+!macroend

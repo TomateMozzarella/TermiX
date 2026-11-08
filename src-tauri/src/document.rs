@@ -195,7 +195,7 @@ pub fn close(terminal: &SshTerminal, token: &str) -> Result<(), String> {
     }
     Ok(())
 }
-pub fn external(terminal: &SshTerminal, token: &str, executable: String) -> Result<(), String> {
+pub fn external(terminal: &SshTerminal, token: &str, executable: String) -> Result<String, String> {
     let _gate = terminal.remote.gate.try_lock().map_err(|_| "sftp_busy")?;
     crate::editors::validate_path(&executable, true)?;
     let mut docs = terminal.documents.0.lock().map_err(|_| "ssh_state")?;
@@ -249,7 +249,7 @@ pub fn external(terminal: &SshTerminal, token: &str, executable: String) -> Resu
         return Err("editor_launch".into());
     }
     doc.local = Some(local);
-    Ok(())
+    Ok(doc.hash.clone())
 }
 pub fn reload_external(terminal: &SshTerminal, token: &str) -> Result<String, String> {
     let docs = terminal.documents.0.lock().map_err(|_| "ssh_state")?;
@@ -257,6 +257,10 @@ pub fn reload_external(terminal: &SshTerminal, token: &str) -> Result<String, St
         .get(token)
         .and_then(|d| d.local.as_ref())
         .ok_or("editor_closed")?;
+    let metadata = std::fs::symlink_metadata(file).map_err(|_| "sftp_local")?;
+    if !metadata.is_file() || metadata.file_type().is_symlink() {
+        return Err("editor_type".into());
+    }
     let mut bytes = Vec::new();
     std::fs::File::open(file)
         .map_err(|_| "sftp_local")?
@@ -265,6 +269,14 @@ pub fn reload_external(terminal: &SshTerminal, token: &str) -> Result<String, St
         .map_err(|_| "sftp_local")?;
     if bytes.len() > MAX || bytes.contains(&0) {
         return Err("editor_type".into());
+    }
+    let after = std::fs::symlink_metadata(file).map_err(|_| "sftp_local")?;
+    if metadata.len() != after.len()
+        || metadata.modified().ok() != after.modified().ok()
+        || !after.is_file()
+        || after.file_type().is_symlink()
+    {
+        return Err("editor_local_changed".into());
     }
     String::from_utf8(bytes).map_err(|_| "editor_encoding".into())
 }
@@ -290,5 +302,23 @@ pub fn reload(terminal: &SshTerminal, token: &str) -> Result<View, String> {
         token: token.into(),
         path: doc.path.to_str().ok_or("sftp_path")?.replace('\\', "/"),
         text,
+    })
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalState {
+    pub digest: String,
+    pub text: Option<String>,
+}
+pub fn external_state(
+    terminal: &SshTerminal,
+    token: &str,
+    previous: &str,
+) -> Result<ExternalState, String> {
+    let text = reload_external(terminal, token)?;
+    let hash = digest(text.as_bytes());
+    Ok(ExternalState {
+        text: if hash == previous { None } else { Some(text) },
+        digest: hash,
     })
 }
