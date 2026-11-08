@@ -314,7 +314,7 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
         }
         if !to_remote.is_empty() {
             match channel.write(&to_remote) {
-                Ok(0) => break,
+                Ok(0) => {}
                 Ok(n) => {
                     write_pending = false;
                     to_remote.drain(..n);
@@ -336,7 +336,8 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
         if !ssh_eof && to_local.len() < 65536 {
             let available = (65536 - to_local.len()).min(buf.len());
             match channel.read(&mut buf[..available]) {
-                Ok(0) => ssh_eof = true,
+                Ok(0) if channel.eof() => ssh_eof = true,
+                Ok(0) => {}
                 Ok(n) => {
                     to_local.extend_from_slice(&buf[..n]);
                     progressed = true;
