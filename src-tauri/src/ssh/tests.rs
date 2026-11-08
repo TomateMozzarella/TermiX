@@ -614,6 +614,9 @@ fn tcp_tunnels_forward_both_directions_and_stop_without_restarting_ssh() {
             match echo.accept() {
                 Ok((mut peer, _)) => {
                     std::thread::spawn(move || {
+                        // Winsock accept inherits the listener\'s nonblocking mode.
+                        // The fixture uses blocking reads with a bounded timeout.
+                        peer.set_nonblocking(false).unwrap();
                         peer.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
                         let mut buf = [0u8; 8192];
                         loop {
