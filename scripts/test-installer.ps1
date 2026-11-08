@@ -71,4 +71,3 @@ if ($finalVersion.ProductMajorPart -ne $expectedVersion.Major -or $finalVersion.
 Write-Output "Verified upgrade from $bootstrapVersion to $version."
 Write-Output 'Upgrade closes the running installed app and preserves catalog, preferences and known hosts byte-for-byte.'
 Write-Output "Silent installation of $version, executable version, bundled licenses and existing desktop shortcut icon verified."
-

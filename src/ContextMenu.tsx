@@ -10,4 +10,3 @@ export function ContextMenu({x,y,items,onClose}:{x:number;y:number;items:Item[];
  {visible.map(item=>item.swatches?<div className="menu-colours" role="group" aria-label={item.label} key={item.label}><span>{item.label}</span><div>{item.swatches.map(s=><button key={s.label} role="menuitemradio" aria-checked={s.selected} aria-label={s.label} title={s.label} onClick={()=>{onClose();s.action();}}><i style={{background:s.colour}}/></button>)}</div></div>:<button role="menuitem" key={item.label} disabled={item.disabled} aria-haspopup={item.children?"menu":undefined} onClick={()=>{if(item.children)setView(item);else{onClose();item.action?.();}}}>{item.label}{item.children&&<span aria-hidden="true" className="menu-arrow">›</span>}</button>)}
  </div>,document.body);
 }
-

@@ -54,6 +54,7 @@ pub struct Progress {
     pub total: u64,
     pub state: String,
     pub error: Option<String>,
+    pub skipped_links: u32,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -228,13 +229,14 @@ pub fn start(
             total: 0,
             state: "running".into(),
             error: None,
+            skipped_links: 0,
         }),
     });
     *slot = Some(Arc::clone(&task));
     drop(slot);
     drop(gate);
     std::thread::spawn(move || {
-        let result = transfer(&terminal, &task, &remote, &local, upload, overwrite);
+        let result = transfer(&terminal, &task, &remote, &local, upload, overwrite, false);
         if let Ok(mut p) = task.status.lock() {
             p.state = if result.is_ok() {
                 "done"
@@ -281,6 +283,7 @@ fn transfer(
     local: &Path,
     upload: bool,
     overwrite: bool,
+    aggregate: bool,
 ) -> Result<(), String> {
     let _gate = terminal.remote.gate.lock().map_err(|_| "ssh_state")?;
     let cancelled = Some(&task.cancel);
@@ -293,13 +296,20 @@ fn transfer(
     let sftp = subsystem.as_ref().ok_or("sftp_failed")?;
     let mut buffer = vec![0u8; 65536];
     if upload {
+        let metadata = std::fs::symlink_metadata(local).map_err(|_| "sftp_local")?;
+        if !metadata.is_file() || metadata.file_type().is_symlink() {
+            return Err("sftp_type".into());
+        }
+        let start_bytes = task.status.lock().map_err(|_| "ssh_state")?.bytes;
         let mut source = std::fs::File::open(local).map_err(|_| "sftp_local")?;
         let original = source.metadata().map_err(|_| "sftp_local")?;
         let size = original.len();
         if !source.metadata().map_err(|_| "sftp_local")?.is_file() {
             return Err("sftp_local".into());
         }
-        task.status.lock().map_err(|_| "ssh_state")?.total = size;
+        if !aggregate {
+            task.status.lock().map_err(|_| "ssh_state")?.total = size;
+        }
         let before = match retry(terminal, cancelled, || sftp.lstat(remote)) {
             Ok(stat) => Some(stat),
             Err(e) if e == "sftp_missing" => None,
@@ -349,7 +359,7 @@ fn transfer(
                 }
             }
             let current = source.metadata().map_err(|_| "sftp_local")?;
-            if task.status.lock().map_err(|_| "ssh_state")?.bytes != size
+            if task.status.lock().map_err(|_| "ssh_state")?.bytes - start_bytes != size
                 || (original.len(), original.modified().ok())
                     != (current.len(), current.modified().ok())
             {
@@ -492,5 +502,202 @@ pub fn file_action(terminal: &SshTerminal, value: &str, action: &str) -> Result<
             }
         }
         _ => Err("sftp_path".into()),
+    }
+}
+struct Planned {
+    relative: PathBuf,
+    directory: bool,
+    size: u64,
+    modified: Option<std::time::SystemTime>,
+}
+fn folder_plan(root: &Path, cancel: &AtomicBool) -> Result<(Vec<Planned>, u64, u32), String> {
+    let meta = std::fs::symlink_metadata(root).map_err(|_| "sftp_local")?;
+    if !meta.is_dir() || meta.file_type().is_symlink() {
+        return Err("sftp_type".into());
+    }
+    let mut plan = vec![Planned {
+        relative: PathBuf::new(),
+        directory: true,
+        size: 0,
+        modified: None,
+    }];
+    let mut stack = vec![(PathBuf::new(), 0usize)];
+    let (mut total, mut skipped, mut visited) = (0u64, 0u32, 0usize);
+    while let Some((relative, depth)) = stack.pop() {
+        if depth > 32 {
+            return Err("sftp_too_many".into());
+        }
+        for entry in std::fs::read_dir(root.join(&relative)).map_err(|_| "sftp_local")? {
+            if cancel.load(Ordering::Acquire) {
+                return Err("sftp_cancelled".into());
+            }
+            visited += 1;
+            if visited > 10000 {
+                return Err("sftp_too_many".into());
+            }
+            let entry = entry.map_err(|_| "sftp_local")?;
+            let sub = relative.join(entry.file_name());
+            path(&remote_string(&sub)?)?;
+            let meta = std::fs::symlink_metadata(entry.path()).map_err(|_| "sftp_local")?;
+            if meta.file_type().is_symlink() || (!meta.is_dir() && !meta.is_file()) {
+                skipped += 1;
+                continue;
+            }
+            if meta.is_dir() {
+                stack.push((sub.clone(), depth + 1));
+            } else {
+                total = total.checked_add(meta.len()).ok_or("sftp_too_many")?;
+            }
+            plan.push(Planned {
+                relative: sub,
+                directory: meta.is_dir(),
+                size: meta.len(),
+                modified: meta.modified().ok(),
+            });
+        }
+    }
+    Ok((plan, total, skipped))
+}
+fn folder_transfer(
+    terminal: &SshTerminal,
+    task: &Transfer,
+    destination: &Path,
+    local: &Path,
+    overwrite: bool,
+) -> Result<(), String> {
+    let (plan, total, skipped) = folder_plan(local, &task.cancel)?;
+    let canonical = std::fs::canonicalize(local).map_err(|_| "sftp_local")?;
+    {
+        let mut p = task.status.lock().map_err(|_| "ssh_state")?;
+        p.total = total;
+        p.skipped_links = skipped;
+    }
+    for item in plan {
+        if task.cancel.load(Ordering::Acquire) || terminal.is_closed() {
+            return Err("sftp_cancelled".into());
+        }
+        let remote = destination.join(&item.relative);
+        {
+            let _gate = terminal.remote.gate.lock().map_err(|_| "ssh_state")?;
+            let mut subsystem = terminal.remote.subsystem.lock().map_err(|_| "ssh_state")?;
+            if subsystem.is_none() {
+                *subsystem = Some(retry(terminal, Some(&task.cancel), || {
+                    terminal.ssh_session().sftp()
+                })?);
+            }
+            let sftp = subsystem.as_ref().ok_or("sftp_failed")?;
+            // Every parent must remain a directory, never a symlink.
+            let check = remote.parent();
+            if let Some(parent) = check {
+                for component in parent.ancestors() {
+                    if component.as_os_str().is_empty() {
+                        continue;
+                    }
+                    let stat = retry(terminal, Some(&task.cancel), || sftp.lstat(component))?;
+                    if stat.perm.unwrap_or(0) & 0o170000 != 0o040000 {
+                        return Err("sftp_type".into());
+                    }
+                }
+            }
+            if item.directory {
+                match retry(terminal, Some(&task.cancel), || sftp.lstat(&remote)) {
+                    Ok(stat) if stat.perm.unwrap_or(0) & 0o170000 == 0o040000 => {}
+                    Ok(_) => return Err("sftp_type".into()),
+                    Err(e) if e == "sftp_missing" => {
+                        retry(terminal, Some(&task.cancel), || sftp.mkdir(&remote, 0o700))?;
+                    }
+                    Err(e) => return Err(e),
+                }
+            }
+        }
+        if !item.directory {
+            let source = local.join(&item.relative);
+            let meta = std::fs::symlink_metadata(&source).map_err(|_| "sftp_local")?;
+            if meta.file_type().is_symlink()
+                || !meta.is_file()
+                || meta.len() != item.size
+                || meta.modified().ok() != item.modified
+                || !std::fs::canonicalize(&source)
+                    .map_err(|_| "sftp_local")?
+                    .starts_with(&canonical)
+            {
+                return Err("sftp_changed".into());
+            }
+            task.status.lock().map_err(|_| "ssh_state")?.name = remote_string(&item.relative)?;
+            transfer(terminal, task, &remote, &source, true, overwrite, true)?;
+        }
+    }
+    if task.status.lock().map_err(|_| "ssh_state")?.bytes != total {
+        return Err("sftp_changed".into());
+    }
+    Ok(())
+}
+pub fn start_folder(
+    terminal: Arc<SshTerminal>,
+    directory: String,
+    local: PathBuf,
+    overwrite: bool,
+) -> Result<String, String> {
+    let name = local
+        .file_name()
+        .and_then(|s| s.to_str())
+        .ok_or("sftp_path")?;
+    let remote = path(&directory)?.join(name);
+    path(&remote_string(&remote)?)?;
+    let mut slot = terminal.remote.transfer.lock().map_err(|_| "ssh_state")?;
+    if slot
+        .as_ref()
+        .is_some_and(|t| t.status.lock().is_ok_and(|p| p.state == "running"))
+    {
+        return Err("sftp_busy".into());
+    }
+    let gate = terminal.remote.gate.try_lock().map_err(|_| "sftp_busy")?;
+    let id = uuid::Uuid::new_v4().to_string();
+    let task = Arc::new(Transfer {
+        cancel: AtomicBool::new(false),
+        status: Mutex::new(Progress {
+            id: id.clone(),
+            name: name.into(),
+            direction: "upload".into(),
+            bytes: 0,
+            total: 0,
+            state: "running".into(),
+            error: None,
+            skipped_links: 0,
+        }),
+    });
+    *slot = Some(task.clone());
+    drop(slot);
+    drop(gate);
+    std::thread::spawn(move || {
+        let result = folder_transfer(&terminal, &task, &remote, &local, overwrite);
+        if let Ok(mut status) = task.status.lock() {
+            status.state = if result.is_ok() {
+                "done"
+            } else if result.as_ref().is_err_and(|e| e == "sftp_cancelled") {
+                "cancelled"
+            } else {
+                "failed"
+            }
+            .into();
+            status.error = result.err();
+        }
+    });
+    Ok(id)
+}
+#[cfg(test)]
+mod folder_tests {
+    #[test]
+    fn plans_nested_files_and_empty_directories_without_reading_file_contents() {
+        let root = std::env::temp_dir().join(format!("termix-folder-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(root.join("nested/empty")).unwrap();
+        std::fs::write(root.join("nested/file.txt"), b"abc").unwrap();
+        let (plan, total, skipped) =
+            super::folder_plan(&root, &std::sync::atomic::AtomicBool::new(false)).unwrap();
+        assert_eq!(total, 3);
+        assert_eq!(skipped, 0);
+        assert_eq!(plan.len(), 4);
+        assert!(super::folder_plan(&root, &std::sync::atomic::AtomicBool::new(true)).is_err());
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

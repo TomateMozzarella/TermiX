@@ -210,5 +210,5 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Default shell belongs in first-run setup and later settings, not a raw always-visible sidebar dropdown. Unify the logo and remove redundant/disconnected status text.
 - 2026-11-04 installed v0.5 feedback and v0.6 delivery: drag interception, SFTP upload alignment/side/start directory, terminal contrast, context menus, GitHub EXE assets and tested upgrade preservation are recorded in the v0.6 section. Terminal prompt/true-colour output still depends on the remote shell/application; no remote startup files are modified automatically.
 
-
-
+### Recursive SFTP folder upload (2026-11-08)
+Added to v0.10: native folder selection, nested files and empty directories, aggregate byte progress and cancellation. Replacement remains opt-in. Links and special files are skipped and counted; traversal is bounded to 10,000 entries and 32 levels. Completed files/directories remain after cancellation; the current partial file is cleaned up. No automatic resume or Explorer folder drag/drop. Native Windows integration validation is pending.

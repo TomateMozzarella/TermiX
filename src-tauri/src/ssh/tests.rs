@@ -420,6 +420,38 @@ fn sftp_listing_streaming_transfers_overwrite_and_cancel() {
     .unwrap();
     assert_eq!(finish(&terminal).state, "done");
     assert_eq!(std::fs::read(downloaded).unwrap(), expected);
+    let folder = dir.join(format!("tree-{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(folder.join("nested/empty")).unwrap();
+    std::fs::write(folder.join("nested/example.txt"), b"folder bytes").unwrap();
+    std::fs::write(folder.join("root.txt"), b"root").unwrap();
+    crate::sftp::start_folder(Arc::clone(&terminal), "/".into(), folder.clone(), false).unwrap();
+    let uploaded = finish(&terminal);
+    assert_eq!(uploaded.state, "done", "{:?}", uploaded.error);
+    assert_eq!(uploaded.bytes, 16);
+    assert_eq!(uploaded.total, 16);
+    let remote_folder = format!("/{}", folder.file_name().unwrap().to_str().unwrap());
+    assert!(
+        crate::sftp::list(&terminal, &format!("{remote_folder}/nested"))
+            .unwrap()
+            .entries
+            .iter()
+            .any(|e| e.name == "empty" && e.directory)
+    );
+    crate::sftp::start(
+        Arc::clone(&terminal),
+        format!("{remote_folder}/nested/example.txt"),
+        dir.join("folder-result.txt"),
+        false,
+        false,
+    )
+    .unwrap();
+    assert_eq!(finish(&terminal).state, "done");
+    assert_eq!(
+        std::fs::read(dir.join("folder-result.txt")).unwrap(),
+        b"folder bytes"
+    );
+    crate::sftp::start_folder(Arc::clone(&terminal), "/".into(), folder, false).unwrap();
+    assert_eq!(finish(&terminal).error.as_deref(), Some("sftp_exists"));
     let target = dir.join("cancel.bin");
     std::fs::write(&target, b"preserve").unwrap();
     let task = crate::sftp::start(
@@ -709,4 +741,3 @@ fn tcp_tunnels_forward_both_directions_and_stop_without_restarting_ssh() {
     stop.store(true, Ordering::Release);
     worker.join().unwrap();
 }
-

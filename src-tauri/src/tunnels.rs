@@ -76,7 +76,11 @@ fn ssh_retry<T>(
                 terminal.close();
                 return Err("tunnel_timeout".into());
             }
-            _ => return Err("tunnel_refused".into()),
+            Err(e) => {
+                #[cfg(test)]
+                eprintln!("Tunnel control error: {:?}", e.code());
+                return Err("tunnel_refused".into());
+            }
         }
     }
 }
@@ -388,4 +392,3 @@ mod tests {
         assert!(super::validate(&mut c).is_err());
     }
 }
-

@@ -42,4 +42,3 @@ test('terminal context search finds output; snippets need explicit identified ta
 test('workspace restoration retains tab order and widths but never automatically authenticates SSH', async ({page}) => {
  await ssh(page); await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('test-workspace')??'null')?.tabs.length)).toBe(2); await page.reload(); await page.getByRole('button',{name:'Restore workspace',exact:true}).click(); await expect(page.getByRole('tab')).toHaveCount(2); expect(await page.evaluate(()=>(window as any).testCalls.filter((c:any)=>c.command==='ssh_open').length)).toBe(0); await expect(page.getByRole('button',{name:'Reconnect',exact:true})).toBeVisible();
 });
-

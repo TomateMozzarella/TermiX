@@ -25,4 +25,3 @@ export const defaults = (shell: string): Preferences => ({ schemaVersion: 2, set
 
 export const getPreferences = () => invoke<Preferences | null>("get_preferences");
 export const savePreferences = (preferences: Preferences) => invoke<Preferences>("save_preferences", { preferences });
-

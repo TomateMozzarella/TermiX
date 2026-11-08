@@ -295,4 +295,3 @@ mod reminder_tests {
         std::fs::remove_file(path).unwrap();
     }
 }
-

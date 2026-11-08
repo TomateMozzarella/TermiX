@@ -6,6 +6,7 @@ pub enum Choice {
     Import,
     Export,
     Upload,
+    UploadFolder,
     Download(String),
 }
 
@@ -33,6 +34,9 @@ pub async fn choose(
 
 #[cfg(windows)]
 fn show(owner: usize, choice: Choice) -> Result<Option<PathBuf>, String> {
+    if matches!(choice, Choice::UploadFolder) {
+        return folder(owner);
+    }
     use windows_sys::Win32::UI::Controls::Dialogs::*;
     let filter = match choice {
         Choice::Editor => "Windows executable (*.exe)\0*.exe\0\0",
@@ -105,4 +109,56 @@ fn show(owner: usize, choice: Choice) -> Result<Option<PathBuf>, String> {
         return Err("file_type_invalid".into());
     }
     Ok(Some(path))
+}
+#[cfg(windows)]
+fn folder(owner: usize) -> Result<Option<PathBuf>, String> {
+    use windows_sys::Win32::{System::Com::*, UI::Shell::*};
+    // Owner-bound shell folder picker, running on the existing STA UI thread.
+    unsafe {
+        let result = CoInitializeEx(std::ptr::null(), COINIT_APARTMENTTHREADED as u32);
+        if result < 0 {
+            return Err("file_dialog_failed".into());
+        }
+        struct Com;
+        impl Drop for Com {
+            fn drop(&mut self) {
+                unsafe {
+                    CoUninitialize();
+                }
+            }
+        }
+        let _com = Com;
+        let mut display = vec![0u16; 32768];
+        let title = "TermiX · SFTP\0".encode_utf16().collect::<Vec<_>>();
+        let mut info: BROWSEINFOW = std::mem::zeroed();
+        info.hwndOwner = owner as _;
+        info.pszDisplayName = display.as_mut_ptr();
+        info.lpszTitle = title.as_ptr();
+        info.ulFlags = BIF_RETURNONLYFSDIRS | BIF_USENEWUI;
+        let selected = SHBrowseForFolderW(&info);
+        if selected.is_null() {
+            return Ok(None);
+        }
+        let mut buffer = vec![0u16; 32768];
+        let ok = SHGetPathFromIDListEx(
+            selected,
+            buffer.as_mut_ptr(),
+            buffer.len() as u32,
+            GPFIDL_DEFAULT,
+        );
+        CoTaskMemFree(selected.cast());
+        if ok == 0 {
+            return Err("file_dialog_failed".into());
+        }
+        let len = buffer
+            .iter()
+            .position(|c| *c == 0)
+            .ok_or("file_dialog_failed")?;
+        let path =
+            PathBuf::from(String::from_utf16(&buffer[..len]).map_err(|_| "file_dialog_failed")?);
+        if !path.is_absolute() {
+            return Err("file_dialog_failed".into());
+        }
+        Ok(Some(path))
+    }
 }

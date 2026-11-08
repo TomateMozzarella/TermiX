@@ -69,7 +69,7 @@ export async function mockDesktop(page: Page, configured = false, legacy = false
       if (command === "sftp_mkdir") { mock.createdFolder = args.name; return; }
       if (command === "sftp_list") { if (mock.sftpFailure) throw mock.sftpFailure; if (mock.sftpListings?.[args.path]) return mock.sftpListings[args.path]; return { path: args.path === "." ? "/home/test" : args.path, entries: [{ name: "docs", path: "/home/test/docs", directory: true, link: false }, { name: "hello.txt", path: "/home/test/hello.txt", size: 15, directory: false, link: false }] }; }
       if (command === "sftp_progress") return mock.sftpProgress ?? null;
-      if (command === "sftp_upload" || command === "sftp_download") { mock.sftpProgress = { id: "transfer-test", name: "hello.txt", direction: command === "sftp_upload" ? "upload" : "download", state: "running", bytes: 5, total: 15 }; return "transfer-test"; }
+      if (command === "sftp_upload" || command === "sftp_upload_folder" || command === "sftp_download") { mock.sftpProgress = { id: "transfer-test", name: "hello.txt", direction: command !== "sftp_download" ? "upload" : "download", state: "running", bytes: 5, total: 15 }; return "transfer-test"; }
       if (command === "sftp_cancel") { mock.sftpProgress.state = "cancelled"; return; }
       if (command === "open_terminal") return `terminal-${mock.testCalls.length}`;
       if(command==="read_terminal"&&args.id.startsWith("ssh-")&&mock.sshTerminalOutput){const text=mock.sshTerminalOutput;mock.sshTerminalOutput="";return{type:"data",bytes:Array.from(new TextEncoder().encode(text))};}
@@ -82,4 +82,3 @@ export async function mockDesktop(page: Page, configured = false, legacy = false
   }, { configured, legacy });
 }
 export async function preview(page: Page, name: string) { if (process.env.TERMIX_PREVIEW_DIR) await page.screenshot({ path: `${process.env.TERMIX_PREVIEW_DIR}/${name}.png`, animations: "disabled" }); }
-

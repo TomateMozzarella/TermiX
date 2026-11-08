@@ -94,4 +94,3 @@ export function PreferencesDialog({ mode, profiles, initial, onSave, onClose, on
     </div>
   </div>;
 }
-

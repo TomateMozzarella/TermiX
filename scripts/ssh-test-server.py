@@ -113,6 +113,7 @@ class Server(paramiko.ServerInterface):
         self.direct[chanid]=destination
         return paramiko.OPEN_SUCCEEDED
     def check_port_forward_request(self, address, port):
+        print("fixture forward request", repr(address), port, flush=True)
         if address not in ("127.0.0.1", "::1"): return False
         listener=socket.socket(socket.AF_INET6 if address=="::1" else socket.AF_INET,socket.SOCK_STREAM)
         try: listener.bind((address,port)); listener.listen(8); listener.settimeout(.1)
@@ -203,4 +204,3 @@ listener.bind(('127.0.0.1', args.port)); listener.listen(16)
 while True:
     client, _ = listener.accept()
     threading.Thread(target=connection, args=(client,), daemon=True).start()
-

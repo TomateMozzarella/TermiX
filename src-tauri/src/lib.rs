@@ -147,6 +147,7 @@ pub fn run() {
             commands::tunnel_list,
             commands::tunnel_stop,
             commands::sftp_upload,
+            commands::sftp_upload_folder,
             commands::sftp_download,
             commands::sftp_progress,
             commands::sftp_cancel,
@@ -158,4 +159,3 @@ pub fn run() {
         .run(context)
         .expect("error while running TermiX");
 }
-

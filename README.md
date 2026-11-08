@@ -151,4 +151,5 @@ See https://v2.tauri.app/start/prerequisites/
 - Use explicit Tauri capabilities and narrow IPC commands.
 - Keep protocol-specific functionality behind backend interfaces.
 
-
+### Recursive SFTP folder upload (2026-11-08)
+Added to v0.10: native folder selection, nested files and empty directories, aggregate byte progress and cancellation. Replacement remains opt-in. Links and special files are skipped and counted; traversal is bounded to 10,000 entries and 32 levels. Completed files/directories remain after cancellation; the current partial file is cleaned up. No automatic resume or Explorer folder drag/drop. Native Windows integration validation is pending.

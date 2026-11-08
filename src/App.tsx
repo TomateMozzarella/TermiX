@@ -212,4 +212,3 @@ export default function App() {
     {sshTarget && <Suspense fallback={<div role="status">{tr("connecting")}</div>}><SshDialog session={sshTarget.session} language={lang} onClose={() => setSshTarget(null)} onConnected={connected}/></Suspense>}
   </div>;
 }
-

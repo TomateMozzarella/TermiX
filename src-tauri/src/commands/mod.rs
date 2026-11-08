@@ -578,4 +578,19 @@ pub fn tunnel_list(
 pub fn tunnel_stop(state: State<'_, crate::tunnels::Tunnels>, id: String) {
     state.stop(&id)
 }
-
+#[tauri::command]
+pub async fn sftp_upload_folder(
+    state: State<'_, crate::ssh::SshManager>,
+    window: tauri::WebviewWindow,
+    id: String,
+    directory: String,
+    overwrite: bool,
+) -> Result<Option<String>, String> {
+    let terminal = state.get(&id)?;
+    crate::sftp::path(&directory)?;
+    let Some(local) = crate::files::choose(window, crate::files::Choice::UploadFolder).await?
+    else {
+        return Ok(None);
+    };
+    crate::sftp::start_folder(terminal, directory, local, overwrite).map(Some)
+}
