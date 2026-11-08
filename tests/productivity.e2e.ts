@@ -12,7 +12,7 @@ test('shared SFTP replaces the library, expandable directories do not change the
 });
 test('external opening is nonmodal; unchanged return stays in terminal and changed saves need approval', async ({page}) => {
  const requests:string[]=[];page.on('request',r=>requests.push(r.url()));await ssh(page,true);await page.getByRole('button',{name:'SFTP',exact:true}).click();await page.getByRole('button',{name:'Edit: hello.txt',exact:true}).click();
- await expect(page.getByRole('button',{name:/^External files/})).toBeVisible(); await expect(page.getByRole('dialog')).toHaveCount(0); expect(requests.some(url=>url.includes("/assets/EditorDialog-"))).toBe(false);
+ await expect(page.getByRole('button',{name:/^External files/})).toBeVisible(); await expect(page.getByRole('dialog')).toHaveCount(0); await expect(page.locator('.terminal-layer:visible .xterm-helper-textarea')).toBeFocused(); expect(requests.some(url=>url.includes("/assets/EditorDialog-"))).toBe(false);
  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await expect(page.getByRole('dialog')).toHaveCount(0);
  await page.evaluate(()=>{(window as any).externalText='external edit';(window as any).externalVersion='changed-1';window.dispatchEvent(new Event('focus'));});
  const dialog=page.getByRole('dialog',{name:'Transfer external changes?',exact:true});await expect(dialog).toBeVisible();expect(await page.evaluate(()=>(window as any).editorSaved)).toBeUndefined();
