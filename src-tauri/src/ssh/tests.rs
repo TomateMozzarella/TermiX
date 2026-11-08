@@ -639,11 +639,23 @@ fn tcp_tunnels_forward_both_directions_and_stop_without_restarting_ssh() {
         stream
             .set_write_timeout(Some(Duration::from_secs(5)))
             .unwrap();
-        let payload = vec![b'z'; 32768];
-        stream.write_all(&payload).unwrap();
-        stream.shutdown(Shutdown::Write).unwrap();
+        let payload = vec![b'z'; 4 * 1024 * 1024];
+        let mut writer = stream.try_clone().unwrap();
+        writer
+            .set_write_timeout(Some(Duration::from_secs(15)))
+            .unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(15)))
+            .unwrap();
+        let sending = payload.clone();
+        let send = std::thread::spawn(move || {
+            writer.write_all(&sending).unwrap();
+            writer.shutdown(Shutdown::Write).unwrap();
+        });
+        std::thread::sleep(Duration::from_millis(250));
         let mut got = Vec::new();
         stream.read_to_end(&mut got).unwrap();
+        send.join().unwrap();
         assert_eq!(got, payload);
         let mut active = TcpStream::connect(&address).unwrap();
         active

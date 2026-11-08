@@ -263,9 +263,10 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
     let (mut to_remote, mut to_local) = (Vec::new(), Vec::new());
     let (mut tcp_eof, mut ssh_eof, mut sent_eof, mut local_eof) = (false, false, false, false);
     let mut buf = [0u8; 16384];
+    let mut write_pending = false;
     while !t.stop.load(Ordering::Acquire) && !t.terminal.is_closed() {
         let mut progressed = false;
-        if !tcp_eof && to_remote.len() < 65536 {
+        if !tcp_eof && !write_pending && to_remote.len() < 65536 {
             let available = (65536 - to_remote.len()).min(buf.len());
             match tcp.read(&mut buf[..available]) {
                 Ok(0) => tcp_eof = true,
@@ -281,10 +282,13 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
             match channel.write(&to_remote) {
                 Ok(0) => break,
                 Ok(n) => {
+                    write_pending = false;
                     to_remote.drain(..n);
                     progressed = true;
                 }
-                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    write_pending = true;
+                }
                 Err(_) => break,
             }
         }
