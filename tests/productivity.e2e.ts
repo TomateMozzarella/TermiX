@@ -11,7 +11,8 @@ test('shared SFTP replaces the library, expandable directories do not change the
  await page.getByRole('button', {name:'Expand folder: docs', exact:true}).click(); await expect(page.getByText('nested.txt', {exact:true})).toHaveCount(0); await page.getByRole('button', {name:'Sessions', exact:true}).click(); await expect(page.locator('.sidebar')).toBeVisible();
 });
 test('external opening is nonmodal; unchanged return stays in terminal and changed saves need approval', async ({page}) => {
- const requests:string[]=[];page.on('request',r=>requests.push(r.url()));await ssh(page,true);await page.getByRole('button',{name:'SFTP',exact:true}).click();await page.getByRole('button',{name:'Edit: hello.txt',exact:true}).click();
+ const requests:string[]=[];page.on('request',r=>requests.push(r.url()));await ssh(page,true);await page.getByRole('button',{name:'SFTP',exact:true}).click();await page.evaluate(()=>{(window as any).externalDelay=true;});await page.getByRole('button',{name:'Edit: hello.txt',exact:true}).dblclick();
+ await expect.poll(()=>page.evaluate(()=>(window as any).testCalls.filter((c:any)=>c.command==='editor_external').length)).toBe(1);
  await expect(page.getByRole('button',{name:/^External files/})).toBeVisible(); await expect(page.getByRole('dialog')).toHaveCount(0); await expect(page.locator('.terminal-layer:visible .xterm-helper-textarea')).toBeFocused(); expect(requests.some(url=>url.includes("/assets/EditorDialog-"))).toBe(false);
  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await expect(page.getByRole('dialog')).toHaveCount(0);
  await page.evaluate(()=>{(window as any).externalText='external edit';(window as any).externalVersion='changed-1';window.dispatchEvent(new Event('focus'));});
@@ -41,3 +42,4 @@ test('terminal context search finds output; snippets need explicit identified ta
 test('workspace restoration retains tab order and widths but never automatically authenticates SSH', async ({page}) => {
  await ssh(page); await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('test-workspace')??'null')?.tabs.length)).toBe(2); await page.reload(); await page.getByRole('button',{name:'Restore workspace',exact:true}).click(); await expect(page.getByRole('tab')).toHaveCount(2); expect(await page.evaluate(()=>(window as any).testCalls.filter((c:any)=>c.command==='ssh_open').length)).toBe(0); await expect(page.getByRole('button',{name:'Reconnect',exact:true})).toBeVisible();
 });
+
