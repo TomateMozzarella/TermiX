@@ -89,7 +89,7 @@ jobs:
       - name: Clear cached installer output before packaging
         run: ./scripts/clean-bundles.ps1
       - name: Build Windows installer
-        run: npm run tauri build
+        run: ./scripts/build-windows.ps1
       - uses: actions/cache/save@v4
         if: always() && steps.release-cache.outputs.cache-primary-key != ''
         with:
@@ -127,3 +127,4 @@ jobs:
           path: installer
       - name: Export verified installer for the connected desktop
         run: python scripts/export-installer.py
+
