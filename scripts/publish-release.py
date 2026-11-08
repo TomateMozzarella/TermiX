@@ -33,11 +33,11 @@ repository_id = api(f'repos/{repo}')['id']
 runs = api(f'repos/{repo}/actions/workflows/windows-build.yml/runs?head_sha={commit}&status=success&per_page=100')['workflow_runs']
 runs = [run for run in runs if run['head_sha'] == commit and run['status'] == 'completed' and run['conclusion'] == 'success'
         and run['head_repository']['id'] == repository_id
-        and ((run['event'] in ('push', 'workflow_dispatch') and run['head_branch'] == 'main') or run['event'] == 'pull_request')]
+        and run['event'] in ('push', 'workflow_dispatch') and run['head_branch'] == 'main']
 if not runs: raise RuntimeError('No successful same-repository build exists for this exact commit')
 run = runs[0]
 jobs = api(f'repos/{repo}/actions/runs/{run["id"]}/jobs?per_page=100')['jobs']
-if any(job['conclusion'] != 'success' for job in jobs) or not {'frontend', 'windows'}.issubset({job['name'] for job in jobs}):
+if any(job['conclusion'] != 'success' for job in jobs) or not {'frontend', 'windows', 'linux-metrics'}.issubset({job['name'] for job in jobs}):
     raise RuntimeError('Required build jobs did not all succeed')
 artifacts = api(f'repos/{repo}/actions/runs/{run["id"]}/artifacts')['artifacts']
 artifact = next((a for a in artifacts if a['name'] == 'TermiX-Windows-Installer' and not a['expired']), None)
@@ -46,7 +46,7 @@ directory = pathlib.Path('release-assets')
 subprocess.run(['gh', 'run', 'download', str(run['id']), '--name', artifact['name'], '--dir', str(directory)], check=True)
 assets = verify_installers(directory, version, commit, run['id'])
 # A draft becomes visible only after all assets and notes have been uploaded.
-subprocess.run(['gh', 'release', 'create', tag, '--target', commit, '--title', 'TermiX ' + version,
+subprocess.run(['gh', 'release', 'create', tag, '--target', commit, '--title', notes.read_text(encoding='utf8').splitlines()[0].removeprefix('# ').strip(),
                 '--notes-file', str(notes), '--prerelease', '--draft', *assets], check=True)
 subprocess.run(['gh', 'release', 'edit', tag, '--draft=false', '--prerelease'], check=True)
 print('Published ' + tag + ' from verified workflow ' + str(run['id']) + ' at ' + commit)
