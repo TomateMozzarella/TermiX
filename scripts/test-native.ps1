@@ -39,7 +39,7 @@ class EditorFixture {
   $env:TERMIX_SSH_AGENT_TEST = '1'
   # Keep the fixture's parent alive throughout the tests. Windows may terminate
   # a hidden child when the earlier runner step's console closes.
-  cargo test --locked --manifest-path src-tauri/Cargo.toml -- --test-threads=1
+  cargo test --locked --manifest-path src-tauri/Cargo.toml -- --test-threads=1 --nocapture
   if ($LASTEXITCODE -ne 0) { throw 'Native integration tests failed' }
 } finally {
   if (!$server.HasExited) { $server.Kill(); $server.WaitForExit() }

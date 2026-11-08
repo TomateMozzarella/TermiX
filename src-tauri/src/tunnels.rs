@@ -290,7 +290,11 @@ fn close_channel(terminal: &SshTerminal, channel: &mut ssh2::Channel) {
     }
 }
 fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
+    #[cfg(test)]
+    eprintln!("Tunnel bridge starting");
     if tcp.set_nonblocking(true).is_err() {
+        #[cfg(test)]
+        eprintln!("Tunnel bridge nonblocking setup failed");
         close_channel(&t.terminal, &mut channel);
         return;
     }

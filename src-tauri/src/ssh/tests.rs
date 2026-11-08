@@ -691,7 +691,8 @@ fn tcp_tunnels_forward_both_directions_and_stop_without_restarting_ssh() {
         assert_eq!(
             got.len(),
             payload.len(),
-            "Forwarded byte count differs for {direction}"
+            "Forwarded byte count differs for {direction}: {}",
+            serde_json::to_string(&tunnels.list(&id)).unwrap()
         );
         assert!(got == payload, "Forwarded content differs for {direction}");
         let mut active = TcpStream::connect(&address).unwrap();
