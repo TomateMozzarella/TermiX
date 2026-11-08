@@ -16,8 +16,10 @@ commands.allow = ["get_preferences", "save_preferences", "get_workspace", "save_
 [[permission]]
 identifier = "ssh"
 description = "Verify SSH host keys, authenticate and open bounded SSH PTY sessions; forget a single optional OS-vault password."
-commands.allow = ["ssh_probe", "ssh_cancel", "ssh_open", "ssh_forget_password"]
+commands.allow = ["ssh_monitor", "ssh_probe", "ssh_cancel", "ssh_open", "ssh_forget_password"]
 [[permission]]
 identifier = "sftp"
 description = "Browse verified SSH transports and transfer files chosen through native dialogs; no arbitrary local paths."
 commands.allow = ["sftp_list", "sftp_upload", "sftp_download", "sftp_progress", "sftp_cancel", "sftp_mkdir", "sftp_file_action", "editor_external_state", "editor_open", "editor_save", "editor_reload", "editor_close", "editor_external", "editor_reload_external"]
+
+

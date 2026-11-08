@@ -141,11 +141,22 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - Application/tag commit `81205dc3de017a3772955ecb9814ee8540efb8e9`; [build 42468504906](https://github.com/TomateMozzarella/TermiX/actions/runs/42468504906) passed 110 checks (35 native Windows, 35 frontend, 32 browser, 8 release-receipt), EXE/MSI packaging, a running-v0.7 upgrade with byte-identical catalog/preferences/known-hosts and portable startup from another working directory with isolated data/WebView. [Publication 42469661873](https://github.com/TomateMozzarella/TermiX/actions/runs/42469661873) published the exact EXE/MSI/portable ZIP. EXE SHA-256 `37cb0677fe93849221ecbb7e88774f922fc75d58e833092ec08af0a660244e24` matches GitHub and the chat copy. Portable ZIP SHA-256 `75a9db775685bea7eb9f96a1b6a9bd3ab14b5152d6e362c62c5e90597d45bf5e`. Interactive uninstall choices, wider editor/server interoperability and real startup timing remain manual validation items.
 - Saved commands were verified across relaunch in native storage/browser workflows. The upgrade check covers existing catalog/preferences/known-hosts; wider portable update/move and interactive credential-uninstall scenarios remain manual. Official bundler downloads use pinned Tauri hashes and bounded retries after repeated transient HTTP-504 failures.
 
-### v0.9.0 – SSH tunnels
+### v0.9.0 – Rendering, monitoring and daily workspace [IN DEVELOPMENT]
+- 2026-11-08 installed screenshots exposed missing xterm runtime styles/cursor and overlapping Monaco lines after v0.8 added hashed startup CSS. Add explicit style-element/attribute policy while preserving self-only scripts/workers and all script hashing; production browser tests must include Tauri-style hashes.
+- Fix native close with the main-window destroy capability and one coordinated unsaved-work guard. Cancel must keep all transports alive; accepted close performs normal native cleanup.
+- Linux monitoring: bounded read-only fixed command over the existing verified SSH transport, separate channel, five-second foreground sampling, CPU deltas, RAM, root-filesystem usage, network rates, uptime, visible sshd session processes and logged-in user count. No sudo or remote installation. Unsupported/missing tools, namespaces and server permissions can limit values; do not show stale data as current. Other operating systems remain planned.
+- Compact named commands; hover/edit reveals text, right-click run/edit/delete and confirmed double-click execution. SFTP mouse back traverses successful visited directories without navigating/reloading the application.
+- External editors still require a local copy; preserve safe original filenames in unique temporary folders. No direct remote-path claim, automatic upload or relaxed conflict checking.
+- Keep settings a stable viewport-bounded size across categories; scroll content while navigation/footer stay visible. Standardize calm rounded controls/panels/menus without styling xterm/Monaco internals globally.
+- User requested six visible terminals: arrange up to six existing tabs in a 3x2/2x3 grid, keep their processes/transports and explicit focused command target. Arbitrary draggable split ratios and persistent split geometry remain follow-ups.
+- Multi-Execute is explicitly requested for planning: opt-in selected targets, visible recipient list and a confirmation before broadcasting; never automatically mirror passwords or input. Not shipped in v0.9.
+- Move SSH tunnels after these reported stability/UX issues.
+
+### v0.10.0 – SSH tunnels
 - Local and remote port forwarding, lifecycle UI, explicit binding configuration, secure defaults and errors.
 - Review security implications of exposing listening ports.
 
-### v0.10.0 – Additional protocols
+### v0.11.0 – Additional protocols
 - RDP, serial connections and X11 support, each evaluated for platform dependencies, security and feasibility.
 - These are PLANNED, not promised as trivial built-in implementations.
 

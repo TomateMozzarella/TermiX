@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
+import { terminalHighlights } from "./terminalHighlights";
 import { SearchAddon } from "@xterm/addon-search";
 import { ContextMenu } from "./ContextMenu";
 import { FitAddon } from "@xterm/addon-fit";
@@ -20,18 +21,18 @@ export function TerminalPane({ tab, active, focusOnActivate, fontSize, theme, ac
   useEffect(() => {
     if (!host.current) return;
     const element = host.current;
-    const terminal = new Terminal({ cursorBlink: true, scrollback: 5000,
+    const terminal = new Terminal({ cursorBlink: true, cursorStyle:"block",cursorInactiveStyle:"outline",allowProposedApi:true,scrollback: 5000,
       fontFamily: '"Cascadia Code", Consolas, monospace', fontSize,
       theme: terminalTheme(visual.current.theme, visual.current.accent) });
-    const fit = new FitAddon(); terminal.loadAddon(fit); const search = new SearchAddon(); terminal.loadAddon(search); controls.current = { terminal, search }; terminal.open(element);
+    const fit = new FitAddon(); terminal.loadAddon(fit); const search = new SearchAddon(); terminal.loadAddon(search); controls.current = { terminal, search }; terminal.open(element);const highlights=terminalHighlights(terminal,()=>visual.current);
     const fitVisible = () => {
       if (element.clientWidth && element.clientHeight) fit.fit();
     };
     fitVisible();
-    appearance.current = (size, theme, accent) => { terminal.options.fontSize = size; terminal.options.theme = terminalTheme(theme, accent); fitVisible(); };
+    appearance.current = (size, theme, accent) => { terminal.options.fontSize = size; terminal.options.theme = terminalTheme(theme, accent); fitVisible(); highlights.refresh(); };
     if (tab.kind !== "local" && !(tab.kind === "ssh" && tab.transportId)) {
       terminal.writeln(t(visual.current.language, "unavailable"));
-      return () => { appearance.current = () => {}; terminal.dispose(); };
+      return () => { appearance.current = () => {}; highlights.dispose();terminal.dispose(); };
     }
     let alive = true;
     const api = tab.transportId ? { ...terminalApi, open: async () => tab.transportId! } : terminalApi;
@@ -58,3 +59,4 @@ export function TerminalPane({ tab, active, focusOnActivate, fontSize, theme, ac
   const find = (previous = false) => { if (!query) return; setFound(!!(previous ? controls.current?.search.findPrevious(query) : controls.current?.search.findNext(query))); };
   return <><div onKeyDown={e => { if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "f") { e.preventDefault(); setSearchOpen(true); } }}>{searchOpen && <form className="terminal-search" onSubmit={e => { e.preventDefault(); find(); }}><input autoFocus aria-label={tr("Find in terminal", "Im Terminal suchen")} value={query} onChange={e => setQuery(e.target.value)}/><button type="button" onClick={() => find(true)}>{tr("Previous", "Zurück")}</button><button>{tr("Next", "Weiter")}</button><button type="button" onClick={() => { setSearchOpen(false); controls.current?.search.clearDecorations(); }}>{tr("Close", "Schließen")}</button>{!found && <span role="status">{tr("No match", "Kein Treffer")}</span>}</form>}</div>{notice && <button className="terminal-reconnect" onClick={() => setNotice("")}>{notice}</button>}{context && <ContextMenu {...context} onClose={() => setContext(null)} items={[{label: tr("Copy", "Kopieren"), action: () => void copy()}, {label: tr("Copy all", "Alles kopieren"), action: () => void copy(true)}, {label: tr("Paste", "Einfügen"), action: () => void paste(), disabled: ended}, {label: tr("Select all", "Alles auswählen"), action: () => controls.current?.terminal.selectAll()}, {label: tr("Find", "Suchen"), action: () => setSearchOpen(true)}, {label: tr("Increase font size", "Schrift vergrößern"), action: () => setSizeOffset(v => Math.min(32 - fontSize, v + 1))}, {label: tr("Decrease font size", "Schrift verkleinern"), action: () => setSizeOffset(v => Math.max(11 - fontSize, v - 1))}, {label: tr("Reset font size", "Schrift zurücksetzen"), action: () => setSizeOffset(0)}, {label: tr("Clear scrollback", "Scrollback leeren"), action: () => { if (window.confirm(tr("Clear this terminal's visible scrollback?", "Sichtbaren Scrollback dieses Terminals leeren?"))) controls.current?.terminal.clear(); }}]}/>} {tab.kind === "ssh" && (ended || !tab.transportId) && <div className="terminal-reconnect"><button className="btn secondary" onClick={onReconnect}>{t(language, "reconnect")}</button></div>}<div ref={host} className="terminal-host" onContextMenu={e => { e.preventDefault(); setContext({ x: e.clientX, y: e.clientY }); }} /></>;
 }
+

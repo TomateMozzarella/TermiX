@@ -56,7 +56,7 @@ export function PreferencesDialog({ mode, profiles, initial, onSave, onClose, on
     if (event.shiftKey && (document.activeElement === first || document.activeElement === title.current)) { event.preventDefault(); last.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   }}>
-    <div ref={panel} className="preferences-panel" role="dialog" aria-modal="true" aria-labelledby="preferences-title">
+    <div ref={panel} className={`preferences-panel ${setup?"":"settings-fixed"}`} role="dialog" aria-modal="true" aria-labelledby="preferences-title">
       <div className="preferences-brand"><img src="/termix.svg" alt=""/><span>TermiX</span><span className="preferences-eyebrow">{tr(setup ? "firstSteps" : "settings")}</span>{!setup && <button className="icon-button" aria-label={tr("closeSettings")} disabled={busy} onClick={onClose}><X size={18}/></button>}</div>
       {!setup && <div className="settings-tabs" role="tablist" aria-label={tr("settings")} onKeyDown={e => { if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return; const buttons = [...e.currentTarget.querySelectorAll<HTMLButtonElement>("[role=tab]")]; const index = buttons.indexOf(e.target as HTMLButtonElement); if (index < 0) return; e.preventDefault(); const next = e.key === "Home" ? 0 : e.key === "End" ? buttons.length - 1 : (index + (e.key === "ArrowRight" ? 1 : buttons.length - 1)) % buttons.length; buttons[next].focus(); setStep(next); }}>{[...stages, "files" as const].map((key, i) => <button role="tab" tabIndex={i === step ? 0 : -1} key={key} aria-selected={i === step} onClick={() => setStep(i)}>{key === "files" ? (lang === "de" ? "Dateien" : "Files") : tr(key)}</button>)}</div>}
       {setup && <div className="setup-progress four-steps">{stages.map((key, i) => <span key={key} className={i === step ? "current" : i < step ? "complete" : ""}>{String(i + 1).padStart(2, "0")} · {tr(key)}</span>)}</div>}
@@ -93,3 +93,4 @@ export function PreferencesDialog({ mode, profiles, initial, onSave, onClose, on
     </div>
   </div>;
 }
+

@@ -101,6 +101,13 @@ class Server(paramiko.ServerInterface):
     def check_auth_publickey(self, username, key):
         event('key', username)
         return paramiko.AUTH_SUCCESSFUL if key in (user_key, ed_user_key) else paramiko.AUTH_FAILED
+    def check_channel_exec_request(self, channel, command):
+        if b"TERMIX_MONITOR_V1" not in command: return False
+        def metrics():
+            channel.sendall(b"TERMIX_MONITOR_V1\\ncpu 100 70\\nmem 2048 512\\ndisk 4096 1024\\nuptime 120\\nnet 1000 2000\\nssh 3\\nusers 2\\n".replace(b"\\n", b"\n"))
+            channel.send_exit_status(0); channel.shutdown_write()
+        threading.Thread(target=metrics, daemon=True).start()
+        return True
     def check_channel_request(self, kind, chanid):
         return paramiko.OPEN_SUCCEEDED if kind == 'session' else paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
     def check_channel_pty_request(self, channel, term, width, height, pw, ph, modes): return True
@@ -147,3 +154,4 @@ listener.bind(('127.0.0.1', args.port)); listener.listen(16)
 while True:
     client, _ = listener.accept()
     threading.Thread(target=connection, args=(client,), daemon=True).start()
+

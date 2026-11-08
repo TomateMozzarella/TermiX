@@ -541,3 +541,15 @@ pub async fn sftp_file_action(
     .await
     .map_err(|_| "sftp_failed".to_owned())?
 }
+#[tauri::command]
+pub async fn ssh_monitor(
+    app: tauri::AppHandle,
+    id: String,
+) -> Result<crate::monitor::Sample, String> {
+    use tauri::Manager;
+    let terminal = app.state::<crate::ssh::SshManager>().get(&id)?;
+    tauri::async_runtime::spawn_blocking(move || crate::monitor::sample(&terminal))
+        .await
+        .map_err(|_| "monitor_unavailable".to_string())?
+}
+

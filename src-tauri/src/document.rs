@@ -213,13 +213,7 @@ pub fn external(terminal: &SshTerminal, token: &str, executable: String) -> Resu
         std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700))
             .map_err(|_| "sftp_local")?;
     }
-    let extension = doc
-        .path
-        .extension()
-        .and_then(|s| s.to_str())
-        .filter(|s| s.len() <= 12 && s.chars().all(|c| c.is_ascii_alphanumeric()))
-        .unwrap_or("txt");
-    let local = dir.join(format!("working-copy.{extension}"));
+    let local = dir.join(working_name(&doc.path));
     let subsystem = terminal.remote.subsystem.lock().map_err(|_| "ssh_state")?;
     let (bytes, _) = read(
         terminal,
@@ -322,3 +316,47 @@ pub fn external_state(
         digest: hash,
     })
 }
+fn working_name(path: &std::path::Path) -> String {
+    let extension = path
+        .extension()
+        .and_then(|s| s.to_str())
+        .filter(|s| s.len() <= 12 && s.chars().all(|c| c.is_ascii_alphanumeric()))
+        .unwrap_or("txt");
+    let basename = path.file_name().and_then(|s| s.to_str()).filter(|s| {
+        let stem = s.split('.').next().unwrap_or("").to_ascii_uppercase();
+        let reserved = matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+            || ((stem.starts_with("COM") || stem.starts_with("LPT"))
+                && stem.len() == 4
+                && matches!(stem.as_bytes()[3], b'1'..=b'9'));
+        !reserved
+            && !s.is_empty()
+            && s.len() <= 160
+            && !s
+                .chars()
+                .any(|c| c.is_control() || "<>:\\\"/\\\\|?*".contains(c))
+            && !s.ends_with([' ', '.'])
+    });
+    basename
+        .map(str::to_owned)
+        .unwrap_or_else(|| format!("remote-file.{extension}"))
+}
+#[cfg(test)]
+mod filename_tests {
+    #[test]
+    fn preserves_remote_basename_and_handles_windows_reserved_names() {
+        use std::path::Path;
+        assert_eq!(
+            super::working_name(Path::new("/home/test/docker-compose.yaml")),
+            "docker-compose.yaml"
+        );
+        assert_eq!(
+            super::working_name(Path::new("/home/test/CON.txt")),
+            "remote-file.txt"
+        );
+        assert_eq!(
+            super::working_name(Path::new("/home/test/bad?.yaml")),
+            "remote-file.yaml"
+        );
+    }
+}
+

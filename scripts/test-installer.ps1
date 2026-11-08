@@ -10,14 +10,14 @@ if (!$installer) { throw 'Installer missing' }
 
 $bootstrapInstaller = $installer
 $bootstrapVersion = $version
-if ($version -eq '0.8.0') {
- $baselineDir = Join-Path $env:RUNNER_TEMP 'termix-baseline-0.7.0'
+if ($version -eq '0.9.0') {
+ $baselineDir = Join-Path $env:RUNNER_TEMP 'termix-baseline-0.8.0'
  New-Item -ItemType Directory -Force -Path $baselineDir | Out-Null
- gh release download v0.7.0 --repo $env:GH_REPO --pattern 'TermiX_0.7.0_x64-setup.exe' --dir $baselineDir
+ gh release download v0.8.0 --repo $env:GH_REPO --pattern 'TermiX_0.8.0_x64-setup.exe' --dir $baselineDir
  if ($LASTEXITCODE -ne 0) { throw 'Could not download the immutable v0.7 upgrade baseline' }
- $bootstrapInstaller = Join-Path $baselineDir 'TermiX_0.7.0_x64-setup.exe'
- if ((Get-FileHash $bootstrapInstaller -Algorithm SHA256).Hash -ne 'F632C2141DA8E5847B1F9E2FDA0FD93EAD580991613CC1AC21C1EE7C4C94EDF1') { throw 'Upgrade baseline checksum mismatch' }
- $bootstrapVersion = '0.7.0'
+ $bootstrapInstaller = Join-Path $baselineDir 'TermiX_0.8.0_x64-setup.exe'
+ if ((Get-FileHash $bootstrapInstaller -Algorithm SHA256).Hash -ne '37CB0677FE93849221ECBB7E88774F922FC75D58E833092EC08AF0A660244E24') { throw 'Upgrade baseline checksum mismatch' }
+ $bootstrapVersion = '0.8.0'
 }
 $desktop = [Environment]::GetFolderPath('Desktop')
 $linkPath = Join-Path $desktop 'TermiX.lnk'
@@ -71,3 +71,4 @@ if ($finalVersion.ProductMajorPart -ne $expectedVersion.Major -or $finalVersion.
 Write-Output "Verified upgrade from $bootstrapVersion to $version."
 Write-Output 'Upgrade closes the running installed app and preserves catalog, preferences and known hosts byte-for-byte.'
 Write-Output "Silent installation of $version, executable version, bundled licenses and existing desktop shortcut icon verified."
+

@@ -14,11 +14,12 @@ export function SftpPane({ id, language, initialPath, onEdit, onClose }: { id: s
   const tr = (key: RemoteKey) => remoteText(language, key);
   const [listing, setListing] = useState<Listing>({ path: ".", entries: [] }), [input, setInput] = useState("."), [busy, setBusy] = useState(false), [error, setError] = useState(""), [progress, setProgress] = useState<Progress | null>(null), [overwrite, setOverwrite] = useState(false);
   const [tree, setTree] = useState<Record<string, Entry[]>>({}), [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const history=useRef<string[]>([]),returning=useRef(false);
   const epoch = useRef(0), alive = useRef(true), currentPath = useRef(".");
   const failure = (value: unknown) => { if (alive.current) setError(String(value)); };
   async function navigate(path: string) {
     const request = ++epoch.current; setBusy(true); setError("");
-    try { const result = await invoke<Listing>("sftp_list", { id, path }); if (alive.current && epoch.current === request) { setSelected(null); setTree({}); setExpanded({}); setListing(result); setInput(result.path); currentPath.current = result.path; } }
+    try { const result = await invoke<Listing>("sftp_list", { id, path }); if (alive.current && epoch.current === request) { if(!returning.current&&currentPath.current!=="."&&currentPath.current!==result.path)history.current.push(currentPath.current);returning.current=false;setSelected(null); setTree({}); setExpanded({}); setListing(result); setInput(result.path); currentPath.current = result.path; } }
     catch (e) { if (epoch.current === request) failure(e); }
     finally { if (alive.current && epoch.current === request) setBusy(false); }
   }
@@ -26,6 +27,7 @@ export function SftpPane({ id, language, initialPath, onEdit, onClose }: { id: s
     const poll = async () => { try { const value = await invoke<Progress | null>("sftp_progress", { id }); if (!alive.current) return; setProgress(value); if (value && value.state !== "running" && previous === "running") void navigate(currentPath.current); previous = value?.state ?? ""; } catch (e) { failure(e); } if (alive.current) timer = setTimeout(poll, 600); };
     void poll(); return () => { alive.current = false; ++epoch.current; clearTimeout(timer); };
   }, [id]);
+  useEffect(()=>{const back=(event:MouseEvent)=>{if(event.button===3){event.preventDefault();const previous=history.current.pop();if(previous){returning.current=true;void navigate(previous);}}};window.addEventListener("mouseup",back);const block=(e:MouseEvent)=>{if(e.button===3)e.preventDefault();};window.addEventListener("mousedown",block);window.addEventListener("auxclick",block);return()=>{window.removeEventListener("mouseup",back);window.removeEventListener("mousedown",block);window.removeEventListener("auxclick",block);};},[id]);
   const running = progress?.state === "running";
   async function upload() { setBusy(true); setError(""); try { await invoke("sftp_upload", { id, directory: listing.path, overwrite }); } catch (e) { failure(e); } finally { if (alive.current) setBusy(false); } }
   async function download(path: string) { setBusy(true); setError(""); try { await invoke("sftp_download", { id, path }); } catch (e) { failure(e); } finally { if (alive.current) setBusy(false); } }
@@ -61,3 +63,4 @@ export function SftpPane({ id, language, initialPath, onEdit, onClose }: { id: s
     {newFolder !== null && <Modal title={language === "de" ? "Neuer Ordner" : "New folder"} closeLabel={tr("cancel")} busy={busy} onClose={() => setNewFolder(null)} footer={<button className="btn primary" disabled={busy || !newFolder.trim()} onClick={() => { setBusy(true); setError(""); void invoke("sftp_mkdir", { id, directory: listing.path, name: newFolder }).then(() => { setNewFolder(null); return navigate(listing.path); }).catch(failure).finally(() => setBusy(false)); }}>{language === "de" ? "Erstellen" : "Create"}</button>}><label className="field"><span>{language === "de" ? "Ordnername" : "Folder name"}</span><input value={newFolder} onChange={e => setNewFolder(e.target.value)} autoFocus/></label>{error && <p className="preferences-error" role="alert">{message(error)}</p>}</Modal>}
   </section>;
 }
+

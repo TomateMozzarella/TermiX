@@ -3,5 +3,7 @@
   "identifier": "default",
   "description": "Minimal application window permissions",
   "windows": ["main"],
-  "permissions": ["core:default", "core:window:allow-set-theme", "local-terminal", "session-storage", "preferences", "ssh", "sftp"]
+  "permissions": ["core:default", "core:window:allow-set-theme", "core:window:allow-destroy", "local-terminal", "session-storage", "preferences", "ssh", "sftp"]
 }
+
+

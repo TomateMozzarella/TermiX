@@ -7,6 +7,7 @@ mod editors;
 mod error;
 mod files;
 mod models;
+mod monitor;
 mod preferences;
 mod sftp;
 mod snippets;
@@ -138,6 +139,7 @@ pub fn run() {
             commands::editor_reload_external,
             commands::sftp_mkdir,
             commands::sftp_list,
+            commands::ssh_monitor,
             commands::sftp_upload,
             commands::sftp_download,
             commands::sftp_progress,

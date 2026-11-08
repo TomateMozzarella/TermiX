@@ -153,6 +153,11 @@ fn real_ssh_password_unicode_interactive_input_resize_exit_and_reconnect() {
         .unwrap();
     let terminal = manager.get(&id).unwrap();
     receive(&terminal, "ö");
+    let metrics = crate::monitor::sample(&terminal).unwrap();
+    assert_eq!(metrics.ssh_sessions, 3);
+    assert_eq!(metrics.memory_used, 1536 * 1024);
+    terminal.write(b"after-monitor\r").unwrap();
+    receive(&terminal, "remote:after-monitor");
     terminal.write("hello-ö\r".as_bytes()).unwrap();
     receive(&terminal, "remote:hello-ö");
     terminal.resize(120, 40).unwrap();
@@ -556,3 +561,4 @@ fn remote_editor_roundtrip_conflicts_and_session_bound_tokens() {
     assert!(crate::document::save(&terminal, &doc.token, "closed".into()).is_err());
     manager.close(&id);
 }
+
