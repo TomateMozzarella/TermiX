@@ -17,8 +17,12 @@ try {
  if($process.HasExited){throw 'Portable app exited during startup'}
  if(!(Test-Path -LiteralPath (Join-Path $stage 'data'))){throw 'Portable data folder missing; executable-relative routing failed'}
  if(!(Test-Path -LiteralPath (Join-Path $stage 'data/webview'))){throw 'Portable WebView data was not isolated'}
+ $process.Refresh()
+ if(!$process.CloseMainWindow()){throw 'Native main-window close request could not be sent'}
+ if(!$process.WaitForExit(10000)){throw 'App ignored native main-window close request'}
 } finally { $process.Refresh();if(!$process.HasExited){$process.Kill();$process.WaitForExit()} }
 $archive=Join-Path $bundle "TermiX_${version}_x64-portable.zip"
 # Explicit file list: never package the data directory created by the smoke test.
 Compress-Archive -LiteralPath @((Join-Path $stage 'TermiX.exe'),(Join-Path $stage 'portable.flag'),(Join-Path $stage 'README.txt'),(Join-Path $stage 'termix-v3.ico'),(Join-Path $stage 'THIRD_PARTY_LICENSES.txt')) -DestinationPath $archive
-Write-Output 'Portable startup, executable-relative data and WebView isolation verified; user data excluded from ZIP.'
+Write-Output 'Portable startup, executable-relative data/WebView isolation and native window close verified; user data excluded from ZIP.'
+
