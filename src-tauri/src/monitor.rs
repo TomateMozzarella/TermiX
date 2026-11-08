@@ -6,6 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 const COMMAND: &str = r#"LC_ALL=C; export LC_ALL; test -r /proc/stat || exit 1
+for tool in awk df ps who; do command -v "$tool" >/dev/null 2>&1 || exit 1; done
 printf 'TERMIX_MONITOR_V1\n'
 awk '/^cpu / {t=0;for(i=2;i<=9;i++)t+=$i;printf "cpu %.0f %.0f\n",t,$5+$6}' /proc/stat
 awk '/^MemTotal:/{t=$2}/^MemAvailable:/{a=$2}END{print "mem",t,a}' /proc/meminfo
