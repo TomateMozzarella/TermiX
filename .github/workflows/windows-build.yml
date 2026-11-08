@@ -2,6 +2,11 @@ name: Build TermiX for Windows
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - 'AGENTS.md'
+      - '.gitignore'
   pull_request:
     branches: [main]
   workflow_dispatch:

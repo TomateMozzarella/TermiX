@@ -134,7 +134,7 @@ fn folder(owner: usize) -> Result<Option<PathBuf>, String> {
         info.hwndOwner = owner as _;
         info.pszDisplayName = display.as_mut_ptr();
         info.lpszTitle = title.as_ptr();
-        info.ulFlags = BIF_RETURNONLYFSDIRS | BIF_USENEWUI;
+        info.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE | BIF_EDITBOX;
         let selected = SHBrowseForFolderW(&info);
         if selected.is_null() {
             return Ok(None);

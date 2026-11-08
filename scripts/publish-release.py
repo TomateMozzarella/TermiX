@@ -16,7 +16,8 @@ def api(path):
 repo, commit = os.environ['GH_REPO'], os.environ['TERMIX_COMMIT']
 if not re.fullmatch(r'[a-f0-9]{40}', commit): raise RuntimeError('Invalid source commit')
 if gh('api', f'repos/{repo}/git/ref/heads/main', '--jq', '.object.sha') != commit:
-    raise RuntimeError('main moved; do not publish a stale build')
+    print('main moved; preserving immutable releases and waiting for its verified build')
+    raise SystemExit(0)
 version = json.loads(pathlib.Path('package.json').read_text())['version']
 if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?', version): raise RuntimeError('Invalid version')
 tag = 'v' + version
@@ -45,8 +46,13 @@ if artifact is None: raise RuntimeError('Verified installer artifact is missing 
 directory = pathlib.Path('release-assets')
 subprocess.run(['gh', 'run', 'download', str(run['id']), '--name', artifact['name'], '--dir', str(directory)], check=True)
 assets = verify_installers(directory, version, commit, run['id'])
+# Add verified build provenance to the readable, versioned changelog.
+published_notes = pathlib.Path('release-notes.md')
+published_notes.write_text(notes.read_text(encoding='utf8') + '\n\n## Validation & source\n\n' +
+    f'[Exact source]({"https://github.com/" + repo}/commit/{commit}) · [Successful build]({"https://github.com/" + repo}/actions/runs/{run["id"]})\n\n' +
+    'Frontend/browser workflows, Linux metrics and native Windows integration passed before packaging. The build also verifies the installer upgrade and portable isolation. SHA256SUMS and release-manifest.json bind the downloads to this source and build. These checks are not an independent security audit.\n', encoding='utf8')
 # A draft becomes visible only after all assets and notes have been uploaded.
 subprocess.run(['gh', 'release', 'create', tag, '--target', commit, '--title', notes.read_text(encoding='utf8').splitlines()[0].removeprefix('# ').strip(),
-                '--notes-file', str(notes), '--prerelease', '--draft', *assets], check=True)
+                '--notes-file', str(published_notes), '--prerelease', '--draft', *assets], check=True)
 subprocess.run(['gh', 'release', 'edit', tag, '--draft=false', '--prerelease'], check=True)
 print('Published ' + tag + ' from verified workflow ' + str(run['id']) + ' at ' + commit)
