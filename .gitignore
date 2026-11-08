@@ -10,3 +10,4 @@ __pycache__/
 *.pyc
 ui-previews/
 release-assets/
+docs/media/frames/

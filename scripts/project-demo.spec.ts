@@ -1,0 +1,15 @@
+import {test,expect} from '@playwright/test';
+import {mkdirSync} from 'node:fs';
+import {mockDesktop} from '../tests/desktop';
+test('capture an illustrative walkthrough from the actual production UI',async({page})=>{
+ mkdirSync('docs/media/frames',{recursive:true});let frame=0;
+ await mockDesktop(page,true);
+ await page.addInitScript(()=>{const w=window as any;w.hostStatus='known';w.savedSessions=[{id:'demo',name:'Development',kind:'ssh',host:'dev.example.test',port:22,username:'alex',group:''}];w.sshTerminalOutput='Welcome to the development workspace\r\n\r\nalex@dev:~$ docker compose ps\r\nNAME          SERVICE    STATUS          PORTS\r\nweb-1         web        Up 2 hours      0.0.0.0:8080->80/tcp\r\nworker-1      worker     Up 2 hours\r\n\r\nalex@dev:~$ ';w.editorText='services:\n  web:\n    image: nginx:alpine\n    ports:\n      - "8080:80"\n';localStorage.setItem('test-preferences',JSON.stringify({schemaVersion:2,setupVersion:2,setupComplete:true,defaultShell:'powershell',fontSize:16,language:'en',theme:'dark',accent:'#71c9bd',editor:'integrated',editorPath:'',uiScale:110}));});
+ await page.goto('/');await page.getByRole('button',{name:'Open session: Development',exact:true}).click();await page.getByRole('button',{name:'Connect',exact:true}).click();
+ await expect(page.getByRole('complementary',{name:'Remote monitoring',exact:true})).toContainText('SSH 3');
+ await page.evaluate(()=>{const pointer=document.createElement('div');pointer.id='demo-pointer';pointer.innerHTML='<svg width="26" height="32" viewBox="0 0 26 32"><path d="M2 2L2 25L8 19L13 30L18 27L13 17L23 17Z" fill="white" stroke="#172130" stroke-width="2"/></svg>';Object.assign(pointer.style,{position:'fixed',left:'600px',top:'320px',zIndex:'99999',pointerEvents:'none'});document.body.append(pointer);});
+ async function shot(name?:string){await page.screenshot({path:`docs/media/frames/${String(frame++).padStart(3,'0')}.png`});if(name)await page.screenshot({path:`docs/media/${name}.png`});}
+ async function point(button:import('@playwright/test').Locator){const box=await button.boundingBox();if(!box)throw Error('Missing demo target');const target={x:box.x+box.width/2,y:box.y+box.height/2};const start=await page.evaluate(()=>{const p=document.getElementById('demo-pointer')!;return{x:parseFloat(p.style.left),y:parseFloat(p.style.top)};});for(let i=1;i<=5;i++){await page.evaluate(({x,y})=>{const p=document.getElementById('demo-pointer')!;p.style.left=x+'px';p.style.top=y+'px';},{x:start.x+(target.x-start.x)*i/5,y:start.y+(target.y-start.y)*i/5});await shot();}await button.click();await page.waitForTimeout(200);}
+ await shot('workspace-dark');await point(page.getByRole('button',{name:'SFTP',exact:true}));await expect(page.getByRole('toolbar',{name:'File actions',exact:true})).toBeVisible();await shot('sftp-dark');
+ await point(page.getByRole('button',{name:'Edit: hello.txt',exact:true}));await expect(page.locator('.monaco-editor .view-line').first()).toBeVisible();await page.waitForTimeout(400);await shot('editor-dark');
+});
