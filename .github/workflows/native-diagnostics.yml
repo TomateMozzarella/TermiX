@@ -5,7 +5,7 @@ on:
     types: [completed]
   push:
     branches: [main]
-    paths: ['.github/workflows/native-diagnostics.yml']
+    paths: ['.github/workflows/native-diagnostics.yml', 'scripts/summarize-native.py']
 permissions:
   contents: read
   actions: read
@@ -13,6 +13,7 @@ jobs:
   summary:
     if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
       - name: Print bounded native diagnostics
