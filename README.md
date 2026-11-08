@@ -26,7 +26,8 @@ Connect to your servers, browse remote files and keep your everyday commands clo
 | --- | --- |
 | Terminals | Local shells and SSH; reorder, rename, colour and pin tabs; display up to six existing terminals. |
 | Connections | Saved sessions, folders, favourites, recent connections, search and metadata import/export. |
-| Remote files | Browse SFTP on the verified SSH connection; upload/download, create and remove files or empty folders. |
+| Remote files | Browse SFTP on the verified SSH connection; upload whole folders or files, download files, create and remove files or empty folders. |
+| SSH tunnels | Explicit local/remote TCP forwarding with loopback defaults, active connection counts and Stop. |
 | Editing | Integrated Monaco editor, find/replace, read-only comparison, maximize and explicit save to server; optional external editor. |
 | Commands | A compact, searchable sidebar for named commands, with Play, double-click and context actions. |
 | Monitoring | Read-only Linux CPU, RAM, disk, network, uptime and visible SSH/user metrics. |
@@ -39,9 +40,9 @@ Connect to your servers, browse remote files and keep your everyday commands clo
 </tr>
 </table>
 
-### Coming in v0.10
+### New in v0.10
 
-The next release is being validated on `main`: local/remote SSH TCP tunnels, whole-folder SFTP uploads including empty subdirectories, clearer light mode, larger settings, direct command execution, optional grouped file reminders and a shorter tab menu with named colour circles. **Until the new release is published, these additions are development features.** See the [version notes](docs/releases/v0.10.0.md) for limits.
+[v0.10.0 is published](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.10.0): local/remote SSH TCP tunnels, whole-folder SFTP uploads including empty subdirectories, clearer light mode, larger settings, direct command execution, optional grouped file reminders and a shorter tab menu with named colour circles. See the [version notes](docs/releases/v0.10.0.md) for limits.
 
 Multi-Execute, detached windows, additional protocols and resumable folder transfers remain [planned](docs/ROADMAP.md).
 
@@ -66,3 +67,5 @@ Tauri 2 · Rust · React · TypeScript · xterm.js · Monaco
 Development now takes place directly on `main`. Windows CI validates the exact source, native integration, browser workflows, packaging, upgrades and portable isolation before publishing immutable release assets.
 
 See the [contributor instructions](AGENTS.md), [development history and build guidance](docs/PROJECT-HISTORY.md) and [roadmap](docs/ROADMAP.md).
+
+126 checks passed for v0.10.0, including both tunnel directions and recursive SFTP. Installer upgrades and portable isolation also passed. [Verified build and delivery history](docs/PROJECT-HISTORY.md).

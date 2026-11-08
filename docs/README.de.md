@@ -17,7 +17,7 @@ TermiX verbindet lokale Terminals, SSH, SFTP und einen integrierten Editor in ei
 - Benannte Befehle in einer eigenen Seitenleiste speichern und gezielt ausführen.
 - CPU, RAM, Speicherplatz und weitere Linux-Metriken beobachten.
 
-Version 0.10 ist in Prüfung: vollständige Ordner-Uploads, SSH-Tunnel, bessere Lesbarkeit im hellen Modus und weitere Bedienungsverbesserungen. Erst ein veröffentlichter Release enthält die fertig geprüfte neue Version. Multi-Execute und weitere Protokolle sind geplant.
+[Version 0.10 ist veröffentlicht](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.10.0): vollständige Ordner-Uploads, SSH-Tunnel, bessere Lesbarkeit im hellen Modus und weitere Bedienungsverbesserungen. 126 Prüfungen sowie Installer-, Update- und Portable-Prüfungen waren erfolgreich. Multi-Execute und weitere Protokolle sind geplant.
 
 ## Installation oder portable Nutzung
 

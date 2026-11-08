@@ -1,3 +1,9 @@
+# Current v0.10 verified delivery
+
+Application/tag commit `ce50cc0bb73cda73573aeed3a880bc6f80affe19`; [build 42489925990](https://github.com/TomateMozzarella/TermiX/actions/runs/42489925990) passed 126 checks (41 native Windows, 36 frontend, 40 production browser, 8 receipt checks and one exact Linux collector check). Both 4 MiB tunnel directions, active stop and SSH continuity passed, as did recursive SFTP content/empty-directory/overwrite checks. EXE/MSI packaging, a running-v0.9 upgrade preserving catalog/preferences/known-hosts/commands bytes, portable isolation and actual native close passed. [Publication 42491528367](https://github.com/TomateMozzarella/TermiX/actions/runs/42491528367) published the exact immutable EXE/MSI/portable ZIP. EXE SHA-256 `01777e131ac56cd93f6995195bbff510cbd32338055add010df556801d9c87e3` matches GitHub and the chat copy; portable ZIP SHA-256 `87e52cf6daaf7ee89fe38ba0accca93e4f9404e532b638098fc230df15893491`. Interactive folder-picker/gesture choices, broader interoperability and independent review remain manual validation areas.
+
+Development now takes place directly on main. The sections below are historical records and earlier build guidance.
+
 # TermiX
 
 TermiX is an independent, cross-platform remote connection manager built with Tauri 2, Rust, React, TypeScript and xterm.js.

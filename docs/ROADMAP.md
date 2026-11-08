@@ -1,13 +1,13 @@
 # TermiX – Product Roadmap and Project Handoff
 
 Last updated: 2026-11-08
-Status: v0.9.0 implemented, tested, integrated into main and published on 2026-11-08. Linux monitoring, rendering/close fixes, compact commands, stable settings and six-pane view are delivered. Multi-Execute, non-Linux monitoring and advanced layout persistence remain planned. Interactive interoperability and independent review remain separate from automated checks.
+Status: v0.10.0 implemented, tested, integrated into main and published on 2026-11-08. SSH tunnels, recursive folder upload and post-v0.9 UI improvements are delivered. Only main remains; future work stays on main. Multi-Execute and further protocols remain planned.
 Repository: https://github.com/TomateMozzarella/TermiX
 
 The user resumed v0.4 implementation/main/release work on 2026-11-03, revoking the preceding feedback-turn pause. That milestone is complete. SQLite is deferred: the existing JSON library was upgraded to a versioned catalog with atomic writes, OS writer locking, stale-snapshot checks and a legacy backup, covering the folder/session scope without a database migration dependency.
 
 ## Feedback recorded 2026-11-08 after v0.9 — implementation resumed
-The initial documentation-only pause was revoked by the user's subsequent instruction to implement the new points and next version. Implementing in v0.10, pending verification:
+The initial documentation-only pause was revoked by the user's subsequent instruction to implement the new points and next version. Delivered in verified v0.10:
 1. Improve light-mode readability throughout the interface: text/background contrast, muted and disabled text, controls, status/monitoring, terminal colours and editor/popover surfaces. The user reports dark mode is readable; retain its readability while checking both themes.
 2. Make the settings dialog larger. Keep its dimensions stable across categories, bounded by the available viewport, with scrolling content and reachable navigation/footer.
 3. Clicking Play on a saved command/macro should run it directly in the selected terminal, without another confirmation dialog. This explicitly supersedes the earlier confirmation requirement for that single-target Play action. Keep the active target clear; this does not decide the separate planned Multi-Execute workflow.
@@ -25,7 +25,7 @@ Build a polished, modern, cross-platform MobaXterm-style terminal and remote-con
 - The user installed and opened the Windows build successfully and provided a screenshot. The UI runs.
 - GitHub Actions Windows installer build SUCCESS: https://github.com/TomateMozzarella/TermiX/actions/runs/41336575518
 - The previous packaging issue was a missing Windows .ico bundle icon. Preserve bundle.icon = ["icons/icon.ico", "icons/icon.png"] in src-tauri/tauri.conf.json. v0.2.1 generates these from the shared public/termix.svg with the Tauri icon CLI, replacing the temporary TX artwork.
-- Historical v0.1 baseline had placeholder output. Real local terminals arrived in v0.2 and SSH in v0.3. SFTP arrived in v0.5 and editing in v0.6; tunnels, RDP, serial and X11 remain planned.
+- Historical v0.1 baseline had placeholder output. Real local terminals arrived in v0.2 and SSH in v0.3. SFTP arrived in v0.5, editing in v0.6 and tunnels in v0.10; RDP, serial and X11 remain planned.
 - Windows build artifacts are uploaded as TermiX-Windows-Installer by .github/workflows/windows-build.yml.
 - v0.3.0 adds a working SSH engine to the local-terminal baseline. It remains a test build with manual failure-path checks and independent security review outstanding.
 
@@ -161,7 +161,10 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - The real Windows close test was added because the previous mocked browser checks did not exercise the SDK's final native destroy permission; the production-CSP test reproduces Tauri-style CSS hashes and checks visible terminal colours/cursor and Monaco line geometry.
 - Move SSH tunnels after these reported stability/UX issues.
 
-### v0.10.0 – SSH tunnels and daily workflow [IN DEVELOPMENT]
+### v0.10.0 – SSH tunnels and daily workflow [DELIVERED]
+
+Application/tag commit `ce50cc0bb73cda73573aeed3a880bc6f80affe19`; [build 42489925990](https://github.com/TomateMozzarella/TermiX/actions/runs/42489925990) passed 126 checks (41 native Windows, 36 frontend, 40 production browser, 8 receipt checks and one exact Linux collector check). Both 4 MiB tunnel directions, active stop and SSH continuity passed, as did recursive SFTP content/empty-directory/overwrite checks. EXE/MSI packaging, a running-v0.9 upgrade preserving catalog/preferences/known-hosts/commands bytes, portable isolation and actual native close passed. [Publication 42491528367](https://github.com/TomateMozzarella/TermiX/actions/runs/42491528367) published the exact immutable EXE/MSI/portable ZIP. EXE SHA-256 `01777e131ac56cd93f6995195bbff510cbd32338055add010df556801d9c87e3` matches GitHub and the chat copy; portable ZIP SHA-256 `87e52cf6daaf7ee89fe38ba0accca93e4f9404e532b638098fc230df15893491`. Interactive folder-picker/gesture choices, broader interoperability and independent review remain manual validation areas.
+
 - Implement the four post-v0.9 UI requests above. Retain language split; no rewrite just to reduce GitHub language counts.
 - Later screenshot feedback: compact tab menu, named colour circles instead of hex values, grouped layout/close actions, factual SSH connection welcome without claiming X11/compression support.
 - Tunnel scope: existing verified/authenticated SSH session, explicit local/remote directions, loopback-only requested binds, target host/port, start/list/stop, no persistence/automatic restoration, eight tunnels and eight peers each, bounded buffers and shutdown on SSH/window close. Local target is resolved by the server; remote target uses a numeric client-side IP. Remote server binding policy can affect actual exposure. Cancellation uses the library listener lifecycle; interrupted transports can require disconnect for final server cleanup.
@@ -211,7 +214,7 @@ User feedback from the installed v0.2.0 screenshot (2026-11-01): the terminal wo
 - 2026-11-04 installed v0.5 feedback and v0.6 delivery: drag interception, SFTP upload alignment/side/start directory, terminal contrast, context menus, GitHub EXE assets and tested upgrade preservation are recorded in the v0.6 section. Terminal prompt/true-colour output still depends on the remote shell/application; no remote startup files are modified automatically.
 
 ### Recursive SFTP folder upload (2026-11-08)
-Added to v0.10: native folder selection, nested files and empty directories, aggregate byte progress and cancellation. Replacement remains opt-in. Links and special files are skipped and counted; traversal is bounded to 10,000 entries and 32 levels. Completed files/directories remain after cancellation; the current partial file is cleaned up. No automatic resume or Explorer folder drag/drop. Native Windows integration validation is pending.
+Added to v0.10: native folder selection, nested files and empty directories, aggregate byte progress and cancellation. Replacement remains opt-in. Links and special files are skipped and counted; traversal is bounded to 10,000 entries and 32 levels. Completed files/directories remain after cancellation; the current partial file is cleaned up. No automatic resume or Explorer folder drag/drop. Native Windows protocol integration passed; interactive folder-picker coverage remains manual.
 
 2026-11-08 workflow decision: user explicitly requests working directly on main and retiring old version branches. This supersedes PR-only work. Build the exact main commit and publish only after all required CI jobs and the source/hash receipt pass. Immutable tags/releases remain. Cleanup only expected old tips already contained in main. A redesigned README/project showcase with real UI captures and a labelled demonstration GIF is requested.
 Release presentation decision (2026-11-08): every new release gets a concise highlight, clear EXE/MSI/portable downloads, grouped New/Improved/Fixed changes, upgrade notes, known limits and verified-source/checksum assets. Use actual screenshots when useful; do not claim planned work or unverified tests as delivered. Preserve already-published assets/tags.
