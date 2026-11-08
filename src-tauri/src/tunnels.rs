@@ -298,6 +298,8 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
     let (mut tcp_eof, mut ssh_eof, mut sent_eof, mut local_eof) = (false, false, false, false);
     let mut buf = [0u8; 16384];
     let mut write_pending = false;
+    #[cfg(test)]
+    let (mut incoming, mut returned) = (0usize, 0usize);
     while !t.stop.load(Ordering::Acquire) && !t.terminal.is_closed() {
         let mut progressed = false;
         if !tcp_eof && !write_pending && to_remote.len() < 65536 {
@@ -305,11 +307,21 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
             match tcp.read(&mut buf[..available]) {
                 Ok(0) => tcp_eof = true,
                 Ok(n) => {
+                    #[cfg(test)]
+                    {
+                        incoming += n;
+                    }
                     to_remote.extend_from_slice(&buf[..n]);
                     progressed = true;
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
-                Err(_) => break,
+                Err(e) => {
+                    #[cfg(test)]
+                    eprintln!("Tunnel bridge tcp-read: {:?}", e);
+                    #[cfg(not(test))]
+                    let _ = e;
+                    break;
+                }
             }
         }
         if !to_remote.is_empty() {
@@ -323,14 +335,26 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     write_pending = true;
                 }
-                Err(_) => break,
+                Err(e) => {
+                    #[cfg(test)]
+                    eprintln!("Tunnel bridge ssh-write: {:?}", e);
+                    #[cfg(not(test))]
+                    let _ = e;
+                    break;
+                }
             }
         }
         if tcp_eof && to_remote.is_empty() && !sent_eof {
             match channel.send_eof() {
                 Ok(()) => sent_eof = true,
                 Err(e) if e.code() == ssh2::ErrorCode::Session(-37) => {}
-                Err(_) => break,
+                Err(e) => {
+                    #[cfg(test)]
+                    eprintln!("Tunnel bridge ssh-eof: {:?}", e);
+                    #[cfg(not(test))]
+                    let _ = e;
+                    break;
+                }
             }
         }
         if !ssh_eof && to_local.len() < 65536 {
@@ -339,11 +363,21 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
                 Ok(0) if channel.eof() => ssh_eof = true,
                 Ok(0) => {}
                 Ok(n) => {
+                    #[cfg(test)]
+                    {
+                        returned += n;
+                    }
                     to_local.extend_from_slice(&buf[..n]);
                     progressed = true;
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
-                Err(_) => break,
+                Err(e) => {
+                    #[cfg(test)]
+                    eprintln!("Tunnel bridge ssh-read: {:?}", e);
+                    #[cfg(not(test))]
+                    let _ = e;
+                    break;
+                }
             }
         }
         if !to_local.is_empty() {
@@ -354,7 +388,13 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
                     progressed = true;
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
-                Err(_) => break,
+                Err(e) => {
+                    #[cfg(test)]
+                    eprintln!("Tunnel bridge tcp-write: {:?}", e);
+                    #[cfg(not(test))]
+                    let _ = e;
+                    break;
+                }
             }
         }
         if ssh_eof && to_local.is_empty() && !local_eof {
@@ -368,6 +408,8 @@ fn bridge(t: &Tunnel, mut tcp: TcpStream, mut channel: ssh2::Channel) {
             thread::sleep(Duration::from_millis(5));
         }
     }
+    #[cfg(test)]
+    eprintln!("Tunnel bridge end: incoming={incoming} returned={returned} tcp_eof={tcp_eof} ssh_eof={ssh_eof} sent_eof={sent_eof} stopped={} closed={}", t.stop.load(Ordering::Acquire), t.terminal.is_closed());
     let _ = tcp.shutdown(Shutdown::Both);
     close_channel(&t.terminal, &mut channel);
 }

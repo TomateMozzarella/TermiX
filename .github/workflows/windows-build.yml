@@ -10,6 +10,9 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+concurrency:
+  group: termix-build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -52,7 +55,6 @@ jobs:
             ui-previews/*.png
             test-results/**
   windows:
-    needs: frontend
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
