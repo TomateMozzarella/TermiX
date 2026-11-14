@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mockDesktop, preview } from "./desktop";
-async function start(page: Page) { await mockDesktop(page, true); await page.goto("/"); await expect(page.getByRole("tab", { name: "Windows PowerShell" })).toBeVisible(); }
+async function start(page: Page) { await mockDesktop(page, true); await page.goto("/"); await page.getByRole("button", { name: "New tab", exact: true }).click(); await expect(page.getByRole("tab", { name: "Windows PowerShell" })).toBeVisible(); }
 async function createLocal(page: Page, name: string) {
   await page.getByRole("button", { name: "Add session", exact: true }).click();
   await page.getByLabel("Connection type", { exact: true }).selectOption("local");

@@ -106,6 +106,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::open_project_link,
             commands::ui_ready,
             commands::get_snippets,
             commands::save_snippets,

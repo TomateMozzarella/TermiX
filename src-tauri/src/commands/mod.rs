@@ -594,3 +594,34 @@ pub async fn sftp_upload_folder(
     };
     crate::sftp::start_folder(terminal, directory, local, overwrite).map(Some)
 }
+
+#[tauri::command]
+pub fn open_project_link(page: &str) -> Result<(), String> {
+    let suffix = match page {
+        "project" => "",
+        "changelog" => concat!("/releases/tag/v", env!("CARGO_PKG_VERSION")),
+        "updates" => "/releases",
+        "documentation" => "#readme",
+        _ => return Err("invalid_project_link".into()),
+    };
+    let url = format!("https://github.com/TomateMozzarella/TermiX{suffix}");
+    #[cfg(target_os = "windows")]
+    let opener = "explorer.exe";
+    #[cfg(target_os = "linux")]
+    let opener = "xdg-open";
+    #[cfg(target_os = "macos")]
+    let opener = "open";
+    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+    return Err("open_project_link_failed".into());
+    #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
+    {
+        let mut child = std::process::Command::new(opener)
+            .arg(url)
+            .spawn()
+            .map_err(|_| "open_project_link_failed".to_string())?;
+        std::thread::spawn(move || {
+            let _ = child.wait();
+        });
+        Ok(())
+    }
+}

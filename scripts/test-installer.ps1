@@ -19,6 +19,15 @@ if ($version -eq '0.10.0') {
  if ((Get-FileHash $bootstrapInstaller -Algorithm SHA256).Hash -ne '38D79115A06F675EF9B2D3FC24F895DEBAB99F2103A5D98A5FBDD347447616BE') { throw 'Upgrade baseline checksum mismatch' }
  $bootstrapVersion = '0.9.0'
 }
+if ($version -eq '0.11.0') {
+ $baselineDir = Join-Path $env:RUNNER_TEMP 'termix-baseline-0.10.0'
+ New-Item -ItemType Directory -Force -Path $baselineDir | Out-Null
+ gh release download v0.10.0 --repo $env:GH_REPO --pattern 'TermiX_0.10.0_x64-setup.exe' --dir $baselineDir
+ if ($LASTEXITCODE -ne 0) { throw 'Could not download the immutable v0.10 upgrade baseline' }
+ $bootstrapInstaller = Join-Path $baselineDir 'TermiX_0.10.0_x64-setup.exe'
+ if ((Get-FileHash $bootstrapInstaller -Algorithm SHA256).Hash -ne '01777E131AC56CD93F6995195BBFF510CBD32338055ADD010DF556801D9C87E3') { throw 'Upgrade baseline checksum mismatch' }
+ $bootstrapVersion = '0.10.0'
+}
 $desktop = [Environment]::GetFolderPath('Desktop')
 $linkPath = Join-Path $desktop 'TermiX.lnk'
 if (Test-Path -LiteralPath $linkPath) { throw 'Unexpected pre-existing shortcut in CI' }

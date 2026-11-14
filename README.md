@@ -60,6 +60,10 @@ SSH host keys are verified; changed keys require explicit review. Passwords use 
 
 This is active development software. See [security scope and limitations](docs/SECURITY.md), [release notes](docs/releases) and [verified build history](docs/PROJECT-HISTORY.md).
 
+## Workspace redesign in development
+
+The local redesign adds direct workspace tools, a blank startup, grouped context actions, and confirmed Multi-Execute across the visible split. See the [roadmap](docs/ROADMAP.md) for scope.
+
 ## Build and contribute
 
 Tauri 2 · Rust · React · TypeScript · xterm.js · Monaco
@@ -69,3 +73,7 @@ Development now takes place directly on `main`. Windows CI validates the exact s
 See the [contributor instructions](AGENTS.md), [development history and build guidance](docs/PROJECT-HISTORY.md) and [roadmap](docs/ROADMAP.md).
 
 126 checks passed for v0.10.0, including both tunnel directions and recursive SFTP. Installer upgrades and portable isolation also passed. [Verified build and delivery history](docs/PROJECT-HISTORY.md).
+
+
+
+

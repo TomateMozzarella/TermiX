@@ -22,7 +22,7 @@ export type TerminalApi = typeof terminalApi;
 // while startup is pending (including React StrictMode); the late PTY is closed.
 export function connectTerminal(api: TerminalApi, profile: string, cols: number, rows: number,
   output: (bytes: Uint8Array) => Promise<void>, ended: (message: string) => void,
-  format?: (kind: "exit" | "error", value: unknown) => string) {
+  format?: (kind: "exit" | "error", value: unknown) => string, onReady?: () => void) {
   let disposed = false;
   let id: string | undefined;
   let inputBytes = 0;
@@ -47,6 +47,7 @@ export function connectTerminal(api: TerminalApi, profile: string, cols: number,
   const ready = api.open(profile, cols, rows).then(async opened => {
     id = opened;
     if (disposed) { await api.close(opened); return; }
+    onReady?.();
     // Start draining immediately: ConPTY can request a cursor-position reply
     // during startup. Waiting for resize first can block that handshake.
     void resize();
@@ -76,16 +77,19 @@ export function connectTerminal(api: TerminalApi, profile: string, cols: number,
       void resize();
     },
     write(text: string) {
-      if (disposed || !id) return;
+      if (disposed || !id) return Promise.resolve(false);
       const bytes = new TextEncoder().encode(text);
       // Bound pending paste/input and preserve keystroke order across IPC calls.
-      if (inputBytes + bytes.length > 256 * 1024) { fail("Eingabe überschreitet 256 KiB"); return; }
+      if (inputBytes + bytes.length > 256 * 1024) { fail("Eingabe überschreitet 256 KiB"); return Promise.resolve(false); }
       inputBytes += bytes.length;
-      input = input.then(async () => {
+      const sent = input.then(async () => {
         for (let offset = 0; offset < bytes.length && !disposed; offset += 8192) {
           await api.write(id!, Array.from(bytes.subarray(offset, offset + 8192)));
         }
-      }).catch(fail).finally(() => { inputBytes -= bytes.length; });
+        return !disposed;
+      }).catch(error => { fail(error); return false; }).finally(() => { inputBytes -= bytes.length; });
+      input = sent.then(() => {});
+      return sent;
     },
   };
 }

@@ -21,3 +21,9 @@ commands.allow = ["tunnel_start", "tunnel_list", "tunnel_stop", "ssh_monitor", "
 identifier = "sftp"
 description = "Browse verified SSH transports and transfer files chosen through native dialogs; no arbitrary local paths."
 commands.allow = ["sftp_list", "sftp_upload", "sftp_upload_folder", "sftp_download", "sftp_progress", "sftp_cancel", "sftp_mkdir", "sftp_file_action", "editor_external_state", "editor_open", "editor_save", "editor_reload", "editor_close", "editor_external", "editor_reload_external"]
+
+[[permission]]
+identifier = "project-links"
+description = "Open fixed TermiX documentation and release pages."
+commands.allow = ["open_project_link"]
+

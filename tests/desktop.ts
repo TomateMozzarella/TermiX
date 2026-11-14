@@ -72,6 +72,9 @@ export async function mockDesktop(page: Page, configured = false, legacy = false
       if (command === "sftp_upload" || command === "sftp_upload_folder" || command === "sftp_download") { mock.sftpProgress = { id: "transfer-test", name: "hello.txt", direction: command !== "sftp_download" ? "upload" : "download", state: "running", bytes: 5, total: 15 }; return "transfer-test"; }
       if (command === "sftp_cancel") { mock.sftpProgress.state = "cancelled"; return; }
       if (command === "open_terminal") return `terminal-${mock.testCalls.length}`;
+      if (command === "read_terminal" && args.id.startsWith("ssh-") && mock.disconnectSsh) {
+        return { type: "exit", code: null };
+      }
       if(command==="read_terminal"&&args.id.startsWith("ssh-")&&mock.sshTerminalOutput){const text=mock.sshTerminalOutput;mock.sshTerminalOutput="";return{type:"data",bytes:Array.from(new TextEncoder().encode(text))};}
       if (command === "read_terminal" && mock.terminalOutput) { const text = mock.terminalOutput; mock.terminalOutput = ""; return {type: "data", bytes: Array.from(new TextEncoder().encode(text))}; }
       if (command === "read_terminal") return new Promise(resolve => setTimeout(() => resolve({ type: "pending" }), 50));

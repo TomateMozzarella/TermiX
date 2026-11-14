@@ -6,7 +6,7 @@ export function Modal({ title, closeLabel, onClose, busy, children, footer, clas
   return <div className="preferences-backdrop" onKeyDown={e => {
     if (e.key === "Escape" && !busy) onClose();
     if (e.key !== "Tab") return;
-    const fields = panel.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])');
+    const fields = panel.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])');
     if (!fields?.length) return; const first = fields[0], last = fields[fields.length - 1];
     if (e.shiftKey && (document.activeElement === first || document.activeElement === heading.current)) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }

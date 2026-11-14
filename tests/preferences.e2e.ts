@@ -22,16 +22,16 @@ test("English is default; setup saves language, shell, appearance and editor; re
   await page.getByRole("button", { name: "Weiter", exact: true }).click();
   await page.getByLabel("Bevorzugter Editor", { exact: true }).selectOption("notepad++");
   await page.getByRole("button", { name: "Workspace öffnen" }).click();
-  await expect(page.getByRole("tab", { name: /^CMD/ })).toBeVisible();
+  await expect(page.locator(".terminal-layer")).toHaveCount(0);
   await page.reload();
-  await expect(page.getByRole("tab", { name: /^CMD/ })).toBeVisible(); await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".terminal-layer")).toHaveCount(0); await expect(page.getByRole("dialog")).toHaveCount(0);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("test-preferences")!));
   expect(saved).toMatchObject({ language: "de", defaultShell: "cmd", fontSize: 17, editor: "notepad++", accent: "#b692f6", theme: "dark", setupVersion: 2 });
   await expect(page.getByRole("combobox")).toHaveCount(0);
 });
 
 test("appearance and language apply without respawning terminals, cancellation restores preview", async ({ page }) => {
-  await mockDesktop(page, true); await page.goto("/"); await expect(page.getByRole("tab", { name: /^Windows PowerShell/ })).toBeVisible();
+  await mockDesktop(page, true); await page.goto("/"); await page.getByRole("button", { name: "New tab", exact: true }).click(); await expect(page.getByRole("tab", { name: /^Windows PowerShell/ })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(1);
   const count = await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
@@ -52,7 +52,7 @@ test("appearance and language apply without respawning terminals, cancellation r
 });
 
 test("automatic theme follows system changes while the shell keeps running", async ({ page }) => {
-  await mockDesktop(page, true); await page.emulateMedia({ colorScheme: "light" }); await page.goto("/"); await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await mockDesktop(page, true); await page.emulateMedia({ colorScheme: "light" }); await page.goto("/"); await page.getByRole("button", { name: "New tab", exact: true }).click(); await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(page.getByRole("tab", { name: /^Windows PowerShell/ })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(1);
   const count = await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length);

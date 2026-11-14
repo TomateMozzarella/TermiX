@@ -1,7 +1,7 @@
 # TermiX – Product Roadmap and Project Handoff
 
 Last updated: 2026-11-08
-Status: v0.10.0 implemented, tested, integrated into main and published on 2026-11-08. SSH tunnels, recursive folder upload and post-v0.9 UI improvements are delivered. Only main remains; future work stays on main. Multi-Execute and further protocols remain planned.
+Status: v0.10.0 implemented, tested, integrated into main and published on 2026-11-08. SSH tunnels, recursive folder upload and post-v0.9 UI improvements are delivered. Only main remains; future work stays on main. The v0.11 workspace redesign and Multi-Execute await native release validation.
 Repository: https://github.com/TomateMozzarella/TermiX
 
 The user resumed v0.4 implementation/main/release work on 2026-11-03, revoking the preceding feedback-turn pause. That milestone is complete. SQLite is deferred: the existing JSON library was upgraded to a versioned catalog with atomic writes, OS writer locking, stale-snapshot checks and a legacy backup, covering the folder/session scope without a database migration dependency.
@@ -12,6 +12,10 @@ The initial documentation-only pause was revoked by the user's subsequent instru
 2. Make the settings dialog larger. Keep its dimensions stable across categories, bounded by the available viewport, with scrolling content and reachable navigation/footer.
 3. Clicking Play on a saved command/macro should run it directly in the selected terminal, without another confirmation dialog. This explicitly supersedes the earlier confirmation requirement for that single-target Play action. Keep the active target clear; this does not decide the separate planned Multi-Execute workflow.
 4. Make informational reminders about files still being edited optional in settings. Aggregate multiple open external files into one compact indicator/count with an expandable list, rather than accumulating per-file messages or a permanently expanded overlay. The attached dark-mode screenshot illustrates the current external-file status area. Hiding reminders does not imply automatic transfer or discarding edits.
+
+## Workspace redesign before RDP
+
+Local implementation adds an empty initial workspace, collapsed session folders with global search during a query, direct tools for split layouts and SSH tunnels, grouped context actions, an about/help dialog, and an R shortcut for a focused disconnected SSH terminal. Reconnect goes through the existing verification and authentication flow. Multi-Execute previews and confirms the command for all connected terminals in the visible split with at least two recipients. RDP remains a later step.
 
 ## Vision
 Build a polished, modern, cross-platform MobaXterm-style terminal and remote-connection manager, initially optimized for Windows 11, with Linux support later. The user prefers downloadable GitHub Actions installers and does not want to compile locally. Keep a compact desktop interface with automatic/dark/light appearance and customizable accents.
@@ -171,7 +175,12 @@ Application/tag commit `ce50cc0bb73cda73573aeed3a880bc6f80affe19`; [build 424899
 - Local and remote port forwarding, lifecycle UI, explicit binding configuration, secure defaults and errors.
 - Review security implications of exposing listening ports.
 
-### v0.11.0 – Additional protocols
+### v0.11.0 – Workspace redesign
+
+- Toolbar shortcuts, grouped context menus, searchable collapsed session folders, empty startup and SSH reconnect with R.
+- Up to six visible terminals with explicit Multi-Execute confirmation for two or more ready panes.
+
+### Following milestone – Additional protocols
 - RDP, serial connections and X11 support, each evaluated for platform dependencies, security and feasibility.
 - These are PLANNED, not promised as trivial built-in implementations.
 
@@ -218,3 +227,8 @@ Added to v0.10: native folder selection, nested files and empty directories, agg
 
 2026-11-08 workflow decision: user explicitly requests working directly on main and retiring old version branches. This supersedes PR-only work. Build the exact main commit and publish only after all required CI jobs and the source/hash receipt pass. Immutable tags/releases remain. Cleanup only expected old tips already contained in main. A redesigned README/project showcase with real UI captures and a labelled demonstration GIF is requested.
 Release presentation decision (2026-11-08): every new release gets a concise highlight, clear EXE/MSI/portable downloads, grouped New/Improved/Fixed changes, upgrade notes, known limits and verified-source/checksum assets. Use actual screenshots when useful; do not claim planned work or unverified tests as delivered. Preserve already-published assets/tags.
+
+
+
+
+

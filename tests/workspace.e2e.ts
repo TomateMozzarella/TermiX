@@ -13,11 +13,11 @@ test("move sessions into folders, collapse groups, resize and preserve terminals
   for (const section of ["CONNECTIONS", "FOLDERS", "SAVED SESSIONS"]) { const button = page.getByRole("button", { name: section, exact: true }); await button.click(); await expect(button).toHaveAttribute("aria-expanded", "false"); await button.click(); }
   const separator = page.getByRole("separator", { name: "Resize sidebar" }); const before = await page.locator(".sidebar").boundingBox();
   await separator.focus(); await page.keyboard.press("ArrowRight"); await expect(separator).toHaveAttribute("aria-valuenow", "330"); expect((await page.locator(".sidebar").boundingBox())!.width).toBeGreaterThan(before!.width);
-  expect(await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(1);
+  expect(await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(0);
 });
 
 test("drag tabs and middle click closes exactly that tab", async ({ page }) => {
-  await mockDesktop(page, true); await page.goto("/"); await page.getByRole("button", { name: "New tab", exact: true }).click();
+  await mockDesktop(page, true); await page.goto("/"); await page.getByRole("button", { name: "New tab", exact: true }).click(); await page.getByRole("button", { name: "New tab", exact: true }).click();
   const tabs = page.getByRole("tab"); await expect(tabs).toHaveCount(2);
   await page.locator(".tab").last().dragTo(page.locator(".tab").first());
   await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
