@@ -10,6 +10,7 @@ test("move sessions into folders, collapse groups, resize and preserve terminals
   await expect.poll(() => page.evaluate(() => (window as any).catalog.sessions[0].group)).toBe("");
   await session.locator("..").dragTo(page.getByRole("button", { name: "Production", exact: true }));
   await expect.poll(() => page.evaluate(() => (window as any).catalog.sessions[0].group)).toBe("Production");
+  await page.getByRole("button", { name: "CONNECTIONS", exact: true }).click();
   for (const section of ["CONNECTIONS", "FOLDERS", "SAVED SESSIONS"]) { const button = page.getByRole("button", { name: section, exact: true }); await button.click(); await expect(button).toHaveAttribute("aria-expanded", "false"); await button.click(); }
   const separator = page.getByRole("separator", { name: "Resize sidebar" }); const before = await page.locator(".sidebar").boundingBox();
   await separator.focus(); await page.keyboard.press("ArrowRight"); await expect(separator).toHaveAttribute("aria-valuenow", "330"); expect((await page.locator(".sidebar").boundingBox())!.width).toBeGreaterThan(before!.width);

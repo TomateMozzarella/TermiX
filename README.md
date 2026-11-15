@@ -44,7 +44,7 @@ Connect to your servers, browse remote files and keep your everyday commands clo
 
 [v0.10.0 is published](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.10.0): local/remote SSH TCP tunnels, whole-folder SFTP uploads including empty subdirectories, clearer light mode, larger settings, direct command execution, optional grouped file reminders and a shorter tab menu with named colour circles. See the [version notes](docs/releases/v0.10.0.md) for limits.
 
-Multi-Execute, detached windows, additional protocols and resumable folder transfers remain [planned](docs/ROADMAP.md).
+Detached windows, additional protocols and resumable folder transfers remain [planned](docs/ROADMAP.md).
 
 ## Download and get started
 
@@ -60,9 +60,9 @@ SSH host keys are verified; changed keys require explicit review. Passwords use 
 
 This is active development software. See [security scope and limitations](docs/SECURITY.md), [release notes](docs/releases) and [verified build history](docs/PROJECT-HISTORY.md).
 
-## Workspace redesign in development
+## Workspace redesign
 
-The local redesign adds direct workspace tools, a blank startup, grouped context actions, and confirmed Multi-Execute across the visible split. See the [roadmap](docs/ROADMAP.md) for scope.
+The workspace opens with no terminals and puts connection, split, Multi-Execute and tunnel controls in the toolbar. [Version 0.11.0](docs/releases/v0.11.0.md) introduced these workflows. The [0.11.1 follow-up](docs/releases/v0.11.1.md) refines the tabs, menus and dialogs.
 
 ## Build and contribute
 

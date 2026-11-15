@@ -184,6 +184,19 @@ Application/tag commit `ce50cc0bb73cda73573aeed3a880bc6f80affe19`; [build 424899
 - RDP, serial connections and X11 support, each evaluated for platform dependencies, security and feasibility.
 - These are PLANNED, not promised as trivial built-in implementations.
 
+### v0.11.1 — Visual follow-up [IN DEVELOPMENT]
+
+Feedback from the installed Windows build on 2026-11-14. The interface changes are in local review. Native link verification and release validation are pending. Retain every existing action and ask the user before removing any feature.
+
+- Context menus: remove the stray rule above the first terminal menu group and use one separator between groups, including around the tab colour swatches. Keep named swatches, icons and direct access to actions.
+- Toolbar and Help: group Settings and Help at the right edge, with Help last and consistent icon, spacing and hover/focus states. Keep Help in its own app dialog. Verify Project, Changelog, Updates and Documentation by actually opening each destination from the installed Windows build and checking logged-in access.
+- SSH tunnels: style the form with the shared dialog fields. Visually group direction, listening address/port, and target host/port. Present active tunnels and their status/actions separately in the same dialog.
+- Split view: show compact visual previews for one through six panes, including both two-pane orientations. Indicate the current choice and why a layout is unavailable. Omit the empty dialog footer. Keep running terminals and Multi-Execute target rules intact when changing the layout.
+- Launch with a maximized window and the Connections section collapsed. Align the primary toolbar action with the sidebar navigation.
+- Terminal tab strip: match the concept's spacing, rounded tab shapes and clear active state. Support mouse-wheel and arrow scrolling and keep the New Tab button visible. Preserve tab colours, drag reorder, middle-click close, pinning and direct access to tab actions.
+- Additional differences from the concept: give split panes their own visible session headers and clear focus treatment, strengthen the primary New Connection action, and review whether Multi-Execute's recipient list makes each target easy to identify at a glance. Keep the approved separate dialogs for Settings, New Connection and Help.
+- Compare the installed app with the approved concept in light and dark themes, at normal and narrow widths, with one and six terminal panes. Include screenshots of each affected surface in the review.
+
 ## Security requirements (non-negotiable)
 1. No plaintext password, private key or passphrase in persisted session metadata, localStorage, source control, build logs or telemetry.
 2. OS credential vault for opt-in saved passwords; user can choose not to save.

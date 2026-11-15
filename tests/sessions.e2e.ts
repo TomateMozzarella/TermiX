@@ -36,6 +36,7 @@ test("folders survive relaunch, favorites and recent work, deleting a folder pre
   await start(page); await page.getByRole("button", { name: "New folder", exact: true }).click(); await page.getByLabel("Folder name", { exact: true }).fill("Homelab"); await page.getByRole("button", { name: "Save folder", exact: true }).click();
   await page.getByRole("button", { name: "Homelab", exact: true }).click(); await createLocal(page, "Console");
   await page.getByRole("button", { name: "Add to favorites: Console", exact: true }).click();
+  await page.getByRole("button", { name: "CONNECTIONS", exact: true }).click();
   await page.getByRole("button", { name: "Favorites", exact: true }).click(); await expect(page.getByRole("button", { name: "Open session: Console", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Open session: Console", exact: true }).click(); await page.getByRole("button", { name: "Recently used", exact: true }).click(); await expect(page.getByRole("button", { name: "Open session: Console", exact: true })).toBeVisible();
   await page.reload(); await expect(page.getByRole("button", { name: "Homelab", exact: true })).toBeVisible();
@@ -77,6 +78,7 @@ test("import requires preview confirmation, export uses metadata and invalid fil
 
 test("UI scaling and editor discovery/manual override preserve terminal font and processes", async ({ page }) => {
   await start(page); await expect.poll(() => page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(1);
+  await page.getByRole("button", { name: "CONNECTIONS", exact: true }).click();
   const initialSize = await page.getByRole("button", { name: "All sessions", exact: true }).evaluate(e => parseFloat(getComputedStyle(e).fontSize));
   await page.evaluate(() => { (window as any).detectedEditorPath = "C:\\Tools\\Notepad++\\notepad++.exe"; (window as any).editorPickedPath = "C:\\Other\\Editor.exe"; });
   await page.getByRole("button", { name: "Settings", exact: true }).click(); await page.getByRole("tab", {name: "Appearance", exact: true}).click(); await page.getByRole("slider", { name: "Interface size", exact: true }).fill("150");

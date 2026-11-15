@@ -21,13 +21,20 @@ test("English is default; setup saves language, shell, appearance and editor; re
   await preview(page, "TermiX-0.4.0-Design-Dark");
   await page.getByRole("button", { name: "Weiter", exact: true }).click();
   await page.getByLabel("Bevorzugter Editor", { exact: true }).selectOption("notepad++");
-  await page.getByRole("button", { name: "Workspace öffnen" }).click();
+  await page.getByRole("button", { name: "Arbeitsbereich öffnen" }).click();
   await expect(page.locator(".terminal-layer")).toHaveCount(0);
   await page.reload();
   await expect(page.locator(".terminal-layer")).toHaveCount(0); await expect(page.getByRole("dialog")).toHaveCount(0);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("test-preferences")!));
   expect(saved).toMatchObject({ language: "de", defaultShell: "cmd", fontSize: 17, editor: "notepad++", accent: "#b692f6", theme: "dark", setupVersion: 2 });
   await expect(page.getByRole("combobox")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Sitzungen", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Hilfe", exact: true }).click();
+  const help = page.getByRole("dialog", { name: "Hilfe zu TermiX", exact: true });
+  for (const label of ["Projektseite", "Versionshinweise", "Aktualisierungen", "Dokumentation"]) {
+    await expect(help.getByRole("button", { name: label, exact: true })).toBeVisible();
+  }
+  await preview(page, "TermiX-0.11.1-Hilfe");
 });
 
 test("appearance and language apply without respawning terminals, cancellation restores preview", async ({ page }) => {
