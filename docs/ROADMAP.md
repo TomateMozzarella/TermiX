@@ -183,6 +183,15 @@ Application/tag commit `ce50cc0bb73cda73573aeed3a880bc6f80affe19`; [build 424899
 ### Following milestone – Additional protocols
 - RDP, serial connections and X11 support, each evaluated for platform dependencies, security and feasibility.
 - These are PLANNED, not promised as trivial built-in implementations.
+- Start the RDP work by evaluating a saved connection opened through the Windows client. Keep host and port validation, certificate prompts and authentication in scope. Embedded RDP needs a separate feasibility check.
+
+### v0.11.2 — Sessions, saved commands and terminal output
+
+- Choose a custom tab colour alongside the four presets.
+- Import and export saved commands as local JSON. Preview imports and retain existing commands.
+- Give sessions and folders their own context menus with scoped import/export and management actions. Alternate SSH login uses the normal host verification flow and leaves the saved login unchanged.
+- Open a read-only snapshot of terminal scrollback in the integrated editor.
+- Track desktop shortcuts, session defaults, host ping, third-party imports and bulk connect as separate workflow requests. Folder nesting and team sharing need a separate evaluation.
 
 ### v0.11.1 — Visual follow-up [IN DEVELOPMENT]
 

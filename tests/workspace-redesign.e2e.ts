@@ -1,6 +1,46 @@
 import { expect, test } from "@playwright/test";
 import { mockDesktop, preview } from "./desktop";
 
+test("tab colour, scoped menus, command import and output viewer are reachable", async ({ page }) => {
+  await mockDesktop(page, true);
+  await page.addInitScript(() => {
+    const mock = window as any;
+    mock.savedSessions = [{ id: "console", name: "Test console", kind: "local", host: "", port: 22, username: "", group: "Lab" }];
+    mock.incomingCommands = { schemaVersion: 1, entries: [{ id: "4c926461-778e-4ca9-abae-9f3acbdca371", name: "List files", text: "ls" }] };
+    mock.terminalOutput = "Output available in the editor\r\n";
+  });
+  await page.goto("/");
+  const button = (name: string) => page.getByRole("button", { name, exact: true });
+  const action = (name: string) => page.getByRole("menuitem", { name, exact: true });
+  await button("Lab").click({ button: "right" });
+  await expect(action("New session in folder")).toBeVisible();
+  await action("Export this folder").click();
+  await expect.poll(() => page.evaluate(() => (window as any).testCalls.find((call: any) =>
+    call.command === "export_sessions")?.args.folderId)).toBeTruthy();
+  await button("Open session: Test console").click({ button: "right" });
+  await action("Open session").click();
+  await expect(page.locator(".xterm-rows")).toContainText("Output available in the editor");
+  await page.getByRole("tab", { name: "Test console" }).click({ button: "right" });
+  await action("Custom tab colour…").click();
+  await page.getByLabel("Colour", { exact: true }).fill("#c04577");
+  await button("Save changes").click();
+  await expect(page.locator(".tab.active")).toHaveCSS("border-top-color", "rgb(192, 69, 119)");
+  await page.locator(".terminal-host").click({ button: "right" });
+  await action("Open output in editor").click();
+  const output = page.getByRole("dialog", { name: "Terminal output · Test console" });
+  await expect(output).toContainText("Output available in the editor");
+  await output.getByRole("button", { name: "Close editor" }).click();
+  await button("Commands").click();
+  const commands = page.getByRole("region", { name: "Saved commands" });
+  await commands.getByRole("button", { name: "Import", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Import commands" })).toContainText("ls");
+  await button("Add commands").click();
+  await expect(commands.getByRole("button", { name: "List files", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => (window as any).testCalls.some((call: any) => call.command === "write_terminal"))).toBe(false);
+  await commands.getByRole("button", { name: "Export", exact: true }).click();
+  await expect(commands.getByRole("status")).toHaveText("Commands exported.");
+});
+
 test("search reveals sessions in folded folders and R opens SSH verification after exit", async ({ page }) => {
   await mockDesktop(page, true);
   await page.addInitScript(() => {

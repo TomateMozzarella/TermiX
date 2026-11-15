@@ -5,7 +5,7 @@ import { sshApi, type HostProbe, type SshAuth } from "./services/ssh";
 import { terminalApi } from "./services/terminal";
 import type { Session } from "./types";
 
-export function SshDialog({ session, language, onClose, onConnected }: { session: Session; language: Language; onClose: () => void; onConnected: (id: string, details: Pick<Session, "username" | "authMethod" | "keyPath">) => void }) {
+export function SshDialog({ session, language, onClose, onConnected, temporary = false }: { session: Session; temporary?: boolean; language: Language; onClose: () => void; onConnected: (id: string, details: Pick<Session, "username" | "authMethod" | "keyPath">) => void }) {
   const [probe, setProbe] = useState<HostProbe | null>(null), [approved, setApproved] = useState(false), [confirmation, setConfirmation] = useState("");
   const [stage, setStage] = useState<"host" | "auth">("host"), [busy, setBusy] = useState(true), [error, setError] = useState(""), [note, setNote] = useState("");
   const [username, setUsername] = useState(session.username), [method, setMethod] = useState<SshAuth["method"]>(session.authMethod ?? "agent"), [password, setPassword] = useState(""), [keyPath, setKeyPath] = useState(session.keyPath ?? ""), [passphrase, setPassphrase] = useState(""), [savePassword, setSavePassword] = useState(false);
@@ -30,7 +30,7 @@ export function SshDialog({ session, language, onClose, onConnected }: { session
   const connect = async () => {
     if (!probe || busy) return;
     setBusy(true); setError("");
-    const auth: SshAuth = { username, method, password, keyPath, passphrase, savePassword: method === "password" && savePassword };
+    const auth: SshAuth = { username, method, password, keyPath, passphrase, savePassword: !temporary && method === "password" && savePassword };
     // Clear visible secret fields before crossing IPC. No React state, session
     // metadata or browser storage retains them after the submitted request.
     setPassword(""); setPassphrase("");
@@ -38,7 +38,7 @@ export function SshDialog({ session, language, onClose, onConnected }: { session
     try {
       const id = await request; ticket.current = null;
       if (!alive.current) { await terminalApi.close(id); return; }
-      onConnected(id, { username, authMethod: method === "password" && savePassword ? "stored" : method, keyPath: method === "key" ? keyPath : undefined });
+      onConnected(id, { username, authMethod: !temporary && method === "password" && savePassword ? "stored" : method, keyPath: method === "key" ? keyPath : undefined });
     } catch (e) { if (alive.current) { setError(String(e)); setProbe(null); ticket.current = null; } }
     finally { auth.password = ""; auth.passphrase = ""; if (alive.current) setBusy(false); }
   };
@@ -61,7 +61,7 @@ export function SshDialog({ session, language, onClose, onConnected }: { session
       {probe && stage === "auth" && <><p className="verified-host"><Shield size={15}/>{tr(probe.status === "known" ? "hostKnown" : "verifyHost")} <code>{probe.fingerprint}</code></p>
         <label className="field"><span>{tr("username")}</span><input disabled={busy} value={username} onChange={e => setUsername(e.target.value)} autoComplete="username"/></label>
         <label className="field"><span>{tr("authentication")}</span><select aria-label={tr("authentication")} disabled={busy} value={method} onChange={e => { setMethod(e.target.value as SshAuth["method"]); setPassword(""); setPassphrase(""); setSavePassword(false); }}>{(["agent", "password", "stored", "key"] as const).map(value => <option key={value} value={value}>{tr(value === "stored" ? "savedPassword" : value === "key" ? "keyFile" : value)}</option>)}</select></label>
-        {method === "password" && <><label className="field"><span>{tr("password")}</span><input disabled={busy} type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="off" maxLength={4096}/></label><label className="check-field"><input disabled={busy} type="checkbox" checked={savePassword} onChange={e => setSavePassword(e.target.checked)}/><span>{tr("rememberPassword")}</span></label><p className="preferences-note">{tr("vaultNote")}</p></>}
+        {method === "password" && <><label className="field"><span>{tr("password")}</span><input disabled={busy} type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="off" maxLength={4096}/></label>{!temporary && <><label className="check-field"><input disabled={busy} type="checkbox" checked={savePassword} onChange={e => setSavePassword(e.target.checked)}/><span>{tr("rememberPassword")}</span></label><p className="preferences-note">{tr("vaultNote")}</p></>}</>}
         {method === "key" && <><label className="field"><span>{tr("keyPath")}</span><input disabled={busy} value={keyPath} onChange={e => setKeyPath(e.target.value)} placeholder="C:\\Users\\you\\.ssh\\id_ed25519"/></label><label className="field"><span>{tr("passphrase")}</span><input disabled={busy} type="password" value={passphrase} onChange={e => setPassphrase(e.target.value)} autoComplete="off" maxLength={4096}/></label></>}
         {method === "agent" && <p className="preferences-note">{tr("agentNote")}</p>}
         {method === "stored" && <button className="text-button" disabled={busy || !username} onClick={() => { void sshApi.forget(session.host, session.port, username).then(() => { setNote("passwordForgotten"); setMethod("password"); }).catch(e => setError(String(e))); }}>{tr("forgetPassword")}</button>}

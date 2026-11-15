@@ -319,6 +319,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .help-topics details + details { border-top: 1px solid var(--line); }
 .help-topics summary { cursor: pointer; padding: 10px 12px; font-weight: 600; }
 .help-topics p { margin: 0; padding: 0 12px 12px; color: var(--muted); line-height: 1.5; }
+.command-transfer { margin-block: 8px 12px; }
+.command-transfer .btn { display: inline-flex; align-items: center; gap: 6px; }
+.field input[type="color"] { cursor: pointer; padding: 4px 8px; }
 .tab .tab-more{flex:none}
 
 

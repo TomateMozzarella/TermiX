@@ -5,6 +5,8 @@ pub enum Choice {
     Editor,
     Import,
     Export,
+    ImportCommands,
+    ExportCommands,
     Upload,
     UploadFolder,
     Download(String),
@@ -41,14 +43,20 @@ fn show(owner: usize, choice: Choice) -> Result<Option<PathBuf>, String> {
     let filter = match choice {
         Choice::Editor => "Windows executable (*.exe)\0*.exe\0\0",
         Choice::Upload | Choice::Download(_) => "All files (*.*)\0*.*\0\0",
+        Choice::ImportCommands | Choice::ExportCommands => "TermiX commands (*.json)\0*.json\0\0",
         _ => "TermiX sessions (*.json)\0*.json\0\0",
     }
     .encode_utf16()
     .collect::<Vec<_>>();
     let extension = "json\0".encode_utf16().collect::<Vec<_>>();
     let mut filename = vec![0u16; 32768];
-    if matches!(choice, Choice::Export) {
-        for (i, unit) in "TermiX-sessions.json".encode_utf16().enumerate() {
+    if matches!(choice, Choice::Export | Choice::ExportCommands) {
+        let name = if matches!(choice, Choice::ExportCommands) {
+            "TermiX-commands.json"
+        } else {
+            "TermiX-sessions.json"
+        };
+        for (i, unit) in name.encode_utf16().enumerate() {
             filename[i] = unit;
         }
     }
@@ -68,9 +76,12 @@ fn show(owner: usize, choice: Choice) -> Result<Option<PathBuf>, String> {
         options.nMaxFile = filename.len() as u32;
         options.nFilterIndex = 1;
         options.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_DONTADDTORECENT;
-        let result = if matches!(choice, Choice::Export | Choice::Download(_)) {
+        let result = if matches!(
+            choice,
+            Choice::Export | Choice::ExportCommands | Choice::Download(_)
+        ) {
             options.Flags |= OFN_OVERWRITEPROMPT;
-            if matches!(choice, Choice::Export) {
+            if matches!(choice, Choice::Export | Choice::ExportCommands) {
                 options.lpstrDefExt = extension.as_ptr();
             }
             GetSaveFileNameW(&mut options)

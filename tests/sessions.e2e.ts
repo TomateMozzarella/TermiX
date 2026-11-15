@@ -102,6 +102,6 @@ test("external library changes require an explicit reload instead of overwriting
 test("session menus stay in the viewport and tab keyboard navigation retains focus", async ({ page }) => {
   await start(page); await createLocal(page, "Keyboard"); await page.setViewportSize({ width: 900, height: 600 });
   await page.getByRole("button", { name: "More session actions: Keyboard", exact: true }).click(); await expect(page.getByRole("menu")).toBeInViewport({ ratio: 1 });
-  await expect(page.getByRole("menuitem", { name: "Duplicate session", exact: true })).toBeFocused(); await page.keyboard.press("ArrowDown"); await expect(page.getByRole("menuitem", { name: "Delete session", exact: true })).toBeFocused(); await page.keyboard.press("Escape");
+  await expect(page.getByRole("menuitem", { name: "Open session", exact: true })).toBeFocused(); await page.keyboard.press("ArrowDown"); await expect(page.getByRole("menuitem", { name: "Edit session", exact: true })).toBeFocused(); await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "New tab", exact: true }).click(); const tabs = page.getByRole("tab"); await tabs.last().focus(); await page.keyboard.press("ArrowLeft"); await expect(tabs.first()).toBeFocused(); await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
 });

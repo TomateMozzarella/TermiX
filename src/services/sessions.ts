@@ -11,4 +11,5 @@ export const deleteFolder = (id: string) => invoke<SessionCatalog>("delete_folde
 export const touchSession = (id: string) => invoke<SessionCatalog>("touch_session", { id });
 export const pickSessionImport = () => invoke<SessionCatalog | null>("pick_session_import");
 export const importSessions = (catalog: SessionCatalog) => invoke<SessionCatalog>("import_sessions", { catalog });
-export const exportSessions = () => invoke<boolean>("export_sessions");
+export const exportSessions = (scope?: {sessionId?: string; folderId?: string}) => invoke<boolean>("export_sessions", scope);
+

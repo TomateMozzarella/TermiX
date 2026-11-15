@@ -11,7 +11,7 @@ commands.allow = ["list_sessions", "get_catalog", "reload_catalog", "save_sessio
 [[permission]]
 identifier = "preferences"
 description = "Read and save non-secret setup and appearance preferences."
-commands.allow = ["get_preferences", "save_preferences", "get_workspace", "save_workspace", "get_snippets", "save_snippets", "ui_ready", "choose_editor", "detect_editor"]
+commands.allow = ["get_preferences", "save_preferences", "get_workspace", "save_workspace", "get_snippets", "save_snippets", "pick_snippet_import", "import_snippets", "export_snippets", "ui_ready", "choose_editor", "detect_editor"]
 
 [[permission]]
 identifier = "ssh"

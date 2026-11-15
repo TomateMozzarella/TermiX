@@ -22,6 +22,9 @@ export async function mockDesktop(page: Page, configured = false, legacy = false
       if (command === "terminal_profiles") return [{ id: "powershell", name: "Windows PowerShell" }, { id: "cmd", name: "CMD" }];
       if (command === "get_snippets") return JSON.parse(localStorage.getItem("test-commands") ?? '{"schemaVersion":1,"entries":[]}');
       if (command === "save_snippets") { if(mock.failCommands) throw "snippets_save_failed"; localStorage.setItem("test-commands",JSON.stringify(args.library)); return structuredClone(args.library); }
+      if (command === "pick_snippet_import") return mock.incomingCommands ?? null;
+      if (command === "import_snippets") { localStorage.setItem("test-commands", JSON.stringify(args.library)); return structuredClone(args.library); }
+      if (command === "export_snippets") return true;
       if (command === "editor_external") { if(mock.externalDelay) await new Promise(resolve=>setTimeout(resolve,200)); return "original"; }
       if (command === "editor_external_state") { const digest=mock.externalVersion??"original"; return {digest,text:args.previousDigest===digest?null:mock.externalText??mock.editorText??"original text\n"}; }
       if (command === "sftp_file_action") { mock.lastFileAction=structuredClone(args); return; }

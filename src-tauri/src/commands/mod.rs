@@ -258,13 +258,30 @@ pub fn import_sessions(
 pub async fn export_sessions(
     window: tauri::WebviewWindow,
     state: State<'_, AppState>,
+    session_id: Option<String>,
+    folder_id: Option<String>,
 ) -> Result<bool, String> {
-    let bytes = state
-        .sessions
-        .lock()
-        .map_err(|_| "session_save_failed")?
-        .export()
-        .map_err(|e| e.to_string())?;
+    let bytes = {
+        let store = state.sessions.lock().map_err(|_| "session_save_failed")?;
+        if let Some(id) = session_id.or(folder_id.clone()) {
+            let mut catalog = store.catalog();
+            if folder_id.is_some() {
+                catalog.sessions.retain(|session| session.group == id);
+                catalog.folders.retain(|folder| folder.id == id);
+            } else {
+                catalog.sessions.retain(|session| session.id == id);
+                catalog.folders.retain(|folder| {
+                    catalog
+                        .sessions
+                        .iter()
+                        .any(|session| session.group == folder.id)
+                });
+            }
+            serde_json::to_vec_pretty(&catalog).map_err(|_| "session_export_failed")?
+        } else {
+            store.export().map_err(|e| e.to_string())?
+        }
+    };
     let Some(path) = crate::files::choose(window, crate::files::Choice::Export).await? else {
         return Ok(false);
     };
@@ -513,6 +530,50 @@ pub fn save_snippets(
         library,
     )
 }
+#[tauri::command]
+pub async fn pick_snippet_import(
+    window: tauri::WebviewWindow,
+) -> Result<Option<crate::snippets::Library>, String> {
+    let Some(path) = crate::files::choose(window, crate::files::Choice::ImportCommands).await?
+    else {
+        return Ok(None);
+    };
+    tauri::async_runtime::spawn_blocking(move || crate::snippets::read_import(&path).map(Some))
+        .await
+        .map_err(|_| "snippets_invalid".to_string())?
+}
+
+#[tauri::command]
+pub fn import_snippets(
+    app: tauri::AppHandle,
+    library: crate::snippets::Library,
+) -> Result<crate::snippets::Library, String> {
+    crate::snippets::merge(
+        &crate::app_data::directory(&app)?.join("commands.json"),
+        library,
+    )
+}
+
+#[tauri::command]
+pub async fn export_snippets(
+    window: tauri::WebviewWindow,
+    app: tauri::AppHandle,
+) -> Result<bool, String> {
+    let source = crate::app_data::directory(&app)?.join("commands.json");
+    let Some(path) = crate::files::choose(window, crate::files::Choice::ExportCommands).await?
+    else {
+        return Ok(false);
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        let library = crate::snippets::read(&source)?;
+        let bytes = serde_json::to_vec_pretty(&library).map_err(|_| "snippets_invalid")?;
+        crate::atomic::write(&path, &bytes).map_err(|_| "snippets_save_failed")?;
+        Ok(true)
+    })
+    .await
+    .map_err(|_| "snippets_save_failed".to_string())?
+}
+
 #[tauri::command]
 pub async fn editor_external_state(
     state: State<'_, crate::ssh::SshManager>,
