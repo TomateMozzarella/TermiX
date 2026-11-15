@@ -1,8 +1,7 @@
 <div align="center">
   <img src="public/termix.svg" width="76" alt="TermiX terminal icon">
   <h1>TermiX</h1>
-  <p><strong>Your terminal. Your servers. One calm workspace.</strong></p>
-  <p>A modern SSH, SFTP and terminal workspace built with Rust and Tauri.</p>
+  <p>SSH, SFTP and local terminals for Windows, with an integrated editor.</p>
   <p><a href="https://github.com/TomateMozzarella/TermiX/releases"><strong>Download for Windows</strong></a> · <a href="#see-it-in-action">Watch the demo</a> · <a href="docs/ROADMAP.md">Roadmap</a> · <a href="docs/README.de.md">Deutsch</a></p>
 </div>
 
@@ -24,12 +23,12 @@ Connect to your servers, browse remote files and keep your everyday commands clo
 
 | Workspace | Included |
 | --- | --- |
-| Terminals | Local shells and SSH; reorder, rename, colour and pin tabs; display up to six existing terminals. |
-| Connections | Saved sessions, folders, favourites, recent connections, search and metadata import/export. |
+| Terminals | Local shells and SSH, scrollable tabs with custom colours, up to six panes, and Multi-Execute with a preview of the targets. |
+| Connections | Saved sessions, folder search, favourites, scoped JSON import/export, alternate SSH login and SFTP from the session menu. |
 | Remote files | Browse SFTP on the verified SSH connection; upload whole folders or files, download files, create and remove files or empty folders. |
 | SSH tunnels | Explicit local/remote TCP forwarding with loopback defaults, active connection counts and Stop. |
-| Editing | Integrated Monaco editor, find/replace, read-only comparison, maximize and explicit save to server; optional external editor. |
-| Commands | A compact, searchable sidebar for named commands, with Play, double-click and context actions. |
+| Editing | Integrated Monaco editor with find/replace, comparison, explicit server saves and a read-only view of terminal output. External editing is optional. |
+| Commands | Search, run, import and export named commands. JSON imports show a preview before adding commands to the library. |
 | Monitoring | Read-only Linux CPU, RAM, disk, network, uptime and visible SSH/user metrics. |
 | Appearance | Light/dark/system, accent colours, readable font and UI scaling; categorized settings and first-run setup. |
 
@@ -40,9 +39,16 @@ Connect to your servers, browse remote files and keep your everyday commands clo
 </tr>
 </table>
 
-### New in v0.10
+### Workspace updates
 
-[v0.10.0 is published](https://github.com/TomateMozzarella/TermiX/releases/tag/v0.10.0): local/remote SSH TCP tunnels, whole-folder SFTP uploads including empty subdirectories, clearer light mode, larger settings, direct command execution, optional grouped file reminders and a shorter tab menu with named colour circles. See the [version notes](docs/releases/v0.10.0.md) for limits.
+[v0.11.2](docs/releases/v0.11.2.md) adds custom tab colours, saved command import/export, session and folder context menus, and a read-only terminal output view. The [v0.11.1 notes](docs/releases/v0.11.1.md) cover the toolbar, help, split previews and tab scrolling.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/media/split-layouts-dark.png" alt="Visual split layout options for one to six terminals"><p>Preview the terminal layout before switching.</p></td>
+<td width="50%"><img src="docs/media/commands-light.png" alt="Saved commands with import and export controls"><p>Manage named commands and move them between installations.</p></td>
+</tr>
+</table>
 
 Detached windows, additional protocols and resumable folder transfers remain [planned](docs/ROADMAP.md).
 
@@ -59,10 +65,6 @@ Keep the portable `data` folder when updating. WebView2 Runtime is required. Dow
 SSH host keys are verified; changed keys require explicit review. Passwords use the Windows credential vault rather than session JSON. External edits require transfer approval and retain remote-conflict checks. Monitoring is read-only. Commands run only when you invoke them; tunnels never restore automatically.
 
 This is active development software. See [security scope and limitations](docs/SECURITY.md), [release notes](docs/releases) and [verified build history](docs/PROJECT-HISTORY.md).
-
-## Workspace redesign
-
-The workspace opens with no terminals and puts connection, split, Multi-Execute and tunnel controls in the toolbar. [Version 0.11.0](docs/releases/v0.11.0.md) introduced these workflows. The [0.11.1 follow-up](docs/releases/v0.11.1.md) refines the tabs, menus and dialogs.
 
 ## Build and contribute
 

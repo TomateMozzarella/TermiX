@@ -1,5 +1,5 @@
 # Project media
 
-Captured from built TermiX 0.10 UI with Playwright and the existing mock-IPC fixture. All hosts, users, file contents and metrics are illustrative. No customer data or real server connection is recorded.
+Captured from the built TermiX 0.11.2 UI with Playwright and mock IPC. Hosts, users, file contents and metrics are illustrative.
 
-Reproduce from repository root: `npx playwright test --config scripts/project-demo.config.ts`, then `python scripts/make-project-gif.py` (Pillow required for GIF encoding only). The GIF includes an explicit pointer overlay following the demonstrated controls. PNGs retain original UI dimensions. Intermediate frames are not committed.
+Capture the walkthrough from the repository root with `npx playwright test --config scripts/project-demo.config.ts`, then encode it with `python scripts/make-project-gif.py` (requires Pillow). The Playwright suite captures the split, command and help views when `TERMIX_PREVIEW_DIR` is set. The GIF pointer follows the demonstrated controls.
