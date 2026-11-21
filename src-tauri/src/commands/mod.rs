@@ -3,6 +3,123 @@ use crate::{error::AppError, models::Session, AppState};
 use tauri::State;
 
 #[tauri::command]
+pub fn take_launch_session(state: State<'_, AppState>) -> Result<Option<Session>, String> {
+    let Some(id) = state
+        .launch_session
+        .lock()
+        .map_err(|_| "session_missing")?
+        .take()
+    else {
+        return Ok(None);
+    };
+    state
+        .sessions
+        .lock()
+        .map_err(|_| "session_missing")?
+        .catalog()
+        .sessions
+        .into_iter()
+        .find(|session| session.id == id)
+        .map(Some)
+        .ok_or_else(|| "session_missing".into())
+}
+
+#[tauri::command]
+pub async fn create_session_shortcut(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    use tauri::Manager;
+    let session = app
+        .state::<AppState>()
+        .sessions
+        .lock()
+        .map_err(|_| "session_missing")?
+        .catalog()
+        .sessions
+        .into_iter()
+        .find(|session| session.id == id && session.kind != crate::models::SessionKind::Serial)
+        .ok_or("session_missing")?;
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::shortcut::create(&session.id, &session.name)
+    })
+    .await
+    .map_err(|_| "shortcut_failed")?
+}
+
+#[tauri::command]
+pub async fn ping_session(
+    app: tauri::AppHandle,
+    id: String,
+) -> Result<crate::ping::PingResult, String> {
+    use tauri::Manager;
+    let session = app
+        .state::<AppState>()
+        .sessions
+        .lock()
+        .map_err(|_| "session_missing")?
+        .catalog()
+        .sessions
+        .into_iter()
+        .find(|session| {
+            session.id == id
+                && matches!(
+                    session.kind,
+                    crate::models::SessionKind::Ssh | crate::models::SessionKind::Rdp
+                )
+        })
+        .ok_or("session_missing")?;
+    let endpoint = crate::address::normalize(&session.host, session.port)?;
+    tauri::async_runtime::spawn_blocking(move || crate::ping::probe(&endpoint.host))
+        .await
+        .map_err(|_| "ping_failed")?
+}
+
+#[tauri::command]
+pub fn open_rdp_session(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    #[cfg(not(windows))]
+    {
+        let _ = (state, id);
+        Err("rdp_unavailable".into())
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStringExt;
+        use windows_sys::Win32::System::SystemInformation::GetSystemDirectoryW;
+
+        let session = state
+            .sessions
+            .lock()
+            .map_err(|_| "session_missing")?
+            .catalog()
+            .sessions
+            .into_iter()
+            .find(|session| session.id == id && session.kind == crate::models::SessionKind::Rdp)
+            .ok_or("session_missing")?;
+        let endpoint = crate::address::normalize(&session.host, session.port)?;
+        let destination = if endpoint.host.contains(':') {
+            format!("[{}]:{}", endpoint.host, endpoint.port)
+        } else {
+            format!("{}:{}", endpoint.host, endpoint.port)
+        };
+        let mut buffer = [0u16; 1024];
+        // SAFETY: buffer is writable for the number of UTF-16 units supplied.
+        let length =
+            unsafe { GetSystemDirectoryW(buffer.as_mut_ptr(), buffer.len() as u32) } as usize;
+        if length == 0 || length >= buffer.len() {
+            return Err("rdp_launch".into());
+        }
+        let executable = std::path::PathBuf::from(std::ffi::OsString::from_wide(&buffer[..length]))
+            .join("mstsc.exe");
+        let mut child = std::process::Command::new(executable)
+            .arg(format!("/v:{destination}"))
+            .spawn()
+            .map_err(|_| "rdp_launch")?;
+        std::thread::spawn(move || {
+            let _ = child.wait();
+        });
+        Ok(())
+    }
+}
+
+#[tauri::command]
 pub fn get_preferences(
     state: State<'_, AppState>,
 ) -> Result<Option<crate::preferences::Preferences>, String> {
@@ -11,6 +128,27 @@ pub fn get_preferences(
         .lock()
         .map_err(|_| "Einstellungen sind nicht verfügbar.")?
         .read()
+}
+
+#[tauri::command]
+pub async fn editor_terminal_output(app: tauri::AppHandle, text: String) -> Result<(), String> {
+    use tauri::Manager;
+    let preferences = app
+        .state::<AppState>()
+        .preferences
+        .lock()
+        .map_err(|_| "preferences_invalid")?
+        .read()?
+        .ok_or("preferences_invalid")?;
+    if preferences.editor == "integrated" || preferences.editor_path.is_empty() {
+        return Err("invalid_editor".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<crate::document::OutputCopies>()
+            .open(&preferences.editor_path, &text)
+    })
+    .await
+    .map_err(|_| "editor_launch".to_owned())?
 }
 
 #[tauri::command]
@@ -309,6 +447,138 @@ pub async fn detect_editor(editor: String) -> Result<Option<String>, String> {
         .map_err(|_| "invalid_editor".to_string())?
 }
 #[tauri::command]
+pub async fn sftp_local_open(
+    state: State<'_, crate::ssh::SshManager>,
+    window: tauri::WebviewWindow,
+    id: String,
+) -> Result<Option<crate::local_files::Listing>, String> {
+    let terminal = state.get(&id)?;
+    let Some(path) = crate::files::choose(window, crate::files::Choice::UploadFolder).await? else {
+        return Ok(None);
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        if terminal.is_closed() {
+            return Err("ssh_closed".into());
+        }
+        let (browser, listing) = crate::local_files::Browser::open(path)?;
+        *terminal
+            .remote
+            .local_browser
+            .lock()
+            .map_err(|_| "sftp_local")? = Some(browser);
+        Ok(Some(listing))
+    })
+    .await
+    .map_err(|_| "sftp_local".to_owned())?
+}
+
+#[tauri::command]
+pub async fn sftp_local_list(
+    state: State<'_, crate::ssh::SshManager>,
+    id: String,
+    token: Option<String>,
+    up: bool,
+) -> Result<crate::local_files::Listing, String> {
+    let terminal = state.get(&id)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        if terminal.is_closed() {
+            return Err("ssh_closed".into());
+        }
+        terminal
+            .remote
+            .local_browser
+            .lock()
+            .map_err(|_| "sftp_local")?
+            .as_mut()
+            .ok_or("sftp_local")?
+            .navigate(token.as_deref(), up)
+    })
+    .await
+    .map_err(|_| "sftp_local".to_owned())?
+}
+
+#[tauri::command]
+pub async fn sftp_local_upload(
+    state: State<'_, crate::ssh::SshManager>,
+    id: String,
+    token: String,
+    directory: String,
+    overwrite: bool,
+    folder: Option<bool>,
+) -> Result<String, String> {
+    let terminal = state.get(&id)?;
+    let remote = crate::sftp::path(&directory)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        if terminal.is_closed() {
+            return Err("ssh_closed".into());
+        }
+        if folder.unwrap_or(false) {
+            let local = terminal
+                .remote
+                .local_browser
+                .lock()
+                .map_err(|_| "sftp_local")?
+                .as_ref()
+                .ok_or("sftp_local")?
+                .upload_folder(&token)?;
+            return crate::sftp::start_local_folder(terminal, directory, local, overwrite);
+        }
+        let (name, file) = terminal
+            .remote
+            .local_browser
+            .lock()
+            .map_err(|_| "sftp_local")?
+            .as_ref()
+            .ok_or("sftp_local")?
+            .upload_file(&token)?;
+        let destination = remote.join(name);
+        let destination = destination.to_str().ok_or("sftp_path")?.replace('\\', "/");
+        crate::sftp::start_local_upload(terminal, destination, file, overwrite)
+    })
+    .await
+    .map_err(|_| "sftp_local".to_owned())?
+}
+
+#[tauri::command]
+pub async fn sftp_dropped_upload(
+    state: State<'_, crate::ssh::SshManager>,
+    id: String,
+    directory: String,
+    name: String,
+    encoded: String,
+    overwrite: bool,
+) -> Result<String, String> {
+    use base64::Engine;
+    const LIMIT: usize = 8 * 1024 * 1024;
+    if encoded.len() > LIMIT.div_ceil(3) * 4 {
+        return Err("sftp_drop_size".into());
+    }
+    if name.is_empty()
+        || name == "."
+        || name == ".."
+        || name.len() > 255
+        || name.contains(['/', '\\', ':'])
+        || name.chars().any(char::is_control)
+    {
+        return Err("sftp_path".into());
+    }
+    let terminal = state.get(&id)?;
+    let destination = crate::sftp::path(&directory)?.join(name);
+    let destination = destination.to_str().ok_or("sftp_path")?.replace('\\', "/");
+    tauri::async_runtime::spawn_blocking(move || {
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(encoded)
+            .map_err(|_| "sftp_local")?;
+        if bytes.len() > LIMIT {
+            return Err("sftp_drop_size".into());
+        }
+        crate::sftp::start_dropped_upload(terminal, destination, bytes, overwrite)
+    })
+    .await
+    .map_err(|_| "sftp_local".to_owned())?
+}
+
+#[tauri::command]
 pub async fn sftp_list(
     state: State<'_, crate::ssh::SshManager>,
     id: String,
@@ -327,6 +597,17 @@ pub fn sftp_progress(
     let terminal = state.get(&id)?;
     crate::sftp::progress(&terminal)
 }
+#[tauri::command]
+pub fn sftp_pause_transfer(
+    state: State<'_, crate::ssh::SshManager>,
+    id: String,
+    transfer: String,
+    paused: bool,
+) -> Result<(), String> {
+    let terminal = state.get(&id)?;
+    crate::sftp::set_transfer_paused(&terminal, &transfer, paused)
+}
+
 #[tauri::command]
 pub fn sftp_cancel(
     state: State<'_, crate::ssh::SshManager>,
@@ -367,20 +648,36 @@ pub async fn sftp_download(
     window: tauri::WebviewWindow,
     id: String,
     path: String,
+    use_local_folder: Option<bool>,
 ) -> Result<Option<String>, String> {
     let terminal = state.get(&id)?;
-    crate::sftp::path(&path)?;
-    let Some(local) = crate::files::choose(
-        window,
-        crate::files::Choice::Download(
-            crate::sftp::path(&path)?
-                .file_name()
-                .and_then(|s| s.to_str())
-                .ok_or("sftp_path")?
-                .to_owned(),
-        ),
-    )
-    .await?
+    let remote = crate::sftp::path(&path)?;
+    let name = remote
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or("sftp_path")?
+        .to_owned();
+    let directory = if use_local_folder.unwrap_or(false) {
+        let terminal = std::sync::Arc::clone(&terminal);
+        Some(
+            tauri::async_runtime::spawn_blocking(move || {
+                terminal
+                    .remote
+                    .local_browser
+                    .lock()
+                    .map_err(|_| "sftp_local")?
+                    .as_ref()
+                    .ok_or("sftp_local")?
+                    .current_directory()
+            })
+            .await
+            .map_err(|_| "sftp_local".to_owned())??,
+        )
+    } else {
+        None
+    };
+    let Some(local) =
+        crate::files::choose(window, crate::files::Choice::Download { name, directory }).await?
     else {
         return Ok(None);
     };

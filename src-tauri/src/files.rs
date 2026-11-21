@@ -9,7 +9,10 @@ pub enum Choice {
     ExportCommands,
     Upload,
     UploadFolder,
-    Download(String),
+    Download {
+        name: String,
+        directory: Option<PathBuf>,
+    },
 }
 
 pub async fn choose(
@@ -42,7 +45,7 @@ fn show(owner: usize, choice: Choice) -> Result<Option<PathBuf>, String> {
     use windows_sys::Win32::UI::Controls::Dialogs::*;
     let filter = match choice {
         Choice::Editor => "Windows executable (*.exe)\0*.exe\0\0",
-        Choice::Upload | Choice::Download(_) => "All files (*.*)\0*.*\0\0",
+        Choice::Upload | Choice::Download { .. } => "All files (*.*)\0*.*\0\0",
         Choice::ImportCommands | Choice::ExportCommands => "TermiX commands (*.json)\0*.json\0\0",
         _ => "TermiX sessions (*.json)\0*.json\0\0",
     }
@@ -60,7 +63,23 @@ fn show(owner: usize, choice: Choice) -> Result<Option<PathBuf>, String> {
             filename[i] = unit;
         }
     }
-    if let Choice::Download(name) = &choice {
+    let mut initial_directory = Vec::new();
+    if let Choice::Download { name, directory } = &choice {
+        use std::os::windows::ffi::OsStrExt;
+        if let Some(path) = directory {
+            initial_directory.extend(path.as_os_str().encode_wide());
+            initial_directory.push(0);
+        }
+        let name = if name
+            .chars()
+            .any(|c| c.is_control() || "<>:\"/\\|?*".contains(c))
+            || name.ends_with(['.', ' '])
+            || name.is_empty()
+        {
+            "download"
+        } else {
+            name
+        };
         for (i, unit) in name.encode_utf16().take(filename.len() - 1).enumerate() {
             filename[i] = unit;
         }
@@ -75,10 +94,13 @@ fn show(owner: usize, choice: Choice) -> Result<Option<PathBuf>, String> {
         options.lpstrFile = filename.as_mut_ptr();
         options.nMaxFile = filename.len() as u32;
         options.nFilterIndex = 1;
+        if !initial_directory.is_empty() {
+            options.lpstrInitialDir = initial_directory.as_ptr();
+        }
         options.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_DONTADDTORECENT;
         let result = if matches!(
             choice,
-            Choice::Export | Choice::ExportCommands | Choice::Download(_)
+            Choice::Export | Choice::ExportCommands | Choice::Download { .. }
         ) {
             options.Flags |= OFN_OVERWRITEPROMPT;
             if matches!(choice, Choice::Export | Choice::ExportCommands) {
@@ -111,7 +133,7 @@ fn show(owner: usize, choice: Choice) -> Result<Option<PathBuf>, String> {
     } else {
         "json"
     };
-    if !matches!(choice, Choice::Upload | Choice::Download(_))
+    if !matches!(choice, Choice::Upload | Choice::Download { .. })
         && !path
             .extension()
             .and_then(|s| s.to_str())

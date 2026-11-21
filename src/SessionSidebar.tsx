@@ -1,16 +1,18 @@
-import { useState } from "react";
-import { ChevronDown, Clock, Copy, Download, Folder, FolderPlus, HardDrive, Laptop, MoreHorizontal, Pencil, Plus, Search, Server, Shield, Star, Trash2, Upload } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Activity, ChevronDown, Clock, ExternalLink, ListChecks, Copy, Download, Folder, FolderPlus, HardDrive, Laptop, MoreHorizontal, Pencil, Plus, Search, Server, Shield, Star, Trash2, Upload } from "lucide-react";
 import { ContextMenu } from "./ContextMenu";
 import { t, type Language } from "./i18n";
 import type { Session, SessionCatalog, SessionFolder } from "./types";
 export type SessionView = "all" | "favorites" | "recent" | "unassigned" | `folder:${string}`;
-export function SessionSidebar({ catalog, sessions, language, view, setView, query, setQuery, configured, busy, onNew, onOpen, onEdit, onDuplicate, onFavorite, onDelete, onLocal, onFolder, onDeleteFolder, onImport, onExport, onMove, onConnectAs, onSftp }: {
+export function SessionSidebar({ catalog, sessions, language, view, setView, query, setQuery, configured, busy, onNew, onOpen, onEdit, onDuplicate, onFavorite, onDelete, onLocal, onFolder, onDeleteFolder, onImport, onExternalImport, onOpenFolder, onPickBatch, onPing, onShortcut, hasPreset, onSavePreset, onExport, onMove, onConnectAs, onSftp }: {
   catalog: SessionCatalog; sessions: Session[]; language: Language; view: SessionView; setView: (view: SessionView) => void; query: string; setQuery: (value: string) => void; configured: boolean; busy: boolean;
-  onFiles: () => void; hasSsh: boolean; onMove: (session: Session, folder: string) => void; onNew: (folder?: string) => void; onOpen: (s: Session) => void; onEdit: (s: Session) => void; onDuplicate: (s: Session) => void; onFavorite: (s: Session) => void; onDelete: (s: Session) => void; onLocal: () => void; onFolder: (folder?: SessionFolder) => void; onDeleteFolder: (folder: SessionFolder) => void; onImport: (folder?: SessionFolder) => void; onExport: (scope?: {sessionId?: string; folderId?: string}) => void; onConnectAs: (s: Session) => void; onSftp: (s: Session) => void;
+  onFiles: () => void; hasSsh: boolean; onMove: (session: Session, folder: string) => void; onNew: (folder?: string) => void; onOpen: (s: Session) => void; onEdit: (s: Session) => void; onDuplicate: (s: Session) => void; onFavorite: (s: Session) => void; onDelete: (s: Session) => void; onLocal: () => void; onFolder: (folder?: SessionFolder) => void; onDeleteFolder: (folder: SessionFolder) => void; onImport: (folder?: SessionFolder) => void; hasPreset: boolean; onSavePreset: (session?: Session) => void; onExternalImport: (format: 'openssh' | 'putty' | 'moba', folder?: SessionFolder) => void; onOpenFolder: (folder: SessionFolder) => void; onPickBatch: () => void; onPing: (session: Session) => void; onShortcut: (session: Session) => void; onExport: (scope?: {sessionId?: string; folderId?: string}) => void; onConnectAs: (s: Session) => void; onSftp: (s: Session) => void;
 }) {
   const [context, setContext] = useState<{ x: number; y: number; session?: Session; folder?: SessionFolder; more?: boolean } | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ connections: true });
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => readFoldState("folders", {}));
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => readFoldState("sections", {connections: true}));
+  useEffect(() => writeFoldState("folders", expanded), [expanded]);
+  useEffect(() => writeFoldState("sections", collapsed), [collapsed]);
   const heading = (key: "connections" | "folders" | "savedSessions") => <button className="section-label collapse-heading" aria-expanded={!collapsed[key]} onClick={() => setCollapsed(old => ({ ...old, [key]: !old[key] }))}><ChevronDown size={15} style={{ transform: collapsed[key] ? "rotate(-90deg)" : undefined }}/>{tr(key)}</button>;
   const drop = (folder: string) => ({ onDragOver: (e: React.DragEvent) => { if (!busy && e.dataTransfer.types.includes("application/x-termix-session")) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; } }, onDrop: (e: React.DragEvent) => { e.preventDefault(); const session = catalog.sessions.find(s => s.id === e.dataTransfer.getData("application/x-termix-session")); if (session && !busy && session.group !== folder) onMove(session, folder); } });
   const tr = (key: Parameters<typeof t>[1]) => t(language, key);
@@ -27,15 +29,22 @@ export function SessionSidebar({ catalog, sessions, language, view, setView, que
     ...(session.kind === "ssh" ? [
       {icon: Server, label: ui("Connect as…", "Verbinden als …"), action: () => onConnectAs(session)},
       {icon: Folder, label: ui("Open SFTP", "SFTP öffnen"), action: () => onSftp(session)},
+      {icon: Copy, label: ui("Use port and font size as defaults", "Port und Schriftgröße als Vorgabe speichern"), action: () => onSavePreset(session)},
     ] : []),
+    ...(["ssh", "rdp"].includes(session.kind) ? [{icon: Activity, label: ui("Ping host", "Host anpingen"), action: () => onPing(session), disabled: busy}] : []),
     {label: ui("Manage", "Verwalten"), heading: true},
     {icon: Pencil, label: tr("editSession"), action: () => onEdit(session)},
     {icon: Star, label: tr(session.favorite ? "removeFavorite" : "addFavorite"), action: () => onFavorite(session)},
     {icon: Copy, label: tr("duplicateSession"), action: () => onDuplicate(session)},
+    {icon: ExternalLink, label: ui("Create desktop shortcut", "Desktop-Verknüpfung erstellen"), action: () => onShortcut(session), disabled: busy || session.kind === "serial"},
     {icon: Upload, label: ui("Export this session", "Diese Sitzung exportieren"), action: () => onExport({sessionId: session.id})},
     {icon: Trash2, label: tr("deleteSession"), action: () => onDelete(session)},
   ] : [];
   const folderActions = folder ? [
+    {icon: Server, label: ui("Open SSH sessions in folder", "SSH-Sitzungen im Ordner öffnen"), action: () => onOpenFolder(folder), disabled: !catalog.sessions.some(item => item.group === folder.id && item.kind === "ssh")},
+    {icon: Download, label: ui("Import OpenSSH config…", "OpenSSH-Konfiguration importieren …"), action: () => onExternalImport("openssh", folder)},
+    {icon: Download, label: ui("Import PuTTY sessions…", "PuTTY-Sitzungen importieren …"), action: () => onExternalImport("putty", folder)},
+    {icon: Download, label: ui("Import MobaXterm sessions…", "MobaXterm-Sitzungen importieren …"), action: () => onExternalImport("moba", folder)},
     {icon: Plus, label: ui("New session in folder", "Neue Sitzung im Ordner"), action: () => onNew(folder.id)},
     {icon: FolderPlus, label: tr("addFolder"), action: () => onFolder()},
     {icon: ChevronDown, label: expanded[folder.id] ? ui("Collapse folder", "Ordner zuklappen") : ui("Expand folder", "Ordner aufklappen"), action: () => setExpanded(old => ({...old, [folder.id]: !old[folder.id]}))},
@@ -46,7 +55,7 @@ export function SessionSidebar({ catalog, sessions, language, view, setView, que
     {icon: Trash2, label: tr("deleteFolder"), action: () => onDeleteFolder(folder)},
   ] : [];
   return <aside className="sidebar" onContextMenu={e => { if (busy) return; e.preventDefault(); setContext({ x: e.clientX, y: e.clientY }); }}><div className="sidebar-scroll">
-    <div className="side-heading"><span>{tr("workspace")}</span><div className="side-actions"><button className="icon-button" disabled={!configured || busy} onClick={() => onFolder()} aria-label={tr("addFolder")} title={tr("addFolder")}><FolderPlus size={19}/></button><button className="icon-button" disabled={!configured || busy} onClick={() => onNew()} aria-label={tr("addSession")} title={tr("addSession")}><Plus size={20}/></button></div></div>
+    <div className="side-heading"><span>{tr("workspace")}</span><div className="side-actions"><button className="icon-button" disabled={!configured || busy || catalog.sessions.filter(session => session.kind === "ssh").length < 2} onClick={onPickBatch} aria-label={ui("Open multiple SSH sessions", "Mehrere SSH-Sitzungen öffnen")} title={ui("Open multiple SSH sessions", "Mehrere SSH-Sitzungen öffnen")}><ListChecks size={19}/></button><button className="icon-button" disabled={!configured || busy} onClick={() => onFolder()} aria-label={tr("addFolder")} title={tr("addFolder")}><FolderPlus size={19}/></button><button className="icon-button" disabled={!configured || busy} onClick={() => onNew()} aria-label={tr("addSession")} title={tr("addSession")}><Plus size={20}/></button></div></div>
     <div className="search"><Search size={18}/><input aria-label={tr("search")} placeholder={tr("search")} value={query} onChange={e => setQuery(e.target.value)}/></div>
     <nav className="nav-section" aria-label={tr("connections")}>{heading("connections")}<div hidden={collapsed.connections}>
       <button className={`nav-item ${view === "all" ? "selected" : ""}`} aria-label={tr("allSessions")} onClick={() => setView("all")}><Server size={18}/>{tr("allSessions")}<span className="count" aria-hidden="true">{catalog.sessions.length}</span></button>
@@ -66,5 +75,22 @@ export function SessionSidebar({ catalog, sessions, language, view, setView, que
         setContext({x: bounds.left, y: bounds.bottom, session, more: true});
       }}><MoreHorizontal size={19}/></button>
     </div>)}{!sessions.length && <div className="empty">{tr(catalog.sessions.length ? "noFolderSessions" : "noSessions")}</div>}</div></section>
-  </div>{context && <ContextMenu {...context} onClose={() => setContext(null)} items={session ? sessionActions : folder ? folderActions : [{ label: language === "de" ? "Erstellen" : "Create", heading: true }, { icon: Plus, label: tr("addSession"), action: () => onNew(), disabled: !configured }, { icon: FolderPlus, label: tr("addFolder"), action: () => onFolder(), disabled: !configured }, { label: language === "de" ? "Bibliothek" : "Library", heading: true }, { icon: Download, label: tr("importSessions"), action: () => onImport() }, { icon: Upload, label: tr("exportSessions"), action: () => onExport(), disabled: !catalog.sessions.length }, { icon: ChevronDown, label: language === "de" ? "Alle Gruppen einklappen" : "Collapse all sections", action: () => setCollapsed({ connections: true, folders: true, savedSessions: true }) }]}/> }<div className="sidebar-bottom"><div className="library-transfer"><button className="btn secondary" disabled={busy} onClick={() => onImport()} title={tr("importSessions")}><Download size={17}/>{tr("importAction")}</button><button className="btn secondary" disabled={busy || !catalog.sessions.length} onClick={() => onExport()} title={tr("exportSessions")}><Upload size={17}/>{tr("exportAction")}</button></div><div className="secure"><Shield size={15}/>{tr("localStorage")}</div><div className="sidebar-version">{tr("tagline")}</div></div></aside>;
+  </div>{context && <ContextMenu {...context} onClose={() => setContext(null)} items={session ? sessionActions : folder ? folderActions : [{ label: language === "de" ? "Erstellen" : "Create", heading: true }, { icon: Plus, label: tr("addSession"), action: () => onNew(), disabled: !configured }, { icon: FolderPlus, label: tr("addFolder"), action: () => onFolder(), disabled: !configured }, { label: language === "de" ? "Bibliothek" : "Library", heading: true }, { icon: Download, label: tr("importSessions"), action: () => onImport() }, { icon: Download, label: ui("Import OpenSSH config…", "OpenSSH-Konfiguration importieren …"), action: () => onExternalImport("openssh") }, { icon: Download, label: ui("Import PuTTY sessions…", "PuTTY-Sitzungen importieren …"), action: () => onExternalImport("putty") }, { icon: Download, label: ui("Import MobaXterm sessions…", "MobaXterm-Sitzungen importieren …"), action: () => onExternalImport("moba") }, ...(hasPreset ? [{ icon: Trash2, label: ui("Reset SSH session defaults", "SSH-Sitzungsvorgaben zurücksetzen"), action: () => onSavePreset() }] : []), { icon: Upload, label: tr("exportSessions"), action: () => onExport(), disabled: !catalog.sessions.length }, { icon: ChevronDown, label: language === "de" ? "Alle Gruppen einklappen" : "Collapse all sections", action: () => setCollapsed({ connections: true, folders: true, savedSessions: true }) }]}/> }<div className="sidebar-bottom"><div className="library-transfer"><button className="btn secondary" disabled={busy} onClick={() => onImport()} title={tr("importSessions")}><Download size={17}/>{tr("importAction")}</button><button className="btn secondary" disabled={busy || !catalog.sessions.length} onClick={() => onExport()} title={tr("exportSessions")}><Upload size={17}/>{tr("exportAction")}</button></div><div className="secure"><Shield size={15}/>{tr("localStorage")}</div><div className="sidebar-version">{tr("tagline")}</div></div></aside>;
+}
+
+function readFoldState(key: string, defaults: Record<string, boolean>): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(`termix.fold.${key}`);
+    if (!raw || raw.length > 65536) return defaults;
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return defaults;
+    return {...defaults, ...Object.fromEntries(Object.entries(parsed).filter(([name, value]) =>
+      name.length <= 128 && typeof value === "boolean").slice(0, 200))};
+  } catch { return defaults; }
+}
+
+function writeFoldState(key: string, value: Record<string, boolean>) {
+  try {
+    localStorage.setItem(`termix.fold.${key}`, JSON.stringify(Object.fromEntries(Object.entries(value).slice(-200))));
+  } catch { /* Persistence may be unavailable in the WebView. */ }
 }

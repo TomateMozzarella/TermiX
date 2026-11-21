@@ -91,6 +91,9 @@ fn host_verification_precedes_authentication_and_changed_keys_block() {
         changed.previous_fingerprint.as_ref(),
         Some(&changed.fingerprint)
     );
+    crate::sftp::start_folder(Arc::clone(&terminal), "/".into(), folder.clone(), false).unwrap();
+    assert_eq!(finish(&terminal).state, "done");
+    std::fs::write(folder.join("root.txt"), b"edit").unwrap();
     assert!(manager
         .open(
             &changed.ticket,
@@ -361,6 +364,27 @@ fn sftp_listing_streaming_transfers_overwrite_and_cancel() {
         }
     }
     let downloaded = dir.join("download.txt");
+    let part = crate::sftp::download_part_path(
+        &downloaded,
+        std::path::Path::new("/hello.txt"),
+        &terminal.download_scope,
+    )
+    .unwrap();
+    std::fs::write(&part, b"wrong prefix").unwrap();
+    crate::sftp::start(
+        Arc::clone(&terminal),
+        "/hello.txt".into(),
+        downloaded.clone(),
+        false,
+        false,
+    )
+    .unwrap();
+    assert_eq!(
+        finish(&terminal).error.as_deref(),
+        Some("sftp_partial_mismatch")
+    );
+    assert!(!downloaded.exists());
+    std::fs::write(&part, b"fixture ").unwrap();
     crate::sftp::start(
         Arc::clone(&terminal),
         "/hello.txt".into(),
@@ -371,6 +395,7 @@ fn sftp_listing_streaming_transfers_overwrite_and_cancel() {
     .unwrap();
     assert_eq!(finish(&terminal).state, "done");
     assert_eq!(std::fs::read(&downloaded).unwrap(), b"fixture content");
+    assert!(!part.exists());
     let upload = dir.join("upload.txt");
     std::fs::write(&upload, b"new bytes").unwrap();
     let remote = format!("/test-{}.txt", uuid::Uuid::new_v4());

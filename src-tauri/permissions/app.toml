@@ -1,12 +1,12 @@
 [[permission]]
 identifier = "local-terminal"
 description = "Manage allowlisted local PTY shell profiles in the main window."
-commands.allow = ["terminal_profiles", "open_terminal", "read_terminal", "write_terminal", "resize_terminal", "close_terminal"]
+commands.allow = ["terminal_profiles", "open_rdp_session", "ping_session", "open_terminal", "read_terminal", "write_terminal", "resize_terminal", "close_terminal"]
 
 [[permission]]
 identifier = "session-storage"
 description = "Read and update non-secret session metadata in the main window."
-commands.allow = ["list_sessions", "get_catalog", "reload_catalog", "save_session", "delete_session", "save_folder", "delete_folder", "touch_session", "pick_session_import", "import_sessions", "export_sessions"]
+commands.allow = ["list_sessions", "get_catalog", "reload_catalog", "save_session", "delete_session", "save_folder", "delete_folder", "touch_session", "pick_session_import", "import_sessions", "export_sessions", "create_session_shortcut", "take_launch_session"]
 
 [[permission]]
 identifier = "preferences"
@@ -20,7 +20,7 @@ commands.allow = ["tunnel_start", "tunnel_list", "tunnel_stop", "ssh_monitor", "
 [[permission]]
 identifier = "sftp"
 description = "Browse verified SSH transports and transfer files chosen through native dialogs; no arbitrary local paths."
-commands.allow = ["sftp_list", "sftp_upload", "sftp_upload_folder", "sftp_download", "sftp_progress", "sftp_cancel", "sftp_mkdir", "sftp_file_action", "editor_external_state", "editor_open", "editor_save", "editor_reload", "editor_close", "editor_external", "editor_reload_external"]
+commands.allow = ["sftp_list", "sftp_local_open", "sftp_local_list", "sftp_local_upload", "sftp_dropped_upload", "sftp_pause_transfer", "sftp_upload", "sftp_upload_folder", "sftp_download", "sftp_progress", "sftp_cancel", "sftp_mkdir", "sftp_file_action", "editor_external_state", "editor_open", "editor_save", "editor_reload", "editor_close", "editor_external", "editor_reload_external", "editor_terminal_output"]
 
 [[permission]]
 identifier = "project-links"

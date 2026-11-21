@@ -400,6 +400,10 @@ impl SshManager {
         session.set_keepalive(false, 15);
         session.set_blocking(false);
         let terminal = Arc::new(SshTerminal {
+            download_scope: format!(
+                "{}:{}\0{}\0{}",
+                pending.host, pending.port, auth.username, pending.pin.fingerprint
+            ),
             socket: pending.socket,
             session,
             io: Mutex::new(SshIo {
@@ -461,6 +465,7 @@ struct SshIo {
     exited: Option<Option<u32>>,
 }
 pub struct SshTerminal {
+    pub(crate) download_scope: String,
     pub remote: crate::sftp::Remote,
     pub documents: crate::document::Documents,
     socket: TcpStream,

@@ -1,3 +1,8 @@
+import { TerminalWindow } from "./TerminalWindow";
+import { defaultShortcuts, readShortcuts, shortcutsStorageKey, workspaceShortcut, type ShortcutAction, type Shortcuts } from "./shortcuts";
+import { readMobaSessions } from "./mobaImport";
+import { readPuttySessions } from "./puttyImport";
+import { readOpenSshSessions } from "./openSshImport";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import type { TerminalWriter } from "./TerminalPane";
 import { useWindowClosing } from "./windowClosing";
@@ -6,11 +11,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Activity, BookOpen, ChevronLeft, ChevronRight, Columns2, Download, ExternalLink, FileText, Globe, GitFork, HardDrive, HelpCircle, MoreHorizontal, Network, Plus, Settings, Terminal, X, Pencil, Copy, Pin, ArrowLeft, ArrowRight, Maximize, RotateCw } from "lucide-react";
 import { ContextMenu } from "./ContextMenu";
-import { Modal } from "./Modal";
+import { Modal, useConfirmation } from "./Modal";
 import { PreferencesDialog } from "./PreferencesDialog";
 import { SessionDialog } from "./SessionDialog";
 import { SessionSidebar, type SessionView } from "./SessionSidebar";
-import { ConfirmDialog, FolderDialog, ImportDialog } from "./LibraryDialogs";
+import { BatchSessionDialog, ConfirmDialog, FolderDialog, ImportDialog } from "./LibraryDialogs";
 import { defaults, getPreferences, savePreferences, type Preferences } from "./services/preferences";
 import { terminalApi, type ShellProfile } from "./services/terminal";
 import { deleteFolder, deleteSession, exportSessions, getCatalog, importSessions, pickSessionImport, reloadCatalog, saveFolder, saveSession, touchSession } from "./services/sessions";
@@ -18,7 +23,7 @@ import { resolvedTheme, accentForeground, accentText } from "./appearance";
 import { errorText, t, type Message } from "./i18n";
 import type { Session, SessionCatalog, SessionFolder, TerminalTab } from "./types";
 
-type Workspace = {schemaVersion: 1; tabs: {sessionId: string | null; profile: string | null; pinned: boolean; color: string | null}[]; active: number; sidebarWidth: number; filesWidth: number; verticalSplit: boolean};
+type Workspace = {schemaVersion: 1; tabs: {sessionId: string | null; profile: string | null; pinned: boolean; color: string | null}[]; active: number; sidebarWidth: number; filesWidth: number; verticalSplit: boolean; splitLayout?: {tabs: number[]; column: number; columnSecond?: number; row: number}};
 const makeId = () => crypto.randomUUID();
 const TunnelDialog=lazy(()=>import("./TunnelDialog").then(m=>({default:m.TunnelDialog})));
 const RemoteMonitor=lazy(()=>import("./RemoteMonitor").then(m=>({default:m.RemoteMonitor})));
@@ -31,7 +36,8 @@ const SftpPane = lazy(() => import("./SftpPane").then(module => ({ default: modu
 const SshDialog = lazy(() => import("./SshDialog").then(module => ({ default: module.SshDialog })));
 const emptyCatalog: SessionCatalog = { schemaVersion: 2, revision: 0, folders: [], sessions: [] };
 export default function App() {
-  useWindowClosing();
+  const [closeWarnings, setCloseWarnings] = useState<string[]>([]);
+  useWindowClosing(setCloseWarnings);
   const [profiles, setProfiles] = useState<ShellProfile[]>([]), [preferences, setPreferences] = useState<Preferences | null>(null), [preview, setPreview] = useState<Preferences | null>(null);
   const [preferencesMode, setPreferencesMode] = useState<"setup" | "settings" | null>(null), [startupError, setStartupError] = useState(""), [retry, setRetry] = useState(0);
   const [systemDark, setSystemDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -39,7 +45,14 @@ export default function App() {
   const [tabs, setTabs] = useState<TerminalTab[]>([]), [activeTab, setActiveTab] = useState("");
   const [tunnelId,setTunnelId]=useState<string|null>(null);
   const [commandsOpen,setCommandsOpen]=useState(false),[externalRequest,setExternalRequest]=useState<{id:string;path:string;nonce:string}|null>(null);
-  const [remoteEditor, setRemoteEditor] = useState<{ id: string; path: string } | null>(null);
+  const [editorRequests, setEditorRequests] = useState<Record<string, {path: string; nonce: string}>>({});
+  const [remoteEditor, setVisibleEditor] = useState<string | null>(null);
+  const [lastEditor, setLastEditor] = useState<string | null>(null);
+  function setRemoteEditor(file: {id: string; path: string}) {
+    setEditorRequests(old => ({...old, [file.id]: {path: file.path, nonce: makeId()}}));
+    setLastEditor(file.id);
+    setVisibleEditor(file.id);
+  }
   const [filesOpen, setFilesOpen] = useState(false), [filesWidth, setFilesWidth] = useState(390);
   const activeTerminal = tabs.find(tab => tab.id === activeTab);
   const activeTerminalRef=useRef(activeTerminal);activeTerminalRef.current=activeTerminal;
@@ -62,18 +75,28 @@ export default function App() {
     setReadyTabs(old => write ? (old.includes(id) ? old : [...old, id]) : old.filter(value => value !== id));
   }
   const [palette, setPalette] = useState(false), [commandQuery, setCommandQuery] = useState("");
-  useEffect(() => { const handler = (e: globalThis.KeyboardEvent) => { if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "p" && !document.querySelector("[role=dialog]")) { e.preventDefault(); e.stopPropagation(); setPalette(true); } }; window.addEventListener("keydown", handler, true); return () => window.removeEventListener("keydown", handler, true); }, []);
+  const [shortcuts, setShortcuts] = useState(readShortcuts);
+  const [splitColumn, setSplitColumn] = useState(0);
+  const [splitColumnSecond, setSplitColumnSecond] = useState(0);
+  const [splitRow, setSplitRow] = useState(0);
+  const [popouts, setPopouts] = useState<Record<string, Window>>({});
   const [tabMenu, setTabMenu] = useState<{x: number; y: number; id: string} | null>(null), [rename, setRename] = useState<{id: string; title: string} | null>(null), [split, setSplit] = useState<string[] | null>(null), [verticalSplit, setVerticalSplit] = useState(false), [workspaceFull, setWorkspaceFull] = useState(false);
   const [keyboardTabs, setKeyboardTabs] = useState(false);
   const [editor, setEditor] = useState<{ session: Session; editing: boolean } | null>(null), [folderEditor, setFolderEditor] = useState<SessionFolder | null>(null);
   const [confirm, setConfirm] = useState<{ kind: "session" | "folder"; id: string; name: string } | null>(null), [incoming, setIncoming] = useState<SessionCatalog | null>(null);
   const [status, setStatus] = useState(""), [notice, setNotice] = useState<Message | null>(null), [busy, setBusy] = useState(false);
+  const [pingResult, setPingResult] = useState<{host: string; address: string; roundTripMs: number | null} | null>(null);
+  const [batchPicker, setBatchPicker] = useState(false);
+  const batchQueue = useRef<Session[]>([]);
+  const [sshImport, setSshImport] = useState<{folder?: SessionFolder; format: 'openssh' | 'putty' | 'moba'} | null>(null);
   const [sshTarget, setSshTarget] = useState<{ session: Session; replaces?: string; temporary?: boolean; showFiles?: boolean } | null>(null);
   const visible = preview ?? preferences ?? defaults("powershell"), lang = visible.language, tr = (key: Message) => t(lang, key), theme = resolvedTheme(visible.theme, systemDark);
+  const shortcutHandled = useRef(false);
+  const workspaceConfirmation = useConfirmation(lang);
   const configured = !!preferences?.setupComplete && preferences.setupVersion === 2;
   const [tabColour, setTabColour] = useState<{id: string; value: string} | null>(null);
   const [terminalOutput, setTerminalOutput] = useState<{title: string; text: string} | null>(null);
-  const modalOpen = !!(preferencesMode || editor || folderEditor || confirm || incoming || sshTarget || remoteEditor || rename || palette || tunnelId || help || layout || multi || tabColour || terminalOutput);
+  const modalOpen = !!(preferencesMode || editor || folderEditor || confirm || incoming || pingResult || batchPicker || sshImport || sshTarget || remoteEditor || rename || palette || tunnelId || help || layout || multi || tabColour || terminalOutput || closeWarnings.length);
   const updateCatalog = (value: SessionCatalog) => setCatalog(old => value.revision >= old.revision ? value : old);
   const library = <T,>(request: Promise<T>): Promise<T> => request.catch(e => { setStatus(String(e)); throw e; });
   useEffect(() => {
@@ -103,9 +126,14 @@ export default function App() {
   }, [retry]);
   const uiShown=useRef(false);
   useEffect(()=>{if(uiShown.current||(!preferences&&!startupError))return;uiShown.current=true;queueMicrotask(()=>{void invoke("ui_ready").catch(()=>{});});},[preferences,startupError]);
-  async function applyPreferences(value: Preferences) {
+  async function applyPreferences(value: Preferences, keys?: Shortcuts) {
     const saved = await savePreferences(value);
-    setPreferences(saved); setPreview(null); setPreferencesMode(null);
+    setPreferences(saved);
+    if (keys && JSON.stringify(keys) !== JSON.stringify(shortcuts)) {
+      localStorage.setItem(shortcutsStorageKey, JSON.stringify(keys));
+      setShortcuts(keys);
+    }
+    setPreview(null); setPreferencesMode(null);
   }
   const filtered = useMemo(() => {
     const folderNames = new Map(catalog.folders.map(f => [f.id, f.name]));
@@ -117,8 +145,28 @@ export default function App() {
       return `${s.name} ${s.host} ${s.username} ${folderNames.get(s.group) ?? ""}`.toLocaleLowerCase(lang).includes(query.trim().toLocaleLowerCase(lang));
     }).sort((a, b) => view === "recent" ? (b.lastUsed ?? 0) - (a.lastUsed ?? 0) : a.name.localeCompare(b.name, lang));
   }, [catalog, view, query, lang]);
+  const presetKey = "termix.sshSessionDefaults";
+  const [preset, setPreset] = useState<{port: number; fontSize?: number} | null>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("termix.sshSessionDefaults") ?? "null");
+      if (!Number.isInteger(saved?.port) || saved.port < 1 || saved.port > 65535) return null;
+      const fontSize = Number.isInteger(saved.fontSize) && saved.fontSize >= 11 && saved.fontSize <= 22 ? saved.fontSize : undefined;
+      return {port: saved.port, fontSize};
+    } catch { return null; }
+  });
+  function changePreset(session?: Session) {
+    const next = session ? {port: session.port, fontSize: session.fontSize} : null;
+    try {
+      if (next) localStorage.setItem(presetKey, JSON.stringify(next));
+      else localStorage.removeItem(presetKey);
+      setPreset(next);
+      setStatus("");
+    } catch {
+      setStatus(lang === "de" ? "Die Sitzungsvorgaben konnten nicht gespeichert werden." : "Could not save the session defaults.");
+    }
+  }
   function createSession(group = view.startsWith("folder:") ? view.slice(7) : "") {
-    setEditor({ editing: false, session: { id: makeId(), name: "", kind: "ssh", host: "", port: 22, username: "", group, authMethod: "agent" } });
+    setEditor({ editing: false, session: { id: makeId(), name: "", kind: "ssh", host: "", port: preset?.port ?? 22, fontSize: preset?.fontSize, username: "", group, authMethod: "agent" } });
   }
   async function persistSession(value: Session) {
     setBusy(true);
@@ -127,12 +175,31 @@ export default function App() {
     } finally { setBusy(false); }
   }
   const rememberUse = (id: string) => { void touchSession(id).then(updateCatalog).catch(e => setStatus(String(e))); };
+  function openSshBatch(sessions: Session[]) {
+    const [first, ...queue] = sessions.filter(session => session.kind === "ssh");
+    if (queue.length >= 16) {
+      setStatus(lang === "de" ? "Wähle höchstens 16 SSH-Sitzungen aus." : "Select up to 16 SSH sessions.");
+      return;
+    }
+    if (first) { batchQueue.current = queue; openSession(first); }
+  }
   function openSession(session: Session) {
     setKeyboardTabs(false);
     if (session.kind === "ssh") { setSshTarget({ session }); return; }
+    if (session.kind === "rdp") {
+      void run(async () => { await invoke("open_rdp_session", { id: session.id }); rememberUse(session.id); });
+      return;
+    }
     if (session.kind !== "local" || !preferences) { setStatus(tr("unavailable")); return; }
     const tab = localTab(preferences, session); setTabs(old => [...old, tab]); setActiveTab(tab.id); rememberUse(session.id);
   }
+  useEffect(() => {
+    if (!configured || shortcutHandled.current) return;
+    shortcutHandled.current = true;
+    void invoke<Session | null>("take_launch_session").then(session => {
+      if (session) openSession(session);
+    }).catch(error => setStatus(String(error)));
+  }, [configured]);
   function addLocalTab() { if (!preferences || !configured) return; setKeyboardTabs(false); const tab = localTab(preferences); setTabs(old => [...old, tab]); setActiveTab(tab.id); }
   function closeTab(id: string) { setTabs(old => { const next = old.filter(t => t.id !== id); if (activeTab === id) setActiveTab(next[next.length - 1]?.id ?? ""); return next; }); }
   async function run(action: () => Promise<void>) { setBusy(true); setStatus(""); setNotice(null); try { await action(); } catch (e) { setStatus(String(e)); } finally { setBusy(false); } }
@@ -152,14 +219,23 @@ export default function App() {
     }
     setTabs(old => replaces ? old.map(t => t.id === replaces ? tab : t) : [...old, tab]); setActiveTab(tab.id);
     if (sshTarget.showFiles) { setCommandsOpen(false); setFilesOpen(true); }
-    setSshTarget(null);
+    const next = batchQueue.current.shift();
+    setSshTarget(next ? {session: next} : null);
   }
   useEffect(() => {
     if (!workspaceReady || !configured || (!tabs.length && previousWorkspace)) return;
-    const timer = setTimeout(() => { const savedTabs = tabs.filter(t => !t.temporary && (t.sessionId || t.kind === "local")); void invoke("save_workspace", {workspace: {schemaVersion: 1, tabs: savedTabs.slice(0,16).map(t => ({sessionId: t.sessionId ?? null, profile: t.sessionId ? null : t.profile ?? visible.defaultShell, pinned: !!t.pinned, color: t.color ?? null})), active: Math.max(0, savedTabs.findIndex(t => t.id === activeTab)), sidebarWidth: Math.round(sidebarWidth), filesWidth: Math.round(filesWidth), verticalSplit}}).catch(() => {}); }, 500);
+    const timer = setTimeout(() => { const savedTabs = tabs.filter(t => !t.temporary && (t.sessionId || t.kind === "local")).slice(0, 16); void invoke("save_workspace", {workspace: {schemaVersion: 1, tabs: savedTabs.slice(0,16).map(t => ({sessionId: t.sessionId ?? null, profile: t.sessionId ? null : t.profile ?? visible.defaultShell, pinned: !!t.pinned, color: t.color ?? null})), active: Math.max(0, savedTabs.findIndex(t => t.id === activeTab)), sidebarWidth: Math.round(sidebarWidth), filesWidth: Math.round(filesWidth), verticalSplit, splitLayout: {tabs: (split ?? []).map(id => savedTabs.findIndex(tab => tab.id === id)).filter(index => index >= 0), column: splitColumn, columnSecond: splitColumnSecond, row: splitRow}}}).catch(() => {}); }, 500);
     return () => clearTimeout(timer);
-  }, [tabs, activeTab, sidebarWidth, filesWidth, verticalSplit, workspaceReady, configured, previousWorkspace, visible.defaultShell]);
-  function restoreWorkspace() { if (!previousWorkspace || !preferences) return; const restored = previousWorkspace.tabs.flatMap(saved => { const session = catalog.sessions.find(s => s.id === saved.sessionId); if (saved.sessionId && !session) return []; const tab: TerminalTab = session?.kind === "ssh" ? {id: makeId(), title: session.name, kind: "ssh", sessionId: session.id, connection: session} : localTab({...preferences, defaultShell: saved.profile ?? preferences.defaultShell}, session); return [{...tab, pinned: saved.pinned, color: saved.color ?? undefined}]; }); setTabs(restored); setActiveTab(restored[Math.min(previousWorkspace.active, restored.length - 1)]?.id ?? ""); setSidebarWidth(Math.max(230, Math.min(window.innerWidth * .5, previousWorkspace.sidebarWidth))); setFilesWidth(Math.max(280, Math.min(window.innerWidth * .6, previousWorkspace.filesWidth))); setVerticalSplit(previousWorkspace.verticalSplit); setPreviousWorkspace(null); }
+  }, [tabs, activeTab, sidebarWidth, filesWidth, verticalSplit, split, splitColumn, splitColumnSecond, splitRow, workspaceReady, configured, previousWorkspace, visible.defaultShell]);
+  function restoreWorkspace() { if (!previousWorkspace || !preferences) return; const slots = previousWorkspace.tabs.map(saved => { const session = catalog.sessions.find(s => s.id === saved.sessionId); if (saved.sessionId && (!session || (session.kind !== "ssh" && session.kind !== "local"))) return null; const tab: TerminalTab = session?.kind === "ssh" ? {id: makeId(), title: session.name, kind: "ssh", sessionId: session.id, connection: session} : localTab({...preferences, defaultShell: saved.profile ?? preferences.defaultShell}, session); return {...tab, pinned: saved.pinned, color: saved.color ?? undefined}; }); const restored = slots.filter(tab => tab !== null); setTabs(restored); setActiveTab(slots[previousWorkspace.active]?.id ?? restored[0]?.id ?? "");
+    const layout = previousWorkspace.splitLayout;
+    if (layout) {
+      const ids = layout.tabs.flatMap(index => slots[index]?.id ?? []);
+      setSplit(ids.length >= 2 ? ids : null);
+      setSplitColumn(layout.column);
+      setSplitColumnSecond(layout.columnSecond ?? 0);
+      setSplitRow(layout.row);
+    } setSidebarWidth(Math.max(230, Math.min(window.innerWidth * .5, previousWorkspace.sidebarWidth))); setFilesWidth(Math.max(280, Math.min(window.innerWidth * .6, previousWorkspace.filesWidth))); setVerticalSplit(previousWorkspace.verticalSplit); setPreviousWorkspace(null); }
   const tabStrip = useRef<HTMLDivElement>(null);
   const [tabScroll, setTabScroll] = useState({ left: false, right: false });
   useEffect(() => {
@@ -202,12 +278,53 @@ export default function App() {
     const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 : (index + (event.key === "ArrowRight" ? 1 : buttons.length - 1)) % buttons.length;
     setKeyboardTabs(true); setActiveTab(tabs[next].id); buttons[next].focus();
   }
+  function reattachTerminal(id: string, popup: Window) {
+    setPopouts(current => {
+      if (current[id] !== popup) return current;
+      const next = {...current};
+      delete next[id];
+      return next;
+    });
+    if (!popup.closed) popup.close();
+  }
+
+  function detachTerminal(id: string) {
+    const existing = popouts[id];
+    if (existing && !existing.closed) {
+      existing.focus();
+      return;
+    }
+    const popup = window.open("about:blank", "_blank", "popup,width=900,height=620");
+    if (!popup) {
+      setStatus(lang === "de" ? "Das Terminalfenster konnte nicht geöffnet werden." : "Could not open the terminal window.");
+      return;
+    }
+    setPopouts(current => ({...current, [id]: popup}));
+    setSplit(current => current?.filter(tab => tab !== id) ?? null);
+    setActiveTab(id);
+  }
+
+  useEffect(() => {
+    if (!Object.keys(popouts).length) return;
+    const check = window.setInterval(() => {
+      for (const [id, popup] of Object.entries(popouts)) {
+        if (popup.closed || !tabs.some(tab => tab.id === id)) reattachTerminal(id, popup);
+      }
+    }, 200);
+    return () => window.clearInterval(check);
+  }, [popouts, tabs]);
+
   const menuTab = tabs.find(tab => tab.id === tabMenu?.id);
-  function closeMany(ids: string[]) { const targets = tabs.filter(t => ids.includes(t.id) && !t.pinned); if (targets.length > 1 && !window.confirm(lang === "de" ? `${targets.length} Terminals schließen? Laufende Prozesse werden beendet.` : `Close ${targets.length} terminals? Running processes will end.`)) return; const remaining = tabs.filter(t => !targets.includes(t)); setTabs(remaining); if (!remaining.some(t => t.id === activeTab)) setActiveTab(remaining[remaining.length - 1]?.id ?? ""); setSplit(null); }
-  function startSplit(id: string,count=2) { const selected=[...tabs.filter(t=>t.id===id),...tabs.filter(t=>t.id!==id)].slice(0,count);if(selected.length>1){setSplit(selected.map(t=>t.id));setActiveTab(id);} }
+  async function closeMany(ids: string[]) { const targets = tabs.filter(t => ids.includes(t.id) && !t.pinned); if (targets.length > 1 && !await workspaceConfirmation.confirm(lang === "de" ? `${targets.length} Terminals schließen? Laufende Prozesse werden beendet.` : `Close ${targets.length} terminals? Running processes will end.`)) return; const remaining = tabs.filter(t => !targets.includes(t)); setTabs(remaining); if (!remaining.some(t => t.id === activeTab)) setActiveTab(remaining[remaining.length - 1]?.id ?? ""); setSplit(null); }
+  function startSplit(id: string,count=2) { if (popouts[id]) return; const selected=[...tabs.filter(t=>t.id===id),...tabs.filter(t=>t.id!==id && !popouts[t.id])].slice(0,count);if(selected.length>1){setSplit(selected.map(t=>t.id));setActiveTab(id);} }
   const splitItems=split?.filter(id=>tabs.some(t=>t.id===id));
   const splitVisible=splitItems&&splitItems.length>1&&splitItems.includes(activeTab)?splitItems:null;
   const splitColumns=splitVisible?.length===2?(verticalSplit?1:2):(verticalSplit?2:3),splitRows=Math.ceil((splitVisible?.length??1)/splitColumns);
+  const columnBoundary = Math.min(splitColumns === 3 ? 70 : 75, splitColumn || 100 / splitColumns);
+  const secondBoundary = Math.min(85, Math.max(columnBoundary + 15, splitColumnSecond || (100 + columnBoundary) / 2));
+  const columnEdges = splitColumns === 3 ? [0, columnBoundary, secondBoundary, 100] : splitColumns === 2 ? [0, columnBoundary, 100] : [0, 100];
+  const rowBoundary = splitRow || 100 / splitRows;
+  const offset = (index: number, count: number, first: number) => index === 0 ? 0 : first + (index - 1) * (100 - first) / (count - 1);
   const targets = (splitVisible ?? []).flatMap(id => {
     const tab = tabs.find(value => value.id === id);
     const write = inputs.current.get(id);
@@ -215,6 +332,36 @@ export default function App() {
   });
   const reviewMatches = review && review.targets.length === targets.length &&
     review.targets.every((item, index) => item.tab.id === targets[index].tab.id && item.write === targets[index].write);
+  const reopenEditor = activeTransport && editorRequests[activeTransport] ? activeTransport
+    : lastEditor && editorRequests[lastEditor] ? lastEditor : Object.keys(editorRequests)[0];
+  useEffect(() => {
+    function onShortcut(event: globalThis.KeyboardEvent) {
+      if (event.defaultPrevented || event.repeat || modalOpen || document.querySelector("[role=dialog], [role=menu]")) return;
+      const binding = workspaceShortcut(event);
+      if (!binding) return;
+      const action = (Object.keys(shortcuts) as ShortcutAction[]).find(id => shortcuts[id] === binding);
+      if (!action) return;
+      const target = event.target;
+      const terminal = target instanceof Element && target.closest(".terminal-host");
+      const editable = target instanceof Element && target.closest("input, textarea, select, [contenteditable]:not([contenteditable=false]), .monaco-editor");
+      if ((terminal || editable) && !(terminal && action === "palette" && binding === defaultShortcuts.palette)) return;
+      const actions: Record<ShortcutAction, (() => void) | false | null> = {
+        palette: () => setPalette(true),
+        newTab: configured && addLocalTab,
+        connection: configured && (() => createSession()),
+        split: tabs.length > 0 && (() => setLayout(true)),
+        settings: preferences && (() => setPreferencesMode("settings")),
+        help: () => { setHelpError(""); setHelp(true); },
+      };
+      const runAction = actions[action];
+      if (!runAction) return;
+      event.preventDefault();
+      event.stopPropagation();
+      runAction();
+    }
+    window.addEventListener("keydown", onShortcut, true);
+    return () => window.removeEventListener("keydown", onShortcut, true);
+  });
   const ui = (en: string, de: string) => lang === "de" ? de : en;
   function openMulti() { setMultiCommand(""); setReview(null); setMultiResult(""); setMulti(true); }
   async function sendMulti() {
@@ -238,9 +385,9 @@ export default function App() {
       <button className="btn secondary" disabled={!tabs.length} onClick={() => setLayout(true)}><Columns2 size={16}/>{ui("Split view", "Ansicht teilen")}</button>
       <button className="btn secondary" disabled={targets.length < 2} onClick={openMulti}><GitFork size={16}/>Multi-Execute</button>
       <button className="btn secondary" disabled={!activeTransport || !readyTabs.includes(activeTab)} onClick={() => setTunnelId(activeTransport ?? null)}><Network size={16}/>{ui("SSH tunnels", "SSH-Tunnel")}</button>
-      <div className="workspace-tools-end"><button className="btn secondary" disabled={!preferences} onClick={() => setPreferencesMode("settings")} title={tr("settings")}><Settings size={18}/><span>{tr("settings")}</span></button><button className="btn secondary help-button" onClick={() => { setHelpError(""); setHelp(true); }}><HelpCircle size={16}/>{ui("Help", "Hilfe")}</button></div>
+      <div className="workspace-tools-end">{reopenEditor && <button className="btn secondary" onClick={() => setVisibleEditor(reopenEditor)}>TermiX Editor</button>}<button className="btn secondary" disabled={!preferences} onClick={() => setPreferencesMode("settings")} title={tr("settings")}><Settings size={18}/><span>{tr("settings")}</span></button><button className="btn secondary help-button" onClick={() => { setHelpError(""); setHelp(true); }}><HelpCircle size={16}/>{ui("Help", "Hilfe")}</button></div>
     </nav>
-    <div className="workspace" style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}><aside className="shared-sidebar" style={{ width: sidebarWidth }}><div className="settings-tabs"><button aria-pressed={!filesOpen && !commandsOpen} onClick={() => {setCommandsOpen(false);setFilesOpen(false);}}>{ui("Sessions", "Sitzungen")}</button><button disabled={!activeTransport} aria-pressed={filesOpen&&!commandsOpen} onClick={() => {setCommandsOpen(false);setFilesOpen(true);}}>SFTP</button><button aria-pressed={commandsOpen} onClick={()=>{setCommandsOpen(true);setFilesOpen(false);}}>{ui("Commands", "Befehle")}</button></div>{commandsOpen&&<Suspense fallback={<span>…</span>}><CommandsPane language={lang} target={activeTerminal && readyTabs.includes(activeTab)?`${activeTerminal.title} · ${activeTerminal.connection?.host?`${activeTerminal.connection.username}@${activeTerminal.connection.host}:${activeTerminal.connection.port}`:activeTerminal.profile??activeTerminal.kind}`:""} onRun={text=>{const input=inputs.current.get(activeTab);if(!input)return false;void input(text);return true;}}/></Suspense>}<div className="sidebar-library" hidden={commandsOpen || (visible.sftpLayout === "shared" && filesOpen && !!activeTransport)}><SessionSidebar catalog={catalog} sessions={filtered} language={lang} view={view} setView={setView} query={query} setQuery={setQuery} configured={configured} busy={busy}
+    <div className="workspace" style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}><aside className="shared-sidebar" style={{ width: sidebarWidth }}><div className="settings-tabs"><button aria-pressed={!filesOpen && !commandsOpen} onClick={() => {setCommandsOpen(false);setFilesOpen(false);}}>{ui("Sessions", "Sitzungen")}</button><button disabled={!activeTransport} aria-pressed={filesOpen&&!commandsOpen} onClick={() => {setCommandsOpen(false);setFilesOpen(true);}}>SFTP</button><button aria-pressed={commandsOpen} onClick={()=>{setCommandsOpen(true);setFilesOpen(false);}}>{ui("Commands", "Befehle")}</button></div>{commandsOpen&&<Suspense fallback={<span>…</span>}><CommandsPane language={lang} targetId={`${activeTab}:${activeTransport ?? ""}`} target={activeTerminal && readyTabs.includes(activeTab)?`${activeTerminal.title} · ${activeTerminal.connection?.host?`${activeTerminal.connection.username}@${activeTerminal.connection.host}:${activeTerminal.connection.port}`:activeTerminal.profile??activeTerminal.kind}`:""} onRun={(text, focus)=>inputs.current.get(activeTab)?.(text, focus) ?? Promise.resolve(false)}/></Suspense>}<div className="sidebar-library" hidden={commandsOpen || (visible.sftpLayout === "shared" && filesOpen && !!activeTransport)}><SessionSidebar catalog={catalog} sessions={filtered} language={lang} view={view} setView={setView} query={query} setQuery={setQuery} configured={configured} busy={busy}
       hasSsh={!!activeTransport} onFiles={() => {setCommandsOpen(false);setFilesOpen(true);}} onMove={(session, group) => void run(async () => { await saveSession({ ...session, group }); updateCatalog(await getCatalog()); })} onNew={createSession} onOpen={openSession}
       onConnectAs={session => setSshTarget({session: {...session, username: "", authMethod: "agent", keyPath: undefined}, temporary: true})}
       onSftp={session => {
@@ -252,22 +399,53 @@ export default function App() {
       onFavorite={session => void run(async () => { await saveSession({ ...session, favorite: !session.favorite }); updateCatalog(await getCatalog()); })}
       onDelete={session => setConfirm({ kind: "session", id: session.id, name: session.name })} onLocal={addLocalTab}
       onFolder={folder => setFolderEditor(folder ?? { id: makeId(), name: "" })} onDeleteFolder={folder => setConfirm({ kind: "folder", id: folder.id, name: folder.name })}
+      hasPreset={!!preset} onSavePreset={changePreset}
+      onShortcut={session => void run(async () => {
+        try {
+          await invoke("create_session_shortcut", {id: session.id});
+          setNotice("shortcutCreated");
+        } catch {
+          throw ui("Could not create the desktop shortcut.", "Die Desktop-Verknüpfung konnte nicht erstellt werden.");
+        }
+      })}
+      onPing={session => void run(async () => {
+        try {
+          const result = await invoke<{address: string; roundTripMs: number | null}>("ping_session", {id: session.id});
+          setPingResult({host: session.host, ...result});
+        } catch (error) {
+          switch (String(error)) {
+            case "ping_dns": throw ui("Could not resolve the hostname.", "Der Hostname konnte nicht aufgelöst werden.");
+            default: throw ui("Could not run the ping.", "Der Ping konnte nicht ausgeführt werden.");
+          }
+        }
+      })}
+      onPickBatch={() => setBatchPicker(true)}
+      onOpenFolder={folder => openSshBatch(catalog.sessions.filter(session => session.group === folder.id))}
+      onExternalImport={(format, folder) => setSshImport({folder, format})}
       onImport={folder => void run(async () => {
         const value = await pickSessionImport();
         if (value) setIncoming(folder ? {...value, folders: [folder], sessions: value.sessions.map(session => ({...session, group: folder.id}))} : value);
       })}
       onExport={scope => void run(async () => { if (await exportSessions(scope)) setNotice("exportDone"); })}/></div>{visible.sftpLayout === "shared" && filesOpen && activeTransport && <Suspense fallback={<span>SFTP…</span>}><SftpPane key={activeTransport} id={activeTransport} language={lang} initialPath={visible.sftpStart} theme={theme} onEdit={path => visible.editorOpenMode==="external"?setExternalRequest({id:activeTransport,path,nonce:makeId()}):setRemoteEditor({id:activeTransport,path})} onClose={() => setFilesOpen(false)}/></Suspense>}</aside>
       <div className="pane-resizer" role="separator" aria-label={lang === "de" ? "Seitenleiste vergrößern" : "Resize sidebar"} aria-orientation="vertical" aria-valuenow={sidebarWidth} tabIndex={0} onKeyDown={e => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); setSidebarWidth(w => Math.max(230, Math.min(window.innerWidth * .5, w + (e.key === "ArrowRight" ? 20 : -20)))); } }} onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => { if (e.currentTarget.hasPointerCapture(e.pointerId)) setSidebarWidth(Math.max(230, Math.min(window.innerWidth * .5, e.clientX))); }} onPointerUp={e => e.currentTarget.releasePointerCapture(e.pointerId)}/>
-      <main className="main"><div className="tabbar"><div ref={tabStrip} className="tab-strip" role="tablist" aria-label="TermiX" onKeyDown={onTabsKeyDown}>{tabs.map(tab => <div key={tab.id} style={{ "--tab-colour": tab.color } as React.CSSProperties} onContextMenu={e => { e.preventDefault(); setTabMenu({ x: e.clientX, y: e.clientY, id: tab.id }); }} className={`tab ${activeTab === tab.id ? "active" : ""}`} draggable onDragStart={e => { e.dataTransfer.setData("application/x-termix-tab", tab.id); e.dataTransfer.effectAllowed = "move"; }} onDragOver={e => { if (e.dataTransfer.types.includes("application/x-termix-tab")) e.preventDefault(); }} onDrop={e => { e.preventDefault(); const from = e.dataTransfer.getData("application/x-termix-tab"); setTabs(old => { const moved = old.find(t => t.id === from); if (!moved || from === tab.id) return old; const next = old.filter(t => t.id !== from); next.splice(next.findIndex(t => t.id === tab.id), 0, moved); return next; }); }} onAuxClick={e => { if (e.button === 1) { e.preventDefault(); closeTab(tab.id); } }} onMouseDown={e => { if (e.button === 1) e.preventDefault(); }}><button role="tab" tabIndex={activeTab === tab.id ? 0 : -1} aria-selected={activeTab === tab.id} title={tab.connection?.host ? `${tab.title} · ${tab.connection.host}:${tab.connection.port}` : tab.title} onClick={() => { setKeyboardTabs(false); setActiveTab(tab.id); }}><Terminal size={16}/><span>{tab.pinned ? "• " : ""}{tab.title}</span></button><button className="tab-close tab-more" aria-label={ui("Actions for ", "Aktionen für ") + tab.title} aria-haspopup="menu" onClick={event => { const rect = event.currentTarget.getBoundingClientRect(); setTabMenu({id: tab.id, x: rect.left, y: rect.bottom}); }}><MoreHorizontal size={15}/></button><button className="tab-close" aria-label={`${tr("closeTab")}: ${tab.title}`} onClick={() => closeTab(tab.id)}><X size={15}/></button></div> )}</div><div className="tabbar-actions">
+      <main className="main"><div className="tabbar"><div ref={tabStrip} className="tab-strip" role="tablist" aria-label="TermiX" onKeyDown={onTabsKeyDown}>{tabs.map(tab => <div key={tab.id} style={{ "--tab-colour": tab.color } as React.CSSProperties} onContextMenu={e => { e.preventDefault(); setTabMenu({ x: e.clientX, y: e.clientY, id: tab.id }); }} className={`tab ${activeTab === tab.id ? "active" : ""}`} draggable onDragStart={e => { e.dataTransfer.setData("application/x-termix-tab", tab.id); e.dataTransfer.effectAllowed = "move"; }} onDragOver={e => { if (e.dataTransfer.types.includes("application/x-termix-tab")) e.preventDefault(); }} onDrop={e => { e.preventDefault(); const from = e.dataTransfer.getData("application/x-termix-tab"); setTabs(old => { const moved = old.find(t => t.id === from); if (!moved || from === tab.id) return old; const next = old.filter(t => t.id !== from); next.splice(next.findIndex(t => t.id === tab.id), 0, moved); return next; }); }} onAuxClick={e => { if (e.button === 1) { e.preventDefault(); closeTab(tab.id); } }} onMouseDown={e => { if (e.button === 1) e.preventDefault(); }}><button role="tab" tabIndex={activeTab === tab.id ? 0 : -1} aria-selected={activeTab === tab.id} title={tab.connection?.host ? `${tab.title} · ${tab.connection.host}:${tab.connection.port}` : tab.title} onClick={() => { setKeyboardTabs(false); setActiveTab(tab.id); popouts[tab.id]?.focus(); }}><Terminal size={16}/><span>{tab.pinned ? "• " : ""}{tab.title}{popouts[tab.id] && " ↗"}</span></button><button className="tab-close tab-more" aria-label={ui("Actions for ", "Aktionen für ") + tab.title} aria-haspopup="menu" onClick={event => { const rect = event.currentTarget.getBoundingClientRect(); setTabMenu({id: tab.id, x: rect.left, y: rect.bottom}); }}><MoreHorizontal size={15}/></button><button className="tab-close" aria-label={`${tr("closeTab")}: ${tab.title}`} onClick={() => closeTab(tab.id)}><X size={15}/></button></div> )}</div><div className="tabbar-actions">
         {(tabScroll.left || tabScroll.right) && <>
           <button className="new-tab" disabled={!tabScroll.left} onClick={() => scrollTabs(-1)} aria-label={ui("Scroll tabs left", "Tabs nach links scrollen")} title={ui("Scroll tabs left", "Tabs nach links scrollen")}><ChevronLeft size={17}/></button>
           <button className="new-tab" disabled={!tabScroll.right} onClick={() => scrollTabs(1)} aria-label={ui("Scroll tabs right", "Tabs nach rechts scrollen")} title={ui("Scroll tabs right", "Tabs nach rechts scrollen")}><ChevronRight size={17}/></button>
         </>}
         <button className="new-tab" disabled={!configured} onClick={addLocalTab} title={tr("newTab")} aria-label={tr("newTab")}><Plus size={19}/></button></div></div>
       <div className={`terminal-and-files sftp-${visible.sftpSide}`}><div className="terminal-area">{startupError ? <div className="workspace-empty" role="alert"><h2>{tr("loadFailed")}</h2><p>{errorText(startupError, lang)}</p><button className="btn primary" onClick={() => setRetry(v => v + 1)}>{tr("retry")}</button></div> : !tabs.length && <div className="workspace-empty"><img src="/termix.svg" alt=""/><h2>{tr("emptyTitle")}</h2><p>{tr("emptyIntro")}</p><button className="btn primary" disabled={!configured} onClick={addLocalTab}><Plus size={18}/>{tr("openTerminal")}</button></div>}
-      {tabs.map(tab => <div key={tab.id} className={`terminal-layer ${splitVisible?.includes(tab.id) ? "split-layer" : ""} ${tab.id === activeTab ? "active-layer" : ""}`} onPointerDown={() => { if (splitVisible) setActiveTab(tab.id); }} style={{ display: activeTab === tab.id || splitVisible?.includes(tab.id) ? "flex" : "none", flexDirection: "column", ...(splitVisible?.includes(tab.id) ? { inset: "auto", top:`${Math.floor(splitVisible.indexOf(tab.id)/splitColumns)*100/splitRows}%`,left:`${(splitVisible.indexOf(tab.id)%splitColumns)*100/splitColumns}%`,width:`${100/splitColumns}%`,height:`${100/splitRows}%`,padding:"5px" } : {}) }}>{splitVisible?.includes(tab.id)&&<div className="split-pane-heading"><Terminal size={15} aria-hidden="true"/><strong title={tab.title}>{tab.title}</strong><span>{tab.kind === "ssh" ? "SSH" : ui("Local", "Lokal")}</span><button className="icon-button small" aria-label={`${lang==="de"?"Terminal fokussieren":"Focus terminal"}: ${tab.title}`} title={lang==="de"?"Einzeln anzeigen":"Show on its own"} onClick={()=>{setActiveTab(tab.id);setSplit(null);}}>↗</button></div>}<Suspense fallback={<span role="status">{tr("openTerminal")}…</span>}><TerminalPane onInputReady={write => markInput(tab.id, write)} tab={tab} onOpenOutput={text => setTerminalOutput({title: tab.title, text})} active={activeTab === tab.id && !modalOpen} focusOnActivate={!keyboardTabs} fontSize={tab.fontSize ?? visible.fontSize} theme={visible.terminalPalette === "auto" ? theme : visible.terminalPalette} accent={visible.accent} language={lang} onReconnect={() => { const session = tab.temporary ? tab.connection : catalog.sessions.find(s => s.id === tab.sessionId) ?? tab.connection; if (session) setSshTarget({ session, replaces: tab.id, temporary: tab.temporary }); }}/></Suspense></div>)}</div>{visible.sftpLayout === "panel" && filesOpen && activeTransport && <><div className="pane-resizer" role="separator" aria-label={lang === "de" ? "Dateibrowser vergrößern" : "Resize file browser"} aria-orientation="vertical" aria-valuenow={filesWidth} tabIndex={0} onKeyDown={e => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); setFilesWidth(w => Math.max(280, Math.min(window.innerWidth * .6, w + (e.key === "ArrowLeft" ? 20 : -20)))); } }} onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => { if (e.currentTarget.hasPointerCapture(e.pointerId)) setFilesWidth(Math.max(280, Math.min(window.innerWidth * .6, visible.sftpSide === "right" ? window.innerWidth - e.clientX : e.clientX - sidebarWidth - 6))); }} onPointerUp={e => e.currentTarget.releasePointerCapture(e.pointerId)}/><div className="files-container" style={{ width: filesWidth }}><Suspense fallback={<span>SFTP…</span>}><SftpPane key={activeTransport} id={activeTransport} language={lang} initialPath={visible.sftpStart} theme={theme} onEdit={path => visible.editorOpenMode==="external"?setExternalRequest({id:activeTransport,path,nonce:makeId()}):setRemoteEditor({id:activeTransport,path})} onClose={() => setFilesOpen(false)}/></Suspense></div></>}</div>
+      {splitVisible && <>
+      {splitColumns > 1 && <SplitDivider vertical position={columnBoundary} max={splitColumns === 3 ? Math.floor(secondBoundary - 15) : 75} onChange={value => { if (splitColumns === 3) setSplitColumnSecond(Math.round(secondBoundary)); setSplitColumn(value); }} label={ui("Resize terminal columns", "Terminalspalten vergrößern")}/>}
+      {splitColumns === 3 && <SplitDivider vertical position={secondBoundary} min={Math.ceil(columnBoundary + 15)} max={85} onChange={setSplitColumnSecond} label={ui("Resize terminal columns 2 and 3", "Terminalspalten 2 und 3 anpassen")}/>}
+      {splitRows > 1 && <SplitDivider position={rowBoundary} onChange={setSplitRow} label={ui("Resize terminal rows", "Terminalzeilen vergrößern")}/>}
+      </>}
+      {tabs.map(tab => <div key={tab.id} className={`terminal-layer ${splitVisible?.includes(tab.id) ? "split-layer" : ""} ${tab.id === activeTab ? "active-layer" : ""}`} onPointerDown={() => { if (splitVisible) setActiveTab(tab.id); }} style={{ display: activeTab === tab.id || splitVisible?.includes(tab.id) ? "flex" : "none", flexDirection: "column", ...(splitVisible?.includes(tab.id) ? { inset: "auto", top:`${offset(Math.floor(splitVisible.indexOf(tab.id)/splitColumns), splitRows, rowBoundary)}%`,left:`${columnEdges[splitVisible.indexOf(tab.id)%splitColumns]}%`,width:`${columnEdges[splitVisible.indexOf(tab.id)%splitColumns + 1] - columnEdges[splitVisible.indexOf(tab.id)%splitColumns]}%`,height:`${splitRows === 1 ? 100 : splitVisible.indexOf(tab.id) < splitColumns ? rowBoundary : 100-rowBoundary}%`,padding:"5px" } : {}) }}>{splitVisible?.includes(tab.id)&&<div className="split-pane-heading"><Terminal size={15} aria-hidden="true"/><strong title={tab.title}>{tab.title}</strong><span>{tab.kind === "ssh" ? "SSH" : ui("Local", "Lokal")}</span><button className="icon-button small" aria-label={`${lang==="de"?"Terminal fokussieren":"Focus terminal"}: ${tab.title}`} title={lang==="de"?"Einzeln anzeigen":"Show on its own"} onClick={()=>{setActiveTab(tab.id);setSplit(null);}}>↗</button></div>}<TerminalWindow popup={popouts[tab.id]} title={tab.title} appearanceKey={`${theme}:${lang}:${visible.accent}:${visible.uiScale}`} returnLabel={ui("Return to workspace", "Zurück zum Arbeitsbereich")} onReturn={() => reattachTerminal(tab.id, popouts[tab.id])}><Suspense fallback={<span role="status">{tr("openTerminal")}…</span>}><TerminalPane onInputReady={write => markInput(tab.id, write)} tab={tab} onOpenOutput={text => {
+        if (visible.editor === "integrated") setTerminalOutput({title: tab.title, text});
+        else void run(async () => { await invoke("editor_terminal_output", {text}); });
+      }} active={activeTab === tab.id && !modalOpen} focusOnActivate={!keyboardTabs} fontSize={tab.fontSize ?? visible.fontSize} theme={visible.terminalPalette === "auto" ? theme : visible.terminalPalette} accent={visible.accent} language={lang} onReconnect={() => { const session = tab.temporary ? tab.connection : catalog.sessions.find(s => s.id === tab.sessionId) ?? tab.connection; if (session) setSshTarget({ session, replaces: tab.id, temporary: tab.temporary }); if (popouts[tab.id]) window.focus(); }}/></Suspense></TerminalWindow></div>)}</div>{visible.sftpLayout === "panel" && filesOpen && activeTransport && <><div className="pane-resizer" role="separator" aria-label={lang === "de" ? "Dateibrowser vergrößern" : "Resize file browser"} aria-orientation="vertical" aria-valuenow={filesWidth} tabIndex={0} onKeyDown={e => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); setFilesWidth(w => Math.max(280, Math.min(window.innerWidth * .6, w + (e.key === "ArrowLeft" ? 20 : -20)))); } }} onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => { if (e.currentTarget.hasPointerCapture(e.pointerId)) setFilesWidth(Math.max(280, Math.min(window.innerWidth * .6, visible.sftpSide === "right" ? window.innerWidth - e.clientX : e.clientX - sidebarWidth - 6))); }} onPointerUp={e => e.currentTarget.releasePointerCapture(e.pointerId)}/><div className="files-container" style={{ width: filesWidth }}><Suspense fallback={<span>SFTP…</span>}><SftpPane key={activeTransport} id={activeTransport} language={lang} initialPath={visible.sftpStart} theme={theme} onEdit={path => visible.editorOpenMode==="external"?setExternalRequest({id:activeTransport,path,nonce:makeId()}):setRemoteEditor({id:activeTransport,path})} onClose={() => setFilesOpen(false)}/></Suspense></div></>}</div>
       {activeTransport&&<Suspense fallback={null}><RemoteMonitor key={activeTransport} id={activeTransport} language={lang}/></Suspense>}
-      <footer className="statusbar"><span title={status ? errorText(status, lang) : ""}><Activity size={15}/>{status ? errorText(status, lang) : notice ? tr(notice) : tabs.find(tab => tab.id === activeTab)?.kind === "ssh" ? "SSH" : tr("localWorkspace")}</span><span><HardDrive size={15}/>{catalog.sessions.length} {tr("sessions")}</span><span>{tabs.find(tab => tab.id === activeTab)?.fontSize ?? visible.fontSize} px<span className="status-divider">/</span>UTF-8</span></footer>
+      <footer className="statusbar"><span title={status ? errorText(status, lang) : ""}><Activity size={15}/>{status ? errorText(status, lang) : notice ? tr(notice) : tabs.find(tab => tab.id === activeTab)?.kind === "ssh" ? "SSH" : tr("localWorkspace")}</span><span><HardDrive size={15}/>{catalog.sessions.length} {tr("sessions")}</span><span>{tabs.find(tab => tab.id === activeTab)?.fontSize ?? visible.fontSize} px<span className="status-divider">/</span>UTF-8</span><div id="external-files-slot"/></footer>
       {status && !modalOpen && <div className="workspace-notice" role="alert"><span>{errorText(status, lang)}</span>{status === "session_changed" && <button className="btn secondary" disabled={busy} onClick={() => void run(async () => { setCatalog(await reloadCatalog()); })}>{tr("reloadLibrary")}</button>}<button className="icon-button" aria-label={tr("closeDialog")} onClick={() => setStatus("")}><X size={17}/></button></div>}
     </main></div>
     {layout && <Modal title={ui("Split view", "Ansicht teilen")} closeLabel={tr("closeDialog")} onClose={() => setLayout(false)} footer={null}>
@@ -333,6 +511,7 @@ export default function App() {
       {icon: Copy, label: lang === "de" ? "Tab duplizieren" : "Duplicate tab", action: () => { if (menuTab.connection && menuTab.temporary) setSshTarget({session: menuTab.connection, temporary: true}); else if (menuTab.connection) openSession(menuTab.connection); else if (preferences) { const tab = localTab({...preferences, defaultShell: menuTab.profile ?? preferences.defaultShell}); setTabs(old => [...old, tab]); setActiveTab(tab.id); } }},
       {icon: Pin, label: lang === "de" ? "Anheften / lösen" : "Pin / unpin tab", action: () => setTabs(old => old.map(t => t.id === menuTab.id ? {...t, pinned: !t.pinned} : t))},
       {label:lang==="de"?"Tab-Farbe":"Tab colour",swatches:[["#5b9cf5","Blue","Blau"],["#71c9bd","Teal","Türkis"],["#b692f6","Purple","Violett"],["#ef9b63","Orange","Orange"]].map(([colour,en,de])=>({colour,label:lang==="de"?de:en,selected:menuTab.color===colour,action:()=>setTabs(old=>old.map(t=>t.id===menuTab.id?{...t,color:colour}:t))}))},
+      {icon: Maximize, label: popouts[menuTab.id] ? ui("Return to workspace", "Zurück zum Arbeitsbereich") : ui("Detach terminal", "Terminal abtrennen"), action: () => popouts[menuTab.id] ? reattachTerminal(menuTab.id, popouts[menuTab.id]) : detachTerminal(menuTab.id)},
       {label:lang==="de"?"Anordnung":"Layout",heading:true},
       {icon: Pencil, label: ui("Custom tab colour…", "Eigene Tab-Farbe …"), action: () => setTabColour({id: menuTab.id, value: menuTab.color ?? visible.accent})},
       {icon: Columns2, label: lang === "de" ? "Terminals teilen" : "Split terminals", disabled: tabs.length < 2, action: () => startSplit(menuTab.id)},
@@ -360,8 +539,23 @@ export default function App() {
     {rename && <Modal title={lang === "de" ? "Tab umbenennen" : "Rename tab"} closeLabel={tr("cancel")} onClose={() => setRename(null)} footer={<button className="btn primary" disabled={!rename.title.trim()} onClick={() => { setTabs(old => old.map(t => t.id === rename.id ? {...t, title: rename.title.trim()} : t)); setRename(null); }}>{tr("saveChanges")}</button>}><input aria-label={lang === "de" ? "Tabname" : "Tab name"} maxLength={100} value={rename.title} onChange={e => setRename({...rename, title: e.target.value})}/></Modal>}
     <Suspense fallback={null}><ExternalEditManager reminders={visible.externalFileReminders ?? true} request={externalRequest} language={lang} onHandled={nonce=>{if(externalRequest?.nonce===nonce){const target=activeTerminalRef.current;if(target?.transportId===externalRequest.id)inputs.current.get(target.id)?.("");}setExternalRequest(old=>old?.nonce===nonce?null:old);}}/></Suspense>
     {tunnelId&&tunnelTarget&&<Suspense fallback={null}><TunnelDialog id={tunnelId} title={tunnelTarget?.connection?`${tunnelTarget.title} · ${tunnelTarget.connection.username}@${tunnelTarget.connection.host}:${tunnelTarget.connection.port}`:tunnelTarget?.title??"SSH"} language={lang} onClose={()=>setTunnelId(null)}/></Suspense>}
-    {remoteEditor && <Suspense fallback={<div role="status">Editor…</div>}><EditorDialog id={remoteEditor.id} initialPath={remoteEditor.path} language={lang} theme={theme} externalAvailable={visible.editor !== "integrated" && !!visible.editorPath} onClose={() => setRemoteEditor(null)}/></Suspense>}
-    {preferencesMode && preferences && <PreferencesDialog mode={preferencesMode} profiles={profiles} initial={preferences} onSave={applyPreferences} onPreview={setPreview} onClose={() => { setPreview(null); setPreferencesMode(null); }}/ >}
+    <Suspense fallback={null}>{Object.entries(editorRequests).map(([id, request]) =>
+      <EditorDialog key={id} id={id} initialPath={request.path} request={request.nonce}
+        visible={remoteEditor === id} onHide={() => setVisibleEditor(null)} language={lang} theme={theme}
+        externalAvailable={visible.editor !== "integrated" && !!visible.editorPath} onClose={() => {
+          setEditorRequests(old => Object.fromEntries(Object.entries(old).filter(([key]) => key !== id)));
+          setVisibleEditor(null);
+        }}/>
+    )}</Suspense>
+    {!!closeWarnings.length && <Modal className="confirmation-dialog" title={ui("Close TermiX?", "TermiX schließen?")} closeLabel={tr("cancel")}
+      onClose={() => setCloseWarnings([])} footer={<>
+        <button className="btn secondary" onClick={() => setCloseWarnings([])}>{tr("cancel")}</button>
+        <button className="btn primary" onClick={() => void run(async () => {
+          await getCurrentWindow().destroy();
+          setCloseWarnings([]);
+        })}>{ui("Close TermiX", "TermiX schließen")}</button>
+      </>}>{closeWarnings.map((warning, index) => <p key={index}>{warning}</p>)}</Modal>}
+    {preferencesMode && preferences && <PreferencesDialog mode={preferencesMode} profiles={profiles} initial={preferences} shortcuts={shortcuts} onSave={applyPreferences} onPreview={setPreview} onClose={() => { setPreview(null); setPreferencesMode(null); }}/ >}
     {editor && <SessionDialog key={editor.session.id} initial={editor.session} editing={editor.editing} folders={catalog.folders} profiles={profiles} language={lang} onSave={persistSession} onClose={() => setEditor(null)}/>}
     {folderEditor && <FolderDialog initial={folderEditor} language={lang} onClose={() => setFolderEditor(null)} onSave={async folder => { updateCatalog(await library(saveFolder(folder))); setFolderEditor(null); }}/ >}
     {confirm && <ConfirmDialog title={`${tr(confirm.kind === "folder" ? "deleteFolder" : "deleteSession")} · ${confirm.name}`} note={tr(confirm.kind === "folder" ? "folderDeleteNote" : "confirmDeleteSession")} language={lang} onClose={() => setConfirm(null)} onConfirm={async () => {
@@ -369,7 +563,56 @@ export default function App() {
       else { await library(deleteSession(confirm.id)); updateCatalog(await getCatalog()); }
       setConfirm(null);
     }}/ >}
+    {workspaceConfirmation.dialog}
+    {pingResult && <Modal title="Ping" closeLabel={tr("closeDialog")} onClose={() => setPingResult(null)}>
+      <p><strong>{pingResult.host}</strong>{pingResult.host !== pingResult.address && <> · {pingResult.address}</>}</p>
+      <p role="status">{pingResult.roundTripMs === null ? ui("No ICMP echo reply.", "Keine ICMP-Echo-Antwort.") : ui(`Echo reply in ${pingResult.roundTripMs} ms.`, `Echo-Antwort nach ${pingResult.roundTripMs} ms.`)}</p>
+    </Modal>}
+    {batchPicker && <BatchSessionDialog catalog={catalog} language={lang} onClose={() => setBatchPicker(false)} onOpen={sessions => { setBatchPicker(false); openSshBatch(sessions); }}/>}
+    {sshImport && <Modal title={sshImport.format === "moba" ? (lang === "de" ? "MobaXterm-Sitzungen importieren" : "Import MobaXterm sessions") : sshImport.format === "putty" ? (lang === "de" ? "PuTTY-Sitzungen importieren" : "Import PuTTY sessions") : (lang === "de" ? "OpenSSH-Konfiguration importieren" : "Import OpenSSH configuration")} closeLabel={lang === "de" ? "Schließen" : "Close"} onClose={() => setSshImport(null)} busy={busy}>
+      <p>{sshImport.format === "moba" ? (lang === "de" ? "Wähle einen .mxtsessions-Export. TermiX übernimmt Name, Host, Port und Benutzer für direkte SSH-Verbindungen. Prüfe die Ziele, falls bisher ein Proxy oder Gateway verwendet wurde." : "Choose an .mxtsessions export. TermiX imports names, hosts, ports and users for direct SSH connections. Review the destinations if you previously used a proxy or gateway.") : sshImport.format === "putty" ? (lang === "de" ? "Wähle eine aus PuTTY exportierte .reg-Datei mit SSH-Sitzungen." : "Choose a PuTTY .reg export containing SSH sessions.") : lang === "de" ? "Wähle eine lokale Konfigurationsdatei. Importiert werden einzelne Host-Einträge mit HostName, User und optionalem Port." : "Choose a local configuration file. Individual Host entries with HostName, User and an optional Port can be imported."}</p>
+      {sshImport.format !== "openssh" && <p>{ui("Entries without a saved SSH username are skipped.", "Einträge ohne gespeicherten SSH-Benutzernamen werden übersprungen.")}</p>}
+      <input type="file" accept={sshImport.format === "putty" ? ".reg" : sshImport.format === "moba" ? ".mxtsessions" : undefined} aria-label={lang === "de" ? "Importdatei" : "Import file"} disabled={busy} onChange={event => {
+        const file = event.currentTarget.files?.[0];
+        const {folder, format} = sshImport;
+        event.currentTarget.value = "";
+        if (!file) return;
+        void run(async () => {
+          setSshImport(null);
+          if (file.size > 256 * 1024) throw (lang === "de" ? "Die Konfigurationsdatei darf höchstens 256 KiB groß sein." : "The configuration file must be 256 KiB or smaller.");
+          const contents = await file.arrayBuffer();
+          const group = folder?.id ?? "";
+          const readText = () => new TextDecoder("utf-8", {fatal: true}).decode(contents);
+          const sessions = format === "putty" ? readPuttySessions(contents, group)
+            : format === "moba" ? readMobaSessions(readText(), group)
+            : readOpenSshSessions(readText(), group);
+          if (!sessions.length || sessions.length > 200) throw (lang === "de" ? "Die Datei muss 1 bis 200 unterstützte Host-Einträge enthalten." : "The file must contain 1 to 200 supported host entries.");
+          setIncoming({schemaVersion: 2, revision: 0, folders: folder ? [folder] : [], sessions});
+        });
+      }}/>
+    </Modal>}
     {incoming && <ImportDialog catalog={incoming} language={lang} onClose={() => setIncoming(null)} onConfirm={async () => { updateCatalog(await library(importSessions(incoming))); setIncoming(null); setNotice("importDone"); }}/ >}
-    {sshTarget && <Suspense fallback={<div role="status">{tr("connecting")}</div>}><SshDialog session={sshTarget.session} temporary={sshTarget.temporary} language={lang} onClose={() => setSshTarget(null)} onConnected={connected}/></Suspense>}
+    {sshTarget && <Suspense fallback={<div role="status">{tr("connecting")}</div>}><SshDialog key={sshTarget.session.id} session={sshTarget.session} temporary={sshTarget.temporary} language={lang} onClose={() => { batchQueue.current = []; setSshTarget(null); }} onConnected={connected}/></Suspense>}
   </div>;
+}
+
+function SplitDivider({vertical = false, position, onChange, label, min = 20, max = 75}: {vertical?: boolean; position: number; min?: number; max?: number; onChange: (value: number) => void; label: string}) {
+  const clamp = (value: number) => Math.round(Math.min(max, Math.max(min, value)));
+  return <div className={`split-divider ${vertical ? "vertical" : "horizontal"}`}
+    role="separator" aria-orientation={vertical ? "vertical" : "horizontal"} aria-label={label}
+    aria-valuemin={min} aria-valuemax={max} aria-valuenow={Math.round(position)} tabIndex={0}
+    style={vertical ? {left: `${position}%`} : {top: `${position}%`}}
+    onPointerDown={event => { if (event.button === 0) event.currentTarget.setPointerCapture(event.pointerId); }}
+    onPointerMove={event => {
+      if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+      const bounds = event.currentTarget.parentElement?.getBoundingClientRect();
+      if (!bounds || !bounds.width || !bounds.height) return;
+      onChange(clamp(100 * (vertical ? (event.clientX - bounds.left) / bounds.width : (event.clientY - bounds.top) / bounds.height)));
+    }}
+    onKeyDown={event => {
+      const less = vertical ? "ArrowLeft" : "ArrowUp", more = vertical ? "ArrowRight" : "ArrowDown";
+      if (event.key !== less && event.key !== more) return;
+      event.preventDefault();
+      onChange(clamp(position + (event.key === less ? -5 : 5)));
+    }}/>
 }

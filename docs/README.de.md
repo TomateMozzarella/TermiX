@@ -1,5 +1,7 @@
 # TermiX
 
+Im aktuellen Entwicklungsstand lassen sich laufende Terminals abtrennen und SFTP-Downloads nach einer Unterbrechung wieder aufnehmen. Wiederholte Ordneruploads überspringen bytegleiche vorhandene Dateien. Das SSH-Monitoring unterstützt Linux, FreeBSD, macOS und Windows. Die native Windows-Prüfung der neuen Funktionen steht aus.
+
 **Terminal, Server und Dateien in einem übersichtlichen Arbeitsplatz.**
 
 TermiX verbindet lokale Terminals, SSH, SFTP und einen integrierten Editor in einer modernen Oberfläche. Windows 11 steht zuerst im Fokus; Englisch und Deutsch, heller/dunkler Modus und eigene Akzentfarben sind verfügbar.
@@ -19,6 +21,8 @@ TermiX verbindet lokale Terminals, SSH, SFTP und einen integrierten Editor in ei
 - CPU, RAM, Speicherplatz und weitere Linux-Metriken beobachten.
 
 [Änderungen in v0.11.2](releases/v0.11.2.md) · [Veröffentlichte Windows-Versionen](https://github.com/TomateMozzarella/TermiX/releases)
+
+Für v0.12.0 kommen der überarbeitete TermiX Editor, die Anzeige externer Dateien in der Statusleiste und gespeicherte RDP-Verbindungen für Windows-Remotedesktop hinzu. [Änderungen in v0.12.0](releases/v0.12.0.md)
 
 ![Deutschsprachige Hilfe mit Projektlinks und Bedienhinweisen](media/help-de-dark.png)
 

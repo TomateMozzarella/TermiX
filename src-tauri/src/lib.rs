@@ -6,10 +6,13 @@ mod document;
 mod editors;
 mod error;
 mod files;
+mod local_files;
 mod models;
 mod monitor;
+mod ping;
 mod preferences;
 mod sftp;
+mod shortcut;
 mod snippets;
 mod ssh;
 mod storage;
@@ -24,6 +27,7 @@ use tauri::Manager;
 
 pub struct AppState {
     pub sessions: Mutex<SessionStore>,
+    launch_session: Mutex<Option<String>>,
     pub preferences: Mutex<preferences::PreferencesStore>,
 }
 
@@ -41,25 +45,26 @@ pub fn run() {
         .init();
 
     let mut context = tauri::generate_context!();
-    if std::env::current_exe()
-        .ok()
-        .and_then(|p| app_data::portable_root(&p))
-        .is_some()
-    {
-        for window in &mut context.config_mut().app.windows {
-            // The config dataDirectory accepts relative paths only. Build the
-            // portable window explicitly below with the native absolute-path setter.
+    // The main window is built in setup so native popup creation can be restricted.
+    for window in &mut context.config_mut().app.windows {
+        if window.label == "main" {
             window.create = false;
         }
     }
     tauri::Builder::default()
         .manage(terminal::TerminalManager::default())
         .manage(tunnels::Tunnels::default())
+        .manage(document::OutputCopies::default())
         .on_window_event(|window, event| {
-            if matches!(event, tauri::WindowEvent::Destroyed) {
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
                 window.state::<terminal::TerminalManager>().close_all();
                 window.state::<tunnels::Tunnels>().stop_all();
                 window.state::<ssh::SshManager>().close_all();
+                for (label, popup) in window.app_handle().webview_windows() {
+                    if label.starts_with("terminal-popout-") {
+                        let _ = popup.destroy();
+                    }
+                }
             }
         })
         .setup(|app| {
@@ -77,28 +82,48 @@ pub fn run() {
             app.manage(ssh::SshManager::new(root.join("known-hosts.json")));
             app.manage(AppState {
                 sessions: Mutex::new(store),
+                launch_session: Mutex::new(shortcut::launch_session()),
                 preferences: Mutex::new(preferences::PreferencesStore::new(
                     root.join("preferences.json"),
                 )),
             });
+            let handle = app.handle().clone();
+            let config = app
+                .config()
+                .app
+                .windows
+                .iter()
+                .find(|w| w.label == "main")
+                .ok_or("missing main window config")?;
+            let mut builder = tauri::WebviewWindowBuilder::from_config(app.handle(), config)?
+                .on_new_window(move |url, features| {
+                    use tauri::webview::NewWindowResponse;
+                    if url.as_str() != "about:blank" {
+                        return NewWindowResponse::Deny;
+                    }
+                    let label = format!("terminal-popout-{}", uuid::Uuid::new_v4());
+                    match tauri::WebviewWindowBuilder::new(
+                        &handle,
+                        label,
+                        tauri::WebviewUrl::External(url),
+                    )
+                    .window_features(features)
+                    .title("TermiX")
+                    .on_navigation(|url| url.as_str() == "about:blank")
+                    .on_new_window(|_, _| tauri::webview::NewWindowResponse::Deny)
+                    .build()
+                    {
+                        Ok(window) => NewWindowResponse::Create { window },
+                        Err(_) => NewWindowResponse::Deny,
+                    }
+                });
             if let Some(portable) = std::env::current_exe()
                 .ok()
                 .and_then(|p| app_data::portable_root(&p))
             {
-                let config = app.config();
-                let window = config
-                    .app
-                    .windows
-                    .iter()
-                    .find(|w| w.label == "main")
-                    .ok_or("missing main window config")?;
-                tauri::WebviewWindowBuilder::from_config(app.handle(), window)?
-                    .data_directory(portable.join("data/webview"))
-                    .build()?;
+                builder = builder.data_directory(portable.join("data/webview"));
             }
-            let window = app
-                .get_webview_window("main")
-                .ok_or("missing main window")?;
+            let window = builder.build()?;
             std::thread::spawn(move || {
                 std::thread::sleep(std::time::Duration::from_secs(3));
                 let _ = window.show();
@@ -129,6 +154,10 @@ pub fn run() {
             commands::choose_editor,
             commands::detect_editor,
             commands::terminal_profiles,
+            commands::open_rdp_session,
+            commands::create_session_shortcut,
+            commands::take_launch_session,
+            commands::ping_session,
             commands::open_terminal,
             commands::read_terminal,
             commands::write_terminal,
@@ -143,9 +172,14 @@ pub fn run() {
             commands::editor_reload,
             commands::editor_close,
             commands::editor_external,
+            commands::editor_terminal_output,
             commands::editor_reload_external,
             commands::sftp_mkdir,
             commands::sftp_list,
+            commands::sftp_local_open,
+            commands::sftp_local_list,
+            commands::sftp_local_upload,
+            commands::sftp_dropped_upload,
             commands::ssh_monitor,
             commands::tunnel_start,
             commands::tunnel_list,
@@ -155,11 +189,17 @@ pub fn run() {
             commands::sftp_download,
             commands::sftp_progress,
             commands::sftp_cancel,
+            commands::sftp_pause_transfer,
             commands::ssh_probe,
             commands::ssh_cancel,
             commands::ssh_open,
             commands::ssh_forget_password
         ])
-        .run(context)
-        .expect("error while running TermiX");
+        .build(context)
+        .expect("error while building TermiX")
+        .run(|app, event| {
+            if matches!(event, tauri::RunEvent::Exit) {
+                app.state::<document::OutputCopies>().clear();
+            }
+        });
 }

@@ -27,6 +27,56 @@ test('production CSP with Tauri style hashes keeps cursor, terminal font and Mon
     expect(violations).toEqual([]);
     await preview(page, 'TermiX-0.9.0-Editor');
 });
+test('Windows SSH monitoring displays system drive, CPU, RAM and uptime', async ({ page }) => {
+    await page.addInitScript(() => { (window as any).windowsMonitor = true; });
+    await ssh(page);
+    const monitor = page.getByRole('complementary', { name: 'Remote monitoring', exact: true });
+    await expect(monitor).toContainText('CPU 37%');
+    await expect(monitor).toContainText('System drive 78%');
+    await expect(monitor).toContainText('RAM');
+    await expect(monitor).toContainText('2d 0h');
+    await expect(monitor).not.toContainText(/Logged in|SSH 3|↓|↑/);
+});
+test('macOS monitoring derives network throughput from successive measurements', async ({ page }) => {
+    await page.addInitScript(() => { (window as any).macMonitor = true; (window as any).macNetwork = true; });
+    await ssh(page);
+    const monitor = page.getByRole('complementary', { name: 'Remote monitoring', exact: true });
+    await expect(monitor).toContainText(/↓ [0-9.]+ MB\/s · ↑ [0-9.]+ MB\/s/, {timeout: 8000});
+});
+test('macOS monitoring displays interval CPU usage when available', async ({ page }) => {
+    await page.addInitScript(() => { (window as any).macMonitor = true; (window as any).macCpuBasisPoints = 1234; });
+    await ssh(page);
+    const monitor = page.getByRole('complementary', { name: 'Remote monitoring', exact: true });
+    await expect(monitor).toContainText('CPU 12%');
+    await expect(monitor).toContainText('RAM');
+});
+test('macOS monitoring displays RAM, disk and uptime without CPU counters', async ({ page }) => {
+    await page.addInitScript(() => { (window as any).macMonitor = true; });
+    await ssh(page);
+    const monitor = page.getByRole('complementary', { name: 'Remote monitoring', exact: true });
+    await expect(monitor).toContainText('RAM');
+    await expect(monitor).toContainText('78%');
+    await expect(monitor).toContainText('2d 0h');
+    await expect(monitor).toContainText('Logged in 2');
+    await expect(monitor).not.toContainText(/CPU|SSH 3|↓|↑/);
+});
+test('FreeBSD monitoring derives network throughput from successive counters', async ({ page }) => {
+    await page.addInitScript(() => { (window as any).freeBsdMonitor = true; (window as any).freeBsdNetwork = true; });
+    await ssh(page);
+    const monitor = page.getByRole('complementary', { name: 'Remote monitoring', exact: true });
+    await expect(monitor).toContainText(/↓ [0-9.]+ MB\/s · ↑ [0-9.]+ MB\/s/, {timeout: 8000});
+    await expect(monitor).not.toContainText('SSH 3');
+});
+test('FreeBSD monitoring displays available counters only', async ({ page }) => {
+    await page.addInitScript(() => { (window as any).freeBsdMonitor = true; });
+    await ssh(page);
+    const monitor = page.getByRole('complementary', { name: 'Remote monitoring', exact: true });
+    await expect(monitor).toContainText('RAM');
+    await expect(monitor).toContainText('78%');
+    await expect(monitor).toContainText('2d 0h');
+    await expect(monitor).toContainText('Logged in 2');
+    await expect(monitor).not.toContainText(/SSH 3|↓|↑/);
+});
 test('Linux monitoring, back mouse button and compact command context actions', async ({ page }) => {
     await ssh(page);
     const monitor = page.getByRole('complementary', { name: 'Remote monitoring', exact: true });
@@ -70,4 +120,4 @@ test("settings keep their dimensions across categories and scroll the content", 
 } await panel.getByRole("tab", { name: "Appearance", exact: true }).click(); expect(await panel.locator(".preferences-content").evaluate(e => e.scrollHeight > e.clientHeight)).toBe(true); await expect(panel.getByRole("button", { name: "Save changes", exact: true })).toBeInViewport(); });
 test("six terminals share a grid without restarting; one close listener respects unsaved buffers", async ({ page }) => { await ssh(page); for (let i = 0; i < 4; i++)
     await page.getByRole("button", { name: "New tab", exact: true }).click(); await page.getByRole("button", { name: "New tab", exact: true }).click(); await expect(page.locator(".tab")).toHaveCount(6); await page.locator(".tab").nth(1).click({ button: "right" }); await page.getByRole("menuitem", { name: "Show up to 6 terminals", exact: true }).click(); await expect(page.locator(".terminal-layer:visible")).toHaveCount(6); const boxes = await page.locator(".terminal-layer:visible").evaluateAll(es => es.map(e => { const r = e.getBoundingClientRect(); return `${Math.round(r.x)},${Math.round(r.y)}`; })); expect(new Set(boxes).size).toBe(6); await expect(page.locator(".split-pane-heading")).toHaveCount(6); await page.locator(".tab").last().click({ button: "middle" }); await expect(page.locator(".terminal-layer:visible")).toHaveCount(5); expect(await page.evaluate(() => (window as any).testCalls.filter((c: any) => c.command === "open_terminal").length)).toBe(5); await page.getByRole("tab", { name: "Linux", exact: true }).click(); await page.getByRole("button", { name: "SFTP", exact: true }).click(); await page.getByRole("button", { name: "Edit: hello.txt", exact: true }).click(); await page.locator(".monaco-editor textarea").first().focus(); await page.keyboard.press("Control+End"); await page.keyboard.type("dirty"); const close = () => page.evaluate(async () => { const w = window as any; const entries = Object.values(w.listeners).filter((e: any) => e.event === "tauri://close-requested") as any[]; if (entries.length !== 1)
-    throw Error(`Expected one close listener, got ${entries.length}`); await w.callbacks[entries[0].handler]({ event: "tauri://close-requested", id: entries[0].handler, payload: {} }); }); page.once("dialog", d => d.dismiss()); await close(); expect(await page.evaluate(() => (window as any).testCalls.some((c: any) => c.command === "plugin:window|destroy"))).toBe(false); page.once("dialog", d => d.accept()); await close(); expect(await page.evaluate(() => (window as any).testCalls.some((c: any) => c.command === "plugin:window|destroy"))).toBe(true); });
+    throw Error(`Expected one close listener, got ${entries.length}`); await w.callbacks[entries[0].handler]({ event: "tauri://close-requested", id: entries[0].handler, payload: {} }); }); await close(); await page.getByRole("dialog", {name: "Close TermiX?", exact: true}).getByRole("button", {name: "Cancel", exact: true}).last().click(); expect(await page.evaluate(() => (window as any).testCalls.some((c: any) => c.command === "plugin:window|destroy"))).toBe(false); await close(); await page.getByRole("button", {name: "Close TermiX", exact: true}).click(); await expect.poll(() => page.evaluate(() => (window as any).testCalls.some((c: any) => c.command === "plugin:window|destroy"))).toBe(true); });

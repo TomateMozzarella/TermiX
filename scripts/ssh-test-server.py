@@ -102,9 +102,9 @@ class Server(paramiko.ServerInterface):
         event('key', username)
         return paramiko.AUTH_SUCCESSFUL if key in (user_key, ed_user_key) else paramiko.AUTH_FAILED
     def check_channel_exec_request(self, channel, command):
-        if b"TERMIX_MONITOR_V1" not in command: return False
+        if command != b"uname -s" and b"TERMIX_MONITOR_V1" not in command: return False
         def metrics():
-            channel.sendall(b"TERMIX_MONITOR_V1\\ncpu 100 70\\nmem 2048 512\\ndisk 4096 1024\\nuptime 120\\nnet 1000 2000\\nssh 3\\nusers 2\\n".replace(b"\\n", b"\n"))
+            channel.sendall(b"Linux\n" if command == b"uname -s" else b"TERMIX_MONITOR_V1\\ncpu 100 70\\nmem 2048 512\\ndisk 4096 1024\\nuptime 120\\nnet 1000 2000\\nssh 3\\nusers 2\\n".replace(b"\\n", b"\n"))
             channel.send_exit_status(0); channel.shutdown_write()
         threading.Thread(target=metrics, daemon=True).start()
         return True

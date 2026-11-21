@@ -1,12 +1,15 @@
+import { ChevronDown } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { useCloseGuard } from "./windowClosing";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-import { Modal } from "./Modal";
+import { Modal, useConfirmation } from "./Modal";
 import { remoteText, type RemoteKey } from "./remoteText";
 import type { Language } from "./i18n";
 type Copy={id:string;token:string;path:string;digest:string;text?:string;pendingDigest?:string};
 export function ExternalEditManager({request,language,onHandled,reminders=true}: {request:{id:string;path:string;nonce:string}|null;language:Language;onHandled:(nonce:string)=>void;reminders?:boolean}) {
+ const confirmation = useConfirmation(language);
  const tr=(en:string,de:string)=>language==="de"?de:en;
  const [copies,setCopies]=useState<Copy[]>([]),[review,setReview]=useState<string|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[showFiles,setShowFiles]=useState(false);
  const snoozed=useRef(new Map<string,string|undefined>());
@@ -23,10 +26,11 @@ export function ExternalEditManager({request,language,onHandled,reminders=true}:
  useCloseGuard(()=>current.current.length?tr("Close TermiX? External files may still contain changes not transferred to the server.","TermiX schließen? Externe Dateien können noch nicht übertragene Änderungen enthalten."):null);
  const copy=copies.find(c=>c.token===review&&c.text!==undefined);
  async function upload(c:Copy){setBusy(true);setError("");const text=c.text!,digest=c.pendingDigest;try{await invoke("editor_save",{id:c.id,token:c.token,text});setCopies(old=>old.map(x=>x.id===c.id&&x.token===c.token&&x.pendingDigest===digest?{...x,text:undefined,pendingDigest:undefined}:x));setReview(null);}catch(e){setError(String(e));}finally{setBusy(false);}}
- async function close(c:Copy){if(c.text!==undefined&&!window.confirm(tr("Discard changes not transferred to the server?","Nicht übertragene Änderungen verwerfen?")))return;setBusy(true);try{await invoke("editor_close",{id:c.id,token:c.token});setCopies(old=>old.filter(x=>x!==c));}catch(e){setError(String(e));if(failed.current.has(c.id+c.token))setCopies(old=>old.filter(x=>x!==c));}finally{setBusy(false);}}
+ async function close(c:Copy){if(c.text!==undefined&&!await confirmation.confirm(tr("Discard changes not transferred to the server?","Nicht übertragene Änderungen verwerfen?")))return;setBusy(true);try{await invoke("editor_close",{id:c.id,token:c.token});setCopies(old=>old.filter(x=>x!==c));}catch(e){setError(String(e));if(failed.current.has(c.id+c.token))setCopies(old=>old.filter(x=>x!==c));}finally{setBusy(false);}}
  const pending=copies.filter(c=>c.text!==undefined);
  useEffect(()=>{for(const key of snoozed.current.keys())if(!copies.some(c=>c.token===key))snoozed.current.delete(key);if(!review){const next=copies.find(c=>c.text!==undefined&&snoozed.current.get(c.token)!==c.pendingDigest);if(next)setReview(next.token);}},[copies,review]);
  const later=()=>{if(copy)snoozed.current.set(copy.token,copy.pendingDigest);setReview(null);};
- return <>{((reminders&&copies.length>0)||error)&&<aside className="external-status" aria-label={tr("External files","Externe Dateien")}><button onClick={()=>setShowFiles(v=>!v)}>{tr("External files","Externe Dateien")} · {copies.length}{pending.length?` (${pending.length} ${tr("changed","geändert")})`:""}</button>{reminders&&showFiles&&copies.map(c=><div key={c.id+c.token}><span title={c.path}>{c.path}</span>{c.text!==undefined&&<button onClick={()=>setReview(c.token)}>{tr("Review changes","Änderungen prüfen")}</button>}<button disabled={busy} onClick={()=>void close(c)}>{tr("Finish editing","Bearbeitung beenden")}</button></div>)}{error&&<p role="alert">{remoteText(language,error as RemoteKey)}<button onClick={()=>setError("")}>{tr("Dismiss","Schließen")}</button></p>}</aside>}
+ const statusHost = document.getElementById("external-files-slot");
+ return <>{confirmation.dialog}{statusHost && ((reminders&&copies.length>0)||error)&&createPortal(<aside className="external-status" aria-label={tr("External files","Externe Dateien")}><button aria-expanded={showFiles} onClick={()=>setShowFiles(v=>!v)}>{tr("External files","Externe Dateien")} · {copies.length}{pending.length?` (${pending.length} ${tr("changed","geändert")})`:""}<ChevronDown size={16} aria-hidden="true"/></button><div className="external-files-popover" hidden={!showFiles && !error}>{reminders&&showFiles&&copies.map(c=><div key={c.id+c.token}><span title={c.path}>{c.path}</span>{c.text!==undefined&&<button onClick={()=>setReview(c.token)}>{tr("Review changes","Änderungen prüfen")}</button>}<button disabled={busy} onClick={()=>void close(c)}>{tr("Finish editing","Bearbeitung beenden")}</button></div>)}{error&&<p role="alert">{remoteText(language,error as RemoteKey)}<button onClick={()=>setError("")}>{tr("Dismiss","Schließen")}</button></p>}</div></aside>, statusHost)}
  {copy&&<Modal title={tr("Transfer external changes?","Externe Änderungen übertragen?")} closeLabel={tr("Close transfer prompt","Übertragungsabfrage schließen")} busy={busy} onClose={later} footer={<><button className="btn secondary" disabled={busy} onClick={later}>{tr("Later","Später")}</button><button className="btn primary" disabled={busy} onClick={()=>void upload(copy)}>{tr("Transfer to server","Auf Server übertragen")}</button></>}><p>{copy.path}</p><p>{tr("Your external editor saved changes. Transfer this version to the server? Server conflicts still block overwriting.","Dein externer Editor hat Änderungen gespeichert. Diese Version auf den Server übertragen? Bei Konflikten wird das Überschreiben weiterhin blockiert.")}</p><textarea className="external-review" readOnly aria-label={tr("Changed file preview","Vorschau der Änderungen")} value={copy.text}/>{error&&<p role="alert">{remoteText(language,error as RemoteKey)}</p>}</Modal>}</>;
 }

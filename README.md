@@ -29,7 +29,7 @@ Connect to your servers, browse remote files and keep your everyday commands clo
 | SSH tunnels | Explicit local/remote TCP forwarding with loopback defaults, active connection counts and Stop. |
 | Editing | Integrated Monaco editor with find/replace, comparison, explicit server saves and a read-only view of terminal output. External editing is optional. |
 | Commands | Search, run, import and export named commands. JSON imports show a preview before adding commands to the library. |
-| Monitoring | Read-only Linux CPU, RAM, disk, network, uptime and visible SSH/user metrics. |
+| Monitoring | Read-only SSH metrics for Linux, FreeBSD, macOS and Windows. Available counters depend on the remote system. |
 | Appearance | Light/dark/system, accent colours, readable font and UI scaling; categorized settings and first-run setup. |
 
 <table>
@@ -41,6 +41,8 @@ Connect to your servers, browse remote files and keep your everyday commands clo
 
 ### Workspace updates
 
+The [v0.12.0 development notes](docs/releases/v0.12.0.md) cover the TermiX Editor workspace, external file review and saved RDP sessions that open in Windows Remote Desktop.
+
 [v0.11.2](docs/releases/v0.11.2.md) adds custom tab colours, saved command import/export, session and folder context menus, and a read-only terminal output view. The [v0.11.1 notes](docs/releases/v0.11.1.md) cover the toolbar, help, split previews and tab scrolling.
 
 <table>
@@ -50,7 +52,7 @@ Connect to your servers, browse remote files and keep your everyday commands clo
 </tr>
 </table>
 
-Detached windows, additional protocols and resumable folder transfers remain [planned](docs/ROADMAP.md).
+The current development workspace includes detachable terminals, resumable SFTP downloads, folder retries that preserve identical files, and SSH monitoring for Linux, FreeBSD, macOS and Windows. Native Windows validation is pending for these changes. See the [roadmap](docs/ROADMAP.md) for remaining work.
 
 ## Download and get started
 

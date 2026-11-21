@@ -1,5 +1,11 @@
 # TermiX – Product Roadmap and Project Handoff
 
+### Current development workspace after v0.12.0
+- Detachable terminals retain the live process and scrollback. Window appearance and labels follow workspace settings.
+- SFTP downloads verify a saved local prefix when the same source and destination are chosen again. Uploads retain in-session pause and resume. Following a disconnect, retrying a folder verifies completed files and skips identical ones; the interrupted file starts again in a new exclusive staging file.
+- Third-party import reviews supported OpenSSH, PuTTY and MobaXterm entries. Entries without a saved SSH username are skipped.
+- FreeBSD, macOS and Windows have read-only SSH monitoring collectors. Native Windows, SFTP and remote-host validation remain pending.
+
 Last updated: 2026-11-08
 Status: v0.10.0 implemented, tested, integrated into main and published on 2026-11-08. SSH tunnels, recursive folder upload and post-v0.9 UI improvements are delivered. Only main remains; future work stays on main. The v0.11 workspace redesign and Multi-Execute await native release validation.
 Repository: https://github.com/TomateMozzarella/TermiX
@@ -183,7 +189,7 @@ Application/tag commit `ce50cc0bb73cda73573aeed3a880bc6f80affe19`; [build 424899
 ### Following milestone – Additional protocols
 - RDP, serial connections and X11 support, each evaluated for platform dependencies, security and feasibility.
 - These are PLANNED, not promised as trivial built-in implementations.
-- Start the RDP work by evaluating a saved connection opened through the Windows client. Keep host and port validation, certificate prompts and authentication in scope. Embedded RDP needs a separate feasibility check.
+- v0.12.0 adds saved RDP connections and launches the Windows Remote Desktop client with a validated host and port. Native launch testing is pending. Embedded RDP needs a separate feasibility check.
 
 ### v0.11.2 — Sessions, saved commands and terminal output
 
@@ -205,6 +211,20 @@ Feedback from the installed Windows build on 2026-11-14. The interface changes a
 - Terminal tab strip: match the concept's spacing, rounded tab shapes and clear active state. Support mouse-wheel and arrow scrolling and keep the New Tab button visible. Preserve tab colours, drag reorder, middle-click close, pinning and direct access to tab actions.
 - Additional differences from the concept: give split panes their own visible session headers and clear focus treatment, strengthen the primary New Connection action, and review whether Multi-Execute's recipient list makes each target easy to identify at a glance. Keep the approved separate dialogs for Settings, New Connection and Help.
 - Compare the installed app with the approved concept in light and dark themes, at normal and narrow widths, with one and six terminal panes. Include screenshots of each affected surface in the review.
+
+### Editor follow-up after v0.11.2 [IN DEVELOPMENT]
+
+- Fix the missing icons in Monaco's Find and Replace controls. The current production assets do not include the Codicon font. Verify the packaged Windows build in both themes with the existing content security policy.
+- Investigate the yellow tint in the editor. Distinguish syntax colours from search matches, selections and the active line. Use TermiX theme colours with readable contrast for each state.
+- Separate hiding the editor from closing a file. Keep open files, unsaved edits and the chosen comparison in memory when switching back to the terminal or SFTP. Provide a clear way to reopen the editor and an explicit close action with the existing unsaved-edits protection.
+- Verify the comparison workflow across folders. Open file A from SFTP, hide the editor, browse to file B and open it, then select A and B by name and path in the editor. Keep the connection and file identity visible. Preserve explicit saving and remote conflict checks.
+- Make “Open output in editor” use the preferred editor from Settings. Keep the integrated snapshot read-only. For an external editor, open a local temporary text copy using the configured executable and clean up the copy through the managed temporary-file lifecycle. Keep the output local. Verify the action on installed Windows for local and SSH terminals, including keyboard access and a clear error if the configured editor cannot launch.
+- Apply the workspace redesign to the integrated editor and comparison view. Match terminal tabs with rounded shapes, a clear active state, readable truncated file names and visible close buttons. Show which files have unsaved edits and make the full path easy to find when names match. Align the toolbar, search and replace controls, and spacing in both themes.
+- Give the main toolbar actions and the editor toolbar actions equal width and height within their respective toolbars. Verify English and German labels at narrow widths and increased UI scale. Preserve emphasis for primary actions and allow file tabs to accommodate long names.
+- Rename “Remote editor” and “Remote-Editor” to “TermiX Editor.” Show the connection and file path where they help identify a remote document.
+- Move the floating external-files indicator to a consistent spot in the workspace, such as the status bar. Use a readable file count and a clearly visible chevron with an accessible expanded state. Keep the grouped list, optional reminders and existing review before uploading changes.
+- Replace generic WebView confirmation prompts for closing TermiX or discarding editor changes with themed, localized TermiX dialogs. Explain what is at risk, keep Cancel easy to reach, and verify that cancelling preserves working copies and unsaved buffers.
+- Evaluate editor additions in this order. Add go-to-line and word wrap first, then check indentation controls and format-on-demand for supported file types. Formatting must be explicit, and changes remain in the buffer until saved.
 
 ## Security requirements (non-negotiable)
 1. No plaintext password, private key or passphrase in persisted session metadata, localStorage, source control, build logs or telemetry.

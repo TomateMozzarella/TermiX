@@ -18,8 +18,17 @@ export async function mockDesktop(page: Page, configured = false, legacy = false
       if(command==="tunnel_list")return mock.tunnels??[];
       if(command==="tunnel_start"){if(mock.tunnelFailure)throw "tunnel_refused";const value={id:crypto.randomUUID(),config:args.config,state:"running",connections:0};mock.tunnels=[...(mock.tunnels??[]),value];return value;}
       if(command==="tunnel_stop"){mock.tunnels=(mock.tunnels??[]).filter((t:any)=>t.id!==args.id);return;}
-      if(command==="ssh_monitor"){if(mock.monitorFailure)throw "monitor_unavailable";mock.monitorTick=(mock.monitorTick??0)+1;return {cpuTotal:100+mock.monitorTick*10,cpuIdle:70+mock.monitorTick*5,memoryTotal:2147483648,memoryUsed:1073741824,diskTotal:100000,diskUsed:78000,uptime:172800,received:mock.monitorTick*1000000,sent:mock.monitorTick*500000,sshSessions:3,users:2};}
+      if(command==="ssh_monitor"){if(mock.monitorFailure)throw "monitor_unavailable";mock.monitorTick=(mock.monitorTick??0)+1;return {windows:mock.windowsMonitor??false,cpuBusyBasisPoints:mock.windowsMonitor?3700:mock.macCpuBasisPoints??null,cpuTotal:(mock.macMonitor||mock.windowsMonitor)?null:100+mock.monitorTick*10,cpuIdle:(mock.macMonitor||mock.windowsMonitor)?null:70+mock.monitorTick*5,memoryTotal:2147483648,memoryUsed:1073741824,diskTotal:100000,diskUsed:78000,uptime:172800,received:(mock.freeBsdMonitor&&!mock.freeBsdNetwork||mock.macMonitor&&!mock.macNetwork||mock.windowsMonitor)?null:mock.monitorTick*1000000,sent:(mock.freeBsdMonitor&&!mock.freeBsdNetwork||mock.macMonitor&&!mock.macNetwork||mock.windowsMonitor)?null:mock.monitorTick*500000,sshSessions:(mock.freeBsdMonitor||mock.macMonitor||mock.windowsMonitor)?null:3,users:mock.windowsMonitor?null:2};}
       if (command === "terminal_profiles") return [{ id: "powershell", name: "Windows PowerShell" }, { id: "cmd", name: "CMD" }];
+      if (command === "open_rdp_session" || command === "create_session_shortcut") return;
+      if (command === "take_launch_session") return mock.launchSession ?? null;
+      if (command === "sftp_local_open" || command === "sftp_local_list") {
+        if (command === "sftp_local_list" && args.token === "docs-token") {
+          return {path: "C:\\Local\\Docs", canGoUp: true, truncated: false, entries: [{name: "notes.txt", directory: false, size: 16, token: "notes-token"}]};
+        }
+        return {path: "C:\\Local", canGoUp: false, truncated: false, entries: [{name: "Docs", directory: true, size: null, token: "docs-token"}]};
+      }
+      if (command === "ping_session") return {address: "2001:db8::42", roundTripMs: mock.pingRoundTrip ?? null};
       if (command === "get_snippets") return JSON.parse(localStorage.getItem("test-commands") ?? '{"schemaVersion":1,"entries":[]}');
       if (command === "save_snippets") { if(mock.failCommands) throw "snippets_save_failed"; localStorage.setItem("test-commands",JSON.stringify(args.library)); return structuredClone(args.library); }
       if (command === "pick_snippet_import") return mock.incomingCommands ?? null;
@@ -71,8 +80,9 @@ export async function mockDesktop(page: Page, configured = false, legacy = false
       if (command === "editor_reload_external") return "external edit";
       if (command === "sftp_mkdir") { mock.createdFolder = args.name; return; }
       if (command === "sftp_list") { if (mock.sftpFailure) throw mock.sftpFailure; if (mock.sftpListings?.[args.path]) return mock.sftpListings[args.path]; return { path: args.path === "." ? "/home/test" : args.path, entries: [{ name: "docs", path: "/home/test/docs", directory: true, link: false }, { name: "hello.txt", path: "/home/test/hello.txt", size: 15, directory: false, link: false }] }; }
-      if (command === "sftp_progress") return mock.sftpProgress ?? null;
-      if (command === "sftp_upload" || command === "sftp_upload_folder" || command === "sftp_download") { mock.sftpProgress = { id: "transfer-test", name: "hello.txt", direction: command !== "sftp_download" ? "upload" : "download", state: "running", bytes: 5, total: 15 }; return "transfer-test"; }
+      if (command === "sftp_progress") return structuredClone(mock.sftpProgress ?? null);
+      if (command === "sftp_upload" || command === "sftp_local_upload" || command === "sftp_dropped_upload" || command === "sftp_upload_folder" || command === "sftp_download") { mock.sftpProgress = { id: "transfer-test", name: "hello.txt", direction: command !== "sftp_download" ? "upload" : "download", state: "running", bytes: 5, total: 15 }; return "transfer-test"; }
+      if (command === "sftp_pause_transfer") { mock.sftpProgress.state = args.paused ? "paused" : "running"; return; }
       if (command === "sftp_cancel") { mock.sftpProgress.state = "cancelled"; return; }
       if (command === "open_terminal") return `terminal-${mock.testCalls.length}`;
       if (command === "read_terminal" && args.id.startsWith("ssh-") && mock.disconnectSsh) {

@@ -102,6 +102,14 @@ test("workspace controls show the selected layout and route each project link", 
   await button("Split view").click();
   await preview(page, "TermiX-0.11.1-Split-layouts");
   await button("6 Terminals").click();
+  const firstDivider = page.getByRole("separator", {name: "Resize terminal columns", exact: true});
+  const secondDivider = page.getByRole("separator", {name: "Resize terminal columns 2 and 3", exact: true});
+  await expect(firstDivider).toHaveAttribute("aria-valuenow", "33");
+  await secondDivider.press("ArrowRight");
+  await expect(secondDivider).toHaveAttribute("aria-valuenow", "72");
+  await firstDivider.press("ArrowRight");
+  await expect(firstDivider).toHaveAttribute("aria-valuenow", "38");
+  await expect(secondDivider).toHaveAttribute("aria-valuenow", "72");
   await expect(page.locator(".split-pane-heading")).toHaveCount(6);
   await preview(page, "TermiX-0.11.1-Six-terminals");
   await button("Help").click();

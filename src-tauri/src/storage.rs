@@ -53,6 +53,12 @@ impl SessionStore {
         Ok(self.catalog())
     }
     pub fn upsert(&mut self, mut session: Session) -> Result<Session, AppError> {
+        if session.kind == SessionKind::Rdp {
+            let endpoint = crate::address::normalize(&session.host, session.port)
+                .map_err(AppError::Validation)?;
+            session.host = endpoint.host;
+            session.port = endpoint.port;
+        }
         normalize_session(&mut session)?;
         let mut next = self.catalog.clone();
         if let Some(existing) = next.sessions.iter_mut().find(|s| s.id == session.id) {

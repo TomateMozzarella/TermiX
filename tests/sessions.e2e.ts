@@ -8,6 +8,152 @@ async function createLocal(page: Page, name: string) {
   await page.getByRole("button", { name: "Save session", exact: true }).click();
 }
 
+test("desktop shortcut uses a saved ID and startup opens SSH verification", async ({page}) => {
+  await mockDesktop(page, true);
+  await page.addInitScript(() => {
+    const session = {id: "desktop-host", name: "Desktop host", kind: "ssh", host: "example.test", port: 22, username: "ops", group: ""};
+    (window as any).savedSessions = [session];
+    if (sessionStorage.getItem("simulate-shortcut")) (window as any).launchSession = session;
+  });
+  await page.goto("/");
+  await page.getByRole("button", {name: "Open session: Desktop host", exact: true}).click({button: "right"});
+  await page.getByRole("menuitem", {name: "Create desktop shortcut", exact: true}).click();
+  await expect(page.getByText("Desktop shortcut created.", {exact: true})).toBeVisible();
+  expect(await page.evaluate(() => (window as any).testCalls.find((call: any) => call.command === "create_session_shortcut").args)).toEqual({id: "desktop-host"});
+  await page.evaluate(() => sessionStorage.setItem("simulate-shortcut", "yes"));
+  await page.reload();
+  await expect(page.getByRole("dialog")).toContainText("example.test");
+  expect(await page.evaluate(() => (window as any).testCalls.some((call: any) => call.command === "ssh_open"))).toBe(false);
+});
+
+test("pings only the selected saved host and displays the reply", async ({ page }) => {
+  await mockDesktop(page, true);
+  await page.addInitScript(() => {
+    (window as any).pingRoundTrip = 0;
+    (window as any).savedSessions = [{id: "ping-host", name: "Ping host", kind: "ssh", host: "example.test", port: 22, username: "ops", group: ""}];
+  });
+  await page.goto("/");
+  await page.getByRole("button", {name: "Open session: Ping host", exact: true}).click({button: "right"});
+  await page.getByRole("menuitem", {name: "Ping host", exact: true}).click();
+  const dialog = page.getByRole("dialog", {name: "Ping"});
+  await expect(dialog).toContainText("example.test");
+  await expect(dialog).toContainText("2001:db8::42");
+  await expect(dialog).toContainText("Echo reply in 0 ms.");
+  expect(await page.evaluate(() => (window as any).testCalls.find((call: any) => call.command === "ping_session").args)).toEqual({id: "ping-host"});
+});
+
+test("shows every compatible connection in a large import preview", async ({page}) => {
+  await mockDesktop(page, true);
+  await page.goto("/");
+  await page.locator(".side-heading").click({button: "right", position: {x: 8, y: 8}});
+  await page.getByRole("menuitem", {name: "Import MobaXterm sessions…"}).click();
+  const entries = Array.from({length: 120}, (_, i) => `Host ${i + 1}=#109#0%host-${i + 1}.example%22%ops`);
+  await page.getByLabel("Import file").setInputFiles({name: "sessions.mxtsessions", mimeType: "text/plain", buffer: Buffer.from(["[Bookmarks]", ...entries].join("\n"))});
+  const review = page.getByRole("dialog");
+  await expect(review.getByRole("listitem")).toHaveCount(120);
+  await expect(review.getByText("ops@host-120.example:22")).toBeAttached();
+});
+
+test("reviews SSH metadata from MobaXterm bookmarks before import", async ({ page }) => {
+  await mockDesktop(page, true);
+  await page.goto("/");
+  await page.locator(".side-heading").click({button: "right", position: {x: 8, y: 8}});
+  await page.getByRole("menuitem", {name: "Import MobaXterm sessions…"}).click();
+  const contents = "[Misc]\nOutside=#109#0%outside.example%22%ops\n[Bookmarks_1]\nDev box= #109#0%dev.example%2200%ops%startup-command\nOther=#98#1%other.example%23%ops\nMissing=#109#0%missing.example%22%<default>";
+  await page.getByLabel("Import file").setInputFiles({name: "sessions.mxtsessions", mimeType: "text/plain", buffer: Buffer.from(contents)});
+  const review = page.getByRole("dialog");
+  await expect(review).toContainText("ops@dev.example:2200");
+  await expect(review).not.toContainText(/outside.example|other.example|startup-command|missing.example/);
+  await expect(page.getByRole("button", {name: "Open session: Dev box"})).toHaveCount(0);
+  await review.getByRole("button", {name: "Import (1)", exact: true}).click();
+  await expect(page.getByRole("button", {name: "Open session: Dev box"})).toBeVisible();
+});
+
+test("reviews a UTF-16 PuTTY export and ignores proxy sessions and commands", async ({ page }) => {
+  await mockDesktop(page, true);
+  await page.goto("/");
+  await page.locator(".side-heading").click({button: "right", position: {x: 8, y: 8}});
+  await page.getByRole("menuitem", {name: "Import PuTTY sessions…"}).click();
+  const root = "HKEY_CURRENT_USER\\Software\\SimonTatham\\PuTTY\\Sessions";
+  const contents = [
+    "\ufeffWindows Registry Editor Version 5.00", "",
+    `[${root}\\Dev%20box]`, '"Protocol"="ssh"', '"HostName"="dev.example"', '"PortNumber"=dword:00000898',
+    '"UserName"="ops"', '"RemoteCommand"="ignored"', "",
+    `[${root}\\Proxied]`, '"Protocol"="ssh"', '"HostName"="proxy.example"', '"ProxyMethod"=dword:00000001', "",
+    `[${root}\\NoUser]`, '"Protocol"="ssh"', '"HostName"="nouser.example"',
+  ].join("\r\n");
+  await page.getByLabel("Import file").setInputFiles({name: "putty.reg", mimeType: "application/octet-stream", buffer: Buffer.from(contents, "utf16le")});
+  const review = page.getByRole("dialog");
+  await expect(review).toContainText("Dev box");
+  await expect(review).toContainText("ops@dev.example:2200");
+  await expect(review).not.toContainText("Proxied");
+  await expect(review).not.toContainText("nouser.example");
+  await expect(review).not.toContainText("ignored");
+  await review.getByRole("button", {name: "Import (1)", exact: true}).click();
+  await expect(page.getByRole("button", {name: "Open session: Dev box"})).toBeVisible();
+});
+
+test("opens selected SSH sessions in order and stops at cancellation", async ({ page }) => {
+  await mockDesktop(page, true);
+  await page.addInitScript(() => {
+    (window as any).hostStatus = "known";
+    (window as any).savedSessions = ["Alpha", "Beta", "Gamma"].map(name => ({
+      id: name, name, host: `${name.toLowerCase()}.example.test`, port: 22,
+      username: "operator", kind: "ssh", group: "",
+    }));
+  });
+  await page.goto("/");
+  await page.getByRole("button", {name: "Open multiple SSH sessions"}).click();
+  const picker = page.getByRole("dialog", {name: "Open multiple SSH sessions"});
+  for (const name of ["Beta", "Alpha", "Gamma"]) {
+    await picker.getByLabel("Filter sessions").fill(name);
+    await picker.getByRole("checkbox", {name: new RegExp(name)}).check();
+  }
+  await picker.getByRole("button", {name: "Open selected (3)"}).click();
+  const ssh = page.getByRole("dialog");
+  await expect(ssh).toContainText("beta.example.test");
+  await ssh.getByRole("button", {name: "Connect", exact: true}).click();
+  await expect(ssh).toContainText("alpha.example.test");
+  await ssh.getByRole("button", {name: "Cancel", exact: true}).click();
+  await expect(ssh).toHaveCount(0);
+  await expect(page.getByRole("tab", {name: "Beta"})).toBeVisible();
+  await expect(page.getByRole("tab", {name: "Gamma"})).toHaveCount(0);
+});
+
+test("SSH defaults persist port and font without copying the connection identity", async ({ page }) => {
+  await mockDesktop(page, true);
+  await page.addInitScript(() => {
+    (window as any).savedSessions = [{id: "preset", name: "Preset source", host: "example.test", port: 2200, username: "operator", kind: "ssh", group: "", fontSize: 18}];
+  });
+  await page.goto("/");
+  await page.getByRole("button", {name: "Open session: Preset source", exact: true}).click({button: "right"});
+  await page.getByRole("menuitem", {name: "Use port and font size as defaults"}).click();
+  await page.reload();
+  await page.getByRole("button", {name: "Add session", exact: true}).click();
+  await expect(page.getByLabel("Port", {exact: true})).toHaveValue("2200");
+  await expect(page.getByLabel("Hostname / IP", {exact: true})).toHaveValue("");
+  await expect(page.getByRole("combobox").filter({has: page.getByRole("option", {name: "18 px", exact: true})})).toHaveValue("18");
+});
+
+test("save and launch an RDP session without creating a terminal tab", async ({ page }) => {
+  await start(page);
+  await page.getByRole("button", {name: "Add session", exact: true}).click();
+  await page.getByLabel("Connection type", {exact: true}).selectOption("rdp");
+  await expect(page.getByLabel("Port", {exact: true})).toHaveValue("3389");
+  await page.getByLabel("Display name", {exact: true}).fill("Office");
+  await page.getByLabel("Hostname / IP", {exact: true}).fill("desktop.example:3390");
+  await expect(page.getByLabel("Authentication", {exact: true})).toHaveCount(0);
+  await page.getByRole("button", {name: "Save session", exact: true}).click();
+  await page.getByRole("button", {name: "Open session: Office", exact: true}).click();
+  await expect.poll(() => page.evaluate(() => {
+    const mock = window as any;
+    const saved = mock.catalog.sessions.find((session: any) => session.name === "Office");
+    const launch = mock.testCalls.find((call: any) => call.command === "open_rdp_session");
+    return launch?.args.id === saved?.id ? saved : null;
+  })).toMatchObject({kind: "rdp", host: "desktop.example", port: 3390, username: ""});
+  await expect(page.getByRole("tab")).toHaveCount(1);
+});
+
 test("edit a session, preserve its ID and running terminal, duplicate and delete metadata", async ({ page }) => {
   await start(page); await createLocal(page, "Maintenance");
   const id = await page.evaluate(() => JSON.parse(localStorage.getItem("test-catalog")!).sessions[0].id);

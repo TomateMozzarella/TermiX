@@ -1,6 +1,27 @@
 import { test, expect } from "@playwright/test";
 import { mockDesktop, preview } from "./desktop";
 
+test("custom shortcuts reject conflicts, persist and leave input fields alone", async ({page}) => {
+  await mockDesktop(page, true);
+  await page.goto("/");
+  await page.getByRole("button", {name: "Settings", exact: true}).click();
+  await page.getByRole("tab", {name: "Shortcuts", exact: true}).click();
+  const help = page.getByLabel("Help", {exact: true});
+  await help.press("Control+Shift+P");
+  await page.getByRole("button", {name: "Save changes", exact: true}).click();
+  await expect(page.getByRole("alert")).toContainText("only be assigned once");
+  await help.press("Control+Shift+Y");
+  await page.getByRole("button", {name: "Save changes", exact: true}).click();
+  await page.reload();
+  const search = page.locator(".sidebar .search input");
+  await search.focus();
+  await search.press("Control+Shift+Y");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByRole("button", {name: "Settings", exact: true}).focus();
+  await page.keyboard.press("Control+Shift+Y");
+  await expect(page.getByRole("dialog", {name: "Help and about TermiX"})).toBeVisible();
+});
+
 test("English is default; setup saves language, shell, appearance and editor; relaunch skips it", async ({ page }) => {
   await mockDesktop(page); await page.goto("/");
   await expect(page.getByRole("heading", { name: "Make yourself at home." })).toBeVisible();

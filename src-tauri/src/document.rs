@@ -20,6 +20,66 @@ pub struct Document {
     mode: i32,
     local: Option<PathBuf>,
 }
+
+#[derive(Default)]
+pub struct OutputCopies(std::sync::Mutex<Vec<OutputCopy>>);
+
+struct OutputCopy(std::path::PathBuf);
+
+impl Drop for OutputCopy {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(self.0.join("Terminal output.txt"));
+        let _ = std::fs::remove_dir(&self.0);
+    }
+}
+
+impl OutputCopies {
+    pub fn clear(&self) {
+        if let Ok(mut copies) = self.0.lock() {
+            copies.clear();
+        }
+    }
+    pub fn open(&self, executable: &str, text: &str) -> Result<(), String> {
+        if text.len() > MAX {
+            return Err("editor_large".into());
+        }
+        crate::editors::validate_path(executable, true)?;
+        let mut copies = self.0.lock().map_err(|_| "editor_launch")?;
+        if copies.len() >= 32 {
+            return Err("editor_launch".into());
+        }
+        let dir = std::env::temp_dir().join(format!("termix-output-{}", uuid::Uuid::new_v4()));
+        let mut builder = std::fs::DirBuilder::new();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            builder.mode(0o700);
+        }
+        builder.create(&dir).map_err(|_| "sftp_local")?;
+        let copy = OutputCopy(dir);
+        let path = copy.0.join("Terminal output.txt");
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .map_err(|_| "sftp_local")?;
+        file.write_all(text.as_bytes()).map_err(|_| "sftp_local")?;
+        drop(file);
+        let mut command = std::process::Command::new(executable);
+        command.arg(path);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            command.creation_flags(0x08000000);
+        }
+        let mut child = command.spawn().map_err(|_| "editor_launch")?;
+        std::thread::spawn(move || {
+            let _ = child.wait();
+        });
+        copies.push(copy);
+        Ok(())
+    }
+}
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct View {
@@ -359,4 +419,3 @@ mod filename_tests {
         );
     }
 }
-

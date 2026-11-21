@@ -23,9 +23,11 @@ test('external opening is nonmodal; unchanged return stays in terminal and chang
 });
 
 test('visible find/replace, read-only comparison and maximized editor preserve buffers', async ({page}) => {
- await ssh(page); await page.getByRole('button', {name:"SFTP", exact:true}).click(); await page.getByRole('button', {name:'Edit: hello.txt', exact:true}).click(); const dialog = page.getByRole('dialog', {name:'Remote editor', exact:true}); await expect(dialog.locator('.monaco-editor')).toBeVisible();
- await dialog.getByRole('button', {name:'Replace', exact:true}).click(); await expect(dialog.locator('.find-widget')).toBeVisible(); const find = dialog.locator('.find-widget'); await find.getByRole('textbox', {name:'Find', exact:true}).fill('original'); await find.getByRole('textbox', {name:'Replace', exact:true}).fill('changed'); await find.getByRole('button', {name:/^Replace All/}).click(); await dialog.getByRole('button', {name:'Save to server', exact:true}).click(); await expect.poll(()=>page.evaluate(()=>(window as any).editorSaved)).toBe('changed text\n'); await dialog.getByLabel('Remote file path').fill('/home/test/second.txt'); await dialog.getByRole('button', {name:'Open file', exact:true}).click(); await expect(dialog.getByRole('tab')).toHaveCount(2);
- await dialog.getByRole('button', {name:'Compare files', exact:true}).click(); await expect(dialog.locator('.monaco-diff-editor')).toBeVisible(); await expect(dialog.locator('.monaco-diff-editor .line-insert').first()).toBeVisible(); await dialog.getByRole('button', {name:'Maximize editor', exact:true}).click(); expect((await dialog.boundingBox())!.width).toBe(1280); expect((await dialog.boundingBox())!.x).toBe(0); await expect(dialog.getByRole('button',{name:'Save to server',exact:true})).toBeInViewport({ratio:1}); await preview(page, 'TermiX-0.7.0-Compare'); await dialog.getByRole('button', {name:'Restore editor', exact:true}).click(); await expect(dialog.getByRole('button', {name:'Save to server', exact:true})).toBeDisabled();
+ await ssh(page); await page.getByRole('button', {name:"SFTP", exact:true}).click(); await page.getByRole('button', {name:'Edit: hello.txt', exact:true}).click(); const dialog = page.getByRole('dialog', {name:'TermiX Editor', exact:true}); await expect(dialog.locator('.monaco-editor')).toBeVisible();
+ await dialog.getByRole('button', {name:'Replace', exact:true}).click(); await expect(dialog.locator('.find-widget')).toBeVisible(); const find = dialog.locator('.find-widget'); await find.getByRole('textbox', {name:'Find', exact:true}).fill('original'); await find.getByRole('textbox', {name:'Replace', exact:true}).fill('changed'); await find.getByRole('button', {name:/^Replace All/}).click(); await dialog.getByRole('button', {name:'Save to server', exact:true}).click(); await expect.poll(()=>page.evaluate(()=>(window as any).editorSaved)).toBe('changed text\n'); await page.evaluate(() => {
+   (window as any).sftpListings = {"/home/test/docs": {path:"/home/test/docs", entries:[{name:"second.txt",path:"/home/test/docs/second.txt",size:14,directory:false,link:false}]}};
+ });
+ await dialog.getByRole('button', {name:'Hide editor', exact:true}).click(); await expect(dialog).toBeHidden(); await page.getByRole('textbox', {name:'Remote directory', exact:true}).fill('/home/test/docs'); await page.getByRole('textbox', {name:'Remote directory', exact:true}).press('Enter'); await page.getByRole('button', {name:'Edit: second.txt', exact:true}).click(); await expect(dialog.getByRole('tab')).toHaveCount(2); await dialog.getByRole('button', {name:'Compare files', exact:true}).click(); await expect(dialog.locator('.monaco-diff-editor')).toBeVisible(); await expect(dialog.locator('.monaco-diff-editor .line-insert').first()).toBeVisible(); await dialog.getByRole('button', {name:'Maximize editor', exact:true}).click(); expect((await dialog.boundingBox())!.width).toBe(1280); expect((await dialog.boundingBox())!.x).toBe(0); await expect(dialog.getByRole('button',{name:'Save to server',exact:true})).toBeInViewport({ratio:1}); await preview(page, 'TermiX-0.7.0-Compare'); await dialog.getByRole('button', {name:'Restore editor', exact:true}).click(); await expect(dialog.getByRole('button', {name:'Save to server', exact:true})).toBeDisabled();
 });
 test('tab menus split, rename and protect pinned tabs during bulk close without restarting shells', async ({page}) => {
  await mockDesktop(page, true); await page.goto('/'); await page.getByRole("button", { name: "New tab", exact: true }).click(); await page.getByRole('button', {name:'New tab', exact:true}).click(); await expect.poll(() => page.evaluate(() => (window as any).testCalls.filter((c:any)=>c.command==='open_terminal').length)).toBe(2);
@@ -38,6 +40,25 @@ test('terminal context search finds output; snippets need explicit identified ta
  const inputsBeforePalette = await page.evaluate(()=>(window as any).testCalls.filter((c:any)=>c.command==='write_terminal').length); await page.keyboard.press('Control+Shift+P'); await expect(page.getByRole('dialog',{name:'Command palette',exact:true})).toBeVisible(); expect(await page.evaluate(()=>(window as any).testCalls.filter((c:any)=>c.command==='write_terminal').length)).toBe(inputsBeforePalette); await page.getByRole('button',{name:'Command snippets',exact:true}).click(); await page.getByRole('button',{name:'New command',exact:true}).click(); await page.getByLabel('Name',{exact:true}).fill('Who am I'); await page.getByLabel('Command',{exact:true}).fill('whoami'); await page.getByRole('button',{name:'Save command',exact:true}).click(); const before=await page.evaluate(()=>(window as any).testCalls.filter((c:any)=>c.command==='write_terminal').length);
  expect(await page.getByText('Target: Windows PowerShell',{exact:false}).count()).toBeGreaterThan(0);
  await page.getByRole('button',{name:'Run: Who am I',exact:true}).click(); await expect.poll(()=>page.evaluate(()=>(window as any).testCalls.filter((c:any)=>c.command==='write_terminal').length)).toBeGreaterThan(before);await expect(page.locator('.terminal-layer:visible .xterm-helper-textarea')).toBeFocused();
+});
+test('macro recording saves only commands explicitly sent from the recorder', async ({page}) => {
+ await mockDesktop(page, true);
+ await page.goto('/');
+ await page.getByRole('button', {name: 'New tab', exact: true}).click();
+ await page.getByRole('button', {name: 'Commands', exact: true}).click();
+ await page.getByRole('button', {name: 'Record macro', exact: true}).click();
+ const field = page.getByLabel('Command to record', {exact: true});
+ for (const command of ['echo first', 'echo second']) {
+  await field.fill(command);
+  await page.getByRole('button', {name: 'Send and record'}).click();
+  await expect(field).toHaveValue('');
+ }
+ await page.getByRole('button', {name: 'Review recording'}).click();
+ await expect(page.getByRole('textbox', {name: 'Command', exact: true})).toHaveValue('echo first\necho second');
+ await page.getByLabel('Name', {exact: true}).fill('Recorded pair');
+ await page.getByRole('button', {name: 'Save command', exact: true}).click();
+ await expect(page.getByRole('button', {name: 'Run: Recorded pair'})).toBeVisible();
+ expect(await page.evaluate(() => JSON.parse(localStorage.getItem('test-commands') ?? '{}').entries[0].text)).toBe('echo first\necho second');
 });
 test('workspace restoration retains tab order and widths but never automatically authenticates SSH', async ({page}) => {
  await ssh(page); await page.getByRole("button", { name: "New tab", exact: true }).click(); await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('test-workspace')??'null')?.tabs.length)).toBe(2); await page.reload(); await page.getByRole('button',{name:'Restore workspace',exact:true}).click(); await expect(page.getByRole('tab')).toHaveCount(2); expect(await page.evaluate(()=>(window as any).testCalls.filter((c:any)=>c.command==='ssh_open').length)).toBe(0); await page.getByRole('tab', {name: 'Editor host', exact:true}).click(); await expect(page.getByRole('button',{name:/^Reconnect/})).toBeVisible();

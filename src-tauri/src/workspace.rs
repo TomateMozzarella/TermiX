@@ -17,6 +17,17 @@ pub struct Workspace {
     pub sidebar_width: u16,
     pub files_width: u16,
     pub vertical_split: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub split_layout: Option<SplitLayout>,
+}
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SplitLayout {
+    pub tabs: Vec<usize>,
+    pub column: u8,
+    #[serde(default)]
+    pub column_second: u8,
+    pub row: u8,
 }
 fn validate(w: &Workspace) -> Result<(), String> {
     if w.schema_version != 1
@@ -26,6 +37,16 @@ fn validate(w: &Workspace) -> Result<(), String> {
         || !(280..=1600).contains(&w.files_width)
     {
         return Err("workspace_invalid".into());
+    }
+    if let Some(layout) = &w.split_layout {
+        let valid_size = |size| size == 0 || (20..=75).contains(&size);
+        let mut seen = std::collections::HashSet::new();
+        if layout.tabs.len() > 6 || !valid_size(layout.column) || !valid_size(layout.row)
+            || (layout.column_second != 0 && !(35..=85).contains(&layout.column_second))
+            || layout.tabs.iter().any(|index| *index >= w.tabs.len() || !seen.insert(index))
+        {
+            return Err("workspace_invalid".into());
+        }
     }
     for tab in &w.tabs {
         if tab.session_id.is_some() == tab.profile.is_some() {
@@ -89,6 +110,7 @@ mod tests {
             sidebar_width: 350,
             files_width: 400,
             vertical_split: true,
+            split_layout: None,
         };
         save(&path, value.clone()).unwrap();
         let before = fs::read(&path).unwrap();
@@ -114,6 +136,7 @@ mod tests {
             sidebar_width: 310,
             files_width: 390,
             vertical_split: false,
+            split_layout: None,
         };
         assert!(validate(&value).is_ok());
         value.tabs[0].profile = Some("powershell -Command secret".into());

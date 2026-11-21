@@ -5,11 +5,15 @@ import type { ShellProfile } from "./services/terminal";
 import { errorText, t, type Message } from "./i18n";
 import { chooseEditor, detectEditor } from "./services/editors";
 
+import { defaultShortcuts, shortcutActions, shortcutConflict, workspaceShortcut, type ShortcutAction, type Shortcuts } from "./shortcuts";
+
 const stages: Message[] = ["language", "shell", "appearance", "editor"];
-export function PreferencesDialog({ mode, profiles, initial, onSave, onClose, onPreview }: {
+export function PreferencesDialog({ mode, profiles, initial, onSave, onClose, onPreview, shortcuts }: {
+  shortcuts: Shortcuts;
   mode: "setup" | "settings"; profiles: ShellProfile[]; initial: Preferences;
-  onSave: (value: Preferences) => Promise<void>; onClose?: () => void; onPreview: (value: Preferences | null) => void;
+  onSave: (value: Preferences, shortcuts?: Shortcuts) => Promise<void>; onClose?: () => void; onPreview: (value: Preferences | null) => void;
 }) {
+  const [keys, setKeys] = useState(shortcuts);
   const [draft, setDraft] = useState(initial);
   const [step, setStep] = useState(0), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const [finding, setFinding] = useState(false), [editorNote, setEditorNote] = useState<Message | null>(null);
@@ -43,7 +47,8 @@ export function PreferencesDialog({ mode, profiles, initial, onSave, onClose, on
   const save = async () => {
     setBusy(true); setError("");
     if (!/^#[a-f0-9]{6}$/i.test(draft.accent)) { setError("invalid_accent"); setBusy(false); return; }
-    try { await onSave({ ...draft, schemaVersion: 2, setupComplete: true, setupVersion: 2 }); }
+    if (shortcutConflict(keys)) { setError(lang === "de" ? "Jedes Tastenkürzel darf nur einmal belegt sein." : "Each shortcut can only be assigned once."); setBusy(false); return; }
+    try { await onSave({ ...draft, schemaVersion: 2, setupComplete: true, setupVersion: 2 }, setup ? undefined : keys); }
     catch (e) { setError(String(e)); setBusy(false); }
   };
   const visible = (index: number) => step === index;
@@ -58,7 +63,7 @@ export function PreferencesDialog({ mode, profiles, initial, onSave, onClose, on
   }}>
     <div ref={panel} className={`preferences-panel ${setup?"":"settings-fixed"}`} role="dialog" aria-modal="true" aria-labelledby="preferences-title">
       <div className="preferences-brand"><img src="/termix.svg" alt=""/><span>TermiX</span><span className="preferences-eyebrow">{tr(setup ? "firstSteps" : "settings")}</span>{!setup && <button className="icon-button" aria-label={tr("closeSettings")} disabled={busy} onClick={onClose}><X size={18}/></button>}</div>
-      {!setup && <div className="settings-tabs" role="tablist" aria-label={tr("settings")} onKeyDown={e => { if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return; const buttons = [...e.currentTarget.querySelectorAll<HTMLButtonElement>("[role=tab]")]; const index = buttons.indexOf(e.target as HTMLButtonElement); if (index < 0) return; e.preventDefault(); const next = e.key === "Home" ? 0 : e.key === "End" ? buttons.length - 1 : (index + (e.key === "ArrowRight" ? 1 : buttons.length - 1)) % buttons.length; buttons[next].focus(); setStep(next); }}>{[...stages, "files" as const].map((key, i) => <button role="tab" tabIndex={i === step ? 0 : -1} key={key} aria-selected={i === step} onClick={() => setStep(i)}>{key === "files" ? (lang === "de" ? "Dateien" : "Files") : tr(key)}</button>)}</div>}
+      {!setup && <div className="settings-tabs" role="tablist" aria-label={tr("settings")} onKeyDown={e => { if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return; const buttons = [...e.currentTarget.querySelectorAll<HTMLButtonElement>("[role=tab]")]; const index = buttons.indexOf(e.target as HTMLButtonElement); if (index < 0) return; e.preventDefault(); const next = e.key === "Home" ? 0 : e.key === "End" ? buttons.length - 1 : (index + (e.key === "ArrowRight" ? 1 : buttons.length - 1)) % buttons.length; buttons[next].focus(); setStep(next); }}>{[...stages, "files" as const, "shortcuts" as const].map((key, i) => <button role="tab" tabIndex={i === step ? 0 : -1} key={key} aria-selected={i === step} onClick={() => setStep(i)}>{key === "files" ? (lang === "de" ? "Dateien" : "Files") : key === "shortcuts" ? (lang === "de" ? "Tastenkürzel" : "Shortcuts") : tr(key)}</button>)}</div>}
       {setup && <div className="setup-progress four-steps">{stages.map((key, i) => <span key={key} className={i === step ? "current" : i < step ? "complete" : ""}>{String(i + 1).padStart(2, "0")} · {tr(key)}</span>)}</div>}
       <div className="preferences-content">
         <h1 ref={title} tabIndex={-1} id="preferences-title">{tr(!setup ? "workspaceSettings" : (["languageTitle", "terminalTitle", "appearanceTitle", "editorTitle"] as Message[])[step])}</h1>
@@ -80,6 +85,18 @@ export function PreferencesDialog({ mode, profiles, initial, onSave, onClose, on
         {visible(3) && <section className="preference-section"><label className="field"><span>{tr("editor")}</span><select aria-label={tr("editor")} disabled={busy || finding} value={draft.editor} onChange={e => selectEditor(e.target.value as Preferences["editor"])}><option value="integrated">{tr("integrated")}</option><option value="notepad++">Notepad++</option><option value="vscode">Visual Studio Code</option><option value="custom">{tr("customEditor")}</option></select></label>
           {draft.editor !== "integrated" && <><label className="field"><span>{tr("editorPath")}</span><input disabled={busy} value={draft.editorPath} placeholder="C:\Tools\Editor.exe" onChange={e => { editorRequest.current++; setFinding(false); setEditorNote(null); edit({ editorPath: e.target.value }); }}/></label><div className="editor-actions"><button className="btn secondary" disabled={busy || finding} onClick={() => void browseEditor()}>{tr("browse")}</button>{draft.editor !== "custom" && <button className="btn secondary" disabled={busy || finding} onClick={() => void findEditor(draft.editor)}>{tr("detectEditor")}</button>}</div><p className="preferences-note" role="status">{finding ? tr("detectingEditor") : editorNote ? tr(editorNote) : tr("editorPathNote")}</p></>}
           <label className="field"><span>{lang === "de" ? "Dateien öffnen mit" : "Open files with"}</span><select aria-label={lang === "de" ? "Dateien öffnen mit" : "Open files with"} value={draft.editorOpenMode} onChange={e => edit({ editorOpenMode: e.target.value as Preferences["editorOpenMode"] })}><option value="integrated">{tr("integrated")}</option><option value="external" disabled={draft.editor === "integrated" || !draft.editorPath}>{lang === "de" ? "Direkt im externen Editor" : "Directly in external editor"}</option></select></label><p className="preferences-note">{tr("editorNote")}</p></section>}
+        {!setup && visible(5) && <section className="preference-section">
+          <p>{lang === "de" ? "Feld fokussieren und Strg+Umschalt plus Buchstabe drücken. Alt ist optional. Entf löscht die Belegung. Die Kürzel gelten außerhalb von Eingabefeldern und Terminals." : "Focus a field and press Ctrl+Shift and a letter. Alt is optional. Delete clears the binding. Shortcuts apply outside input fields and terminals."}</p>
+          {Object.entries(shortcutActions).map(([id, labels]) => <label key={id} className="field"><span>{labels[lang === "de" ? 1 : 0]}</span>
+            <input readOnly value={keys[id as ShortcutAction]} disabled={busy} onKeyDown={event => {
+              const shortcut = workspaceShortcut(event.nativeEvent);
+              if (!shortcut && event.key !== "Delete") return;
+              event.preventDefault();
+              setKeys(previous => ({...previous, [id]: shortcut}));
+            }}/>
+          </label>)}
+          <button className="btn secondary" disabled={busy} onClick={() => setKeys({...defaultShortcuts})}>{lang === "de" ? "Standardbelegung wiederherstellen" : "Restore default shortcuts"}</button>
+        </section>}
         {!setup && visible(4) && <section className="preference-section">          <label className="field"><span>{lang === "de" ? "SFTP-Layout" : "SFTP layout"}</span><select aria-label={lang === "de" ? "SFTP-Layout" : "SFTP layout"} value={draft.sftpLayout} onChange={e => edit({ sftpLayout: e.target.value as Preferences["sftpLayout"] })}><option value="shared">{lang === "de" ? "Gemeinsame Seitenleiste" : "Shared sidebar"}</option><option value="panel">{lang === "de" ? "Separater Bereich" : "Separate panel"}</option></select></label>
           <label className="field"><span>{lang === "de" ? "SFTP-Position" : "SFTP position"}</span><select disabled={busy || draft.sftpLayout === "shared"} aria-label={lang === "de" ? "SFTP-Position" : "SFTP position"} value={draft.sftpSide} onChange={e => edit({ sftpSide: e.target.value as "left" | "right" })}><option value="left">{lang === "de" ? "Links" : "Left"}</option><option value="right">{lang === "de" ? "Rechts" : "Right"}</option></select></label>
           <p className="preferences-note">{lang === "de" ? "Die gemeinsame Seitenleiste bleibt links. Links/Rechts gilt für den separaten Bereich." : "The shared sidebar stays on the left. Left/right placement applies to the separate panel."}</p><label className="field"><span>{lang === "de" ? "SFTP-Startverzeichnis" : "SFTP starting directory"}</span><input aria-label={lang === "de" ? "SFTP-Startverzeichnis" : "SFTP starting directory"} value={draft.sftpStart} onChange={e => edit({ sftpStart: e.target.value })}/></label><p className="preferences-note">{lang === "de" ? "Ein Punkt verwendet das Startverzeichnis des SSH-Benutzers. Ein absoluter Pfad öffnet dein Wunschverzeichnis." : "A dot uses the SSH user's starting directory. Enter an absolute path to choose another directory."}</p>
