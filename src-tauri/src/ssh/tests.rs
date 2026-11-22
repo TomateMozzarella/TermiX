@@ -91,9 +91,6 @@ fn host_verification_precedes_authentication_and_changed_keys_block() {
         changed.previous_fingerprint.as_ref(),
         Some(&changed.fingerprint)
     );
-    crate::sftp::start_folder(Arc::clone(&terminal), "/".into(), folder.clone(), false).unwrap();
-    assert_eq!(finish(&terminal).state, "done");
-    std::fs::write(folder.join("root.txt"), b"edit").unwrap();
     assert!(manager
         .open(
             &changed.ticket,
@@ -157,7 +154,7 @@ fn real_ssh_password_unicode_interactive_input_resize_exit_and_reconnect() {
     let terminal = manager.get(&id).unwrap();
     receive(&terminal, "ö");
     let metrics = crate::monitor::sample(&terminal).unwrap();
-    assert_eq!(metrics.ssh_sessions, 3);
+    assert_eq!(metrics.ssh_sessions, Some(3));
     assert_eq!(metrics.memory_used, 1536 * 1024);
     terminal.write(b"after-monitor\r").unwrap();
     receive(&terminal, "remote:after-monitor");
@@ -475,6 +472,9 @@ fn sftp_listing_streaming_transfers_overwrite_and_cancel() {
         std::fs::read(dir.join("folder-result.txt")).unwrap(),
         b"folder bytes"
     );
+    crate::sftp::start_folder(Arc::clone(&terminal), "/".into(), folder.clone(), false).unwrap();
+    assert_eq!(finish(&terminal).state, "done");
+    std::fs::write(folder.join("root.txt"), b"edit").unwrap();
     crate::sftp::start_folder(Arc::clone(&terminal), "/".into(), folder, false).unwrap();
     assert_eq!(finish(&terminal).error.as_deref(), Some("sftp_exists"));
     let target = dir.join("cancel.bin");
