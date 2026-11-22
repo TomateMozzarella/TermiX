@@ -106,7 +106,7 @@ impl Browser {
             root,
             entries: Vec::new(),
         };
-        let listing = browser.navigate(None, false)?;
+        let listing = browser.navigate(None, false, None)?;
         Ok((browser, listing))
     }
 
@@ -119,8 +119,27 @@ impl Browser {
         Ok(PathBuf::from(windows_display_path(&self.current)))
     }
 
-    pub fn navigate(&mut self, token: Option<&str>, up: bool) -> Result<Listing, String> {
-        let candidate = if let Some(token) = token {
+    pub fn navigate(
+        &mut self,
+        token: Option<&str>,
+        up: bool,
+        typed_path: Option<&Path>,
+    ) -> Result<Listing, String> {
+        let typed_candidate;
+        let candidate = if let Some(path) = typed_path {
+            let display_root = PathBuf::from(windows_display_path(&self.root));
+            let relative = path
+                .strip_prefix(&display_root)
+                .map_err(|_| "sftp_local_scope")?;
+            if relative
+                .components()
+                .any(|component| !matches!(component, std::path::Component::Normal(_)))
+            {
+                return Err("sftp_local_scope".into());
+            }
+            typed_candidate = self.root.join(relative);
+            &typed_candidate
+        } else if let Some(token) = token {
             &self
                 .entries
                 .iter()
@@ -283,4 +302,31 @@ pub fn open_download_part(path: &Path) -> Result<fs::File, String> {
         }
     }
     Ok(file)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn typed_paths_keep_navigation_inside_the_selected_folder() {
+        let root = std::env::temp_dir().join(format!("termix-local-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(root.join("docs")).unwrap();
+        let (mut browser, listing) = Browser::open(root.clone()).unwrap();
+        let display_root = PathBuf::from(listing.path);
+        let docs = browser
+            .navigate(None, false, Some(&display_root.join("docs")))
+            .unwrap();
+        assert!(docs.can_go_up);
+        let current = browser.current_directory().unwrap();
+        assert_eq!(current, display_root.join("docs"));
+        assert!(browser
+            .navigate(None, false, Some(&display_root.join("..")))
+            .is_err());
+        assert!(browser
+            .navigate(None, false, display_root.parent())
+            .is_err());
+        assert_eq!(browser.current_directory().unwrap(), current);
+        fs::remove_dir_all(root).unwrap();
+    }
 }

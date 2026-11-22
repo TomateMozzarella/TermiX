@@ -478,6 +478,7 @@ pub async fn sftp_local_list(
     id: String,
     token: Option<String>,
     up: bool,
+    path: Option<String>,
 ) -> Result<crate::local_files::Listing, String> {
     let terminal = state.get(&id)?;
     tauri::async_runtime::spawn_blocking(move || {
@@ -491,7 +492,7 @@ pub async fn sftp_local_list(
             .map_err(|_| "sftp_local")?
             .as_mut()
             .ok_or("sftp_local")?
-            .navigate(token.as_deref(), up)
+            .navigate(token.as_deref(), up, path.as_deref().map(std::path::Path::new))
     })
     .await
     .map_err(|_| "sftp_local".to_owned())?

@@ -6,6 +6,8 @@ pub struct Snippet {
     pub id: String,
     pub name: String,
     pub text: String,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub recorded: bool,
 }
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -83,11 +85,11 @@ pub fn merge(path: &Path, incoming: Library) -> Result<Library, String> {
     let _lock = lock(path)?;
     let mut current = read(path)?;
     for mut command in incoming.entries {
-        if current
-            .entries
-            .iter()
-            .any(|entry| entry.name == command.name && entry.text == command.text)
-        {
+        if current.entries.iter().any(|entry| {
+            entry.name == command.name
+                && entry.text == command.text
+                && entry.recorded == command.recorded
+        }) {
             continue;
         }
         command.id = uuid::Uuid::new_v4().to_string();
@@ -134,6 +136,7 @@ mod tests {
             id: uuid::Uuid::new_v4().to_string(),
             name: "First".into(),
             text: "echo first".into(),
+            recorded: false,
         };
         save(
             &path,
@@ -147,6 +150,7 @@ mod tests {
             id: first.id.clone(),
             name: "Second".into(),
             text: "echo second".into(),
+            recorded: false,
         };
         let result = merge(
             &path,
@@ -181,6 +185,7 @@ mod tests {
             id: uuid::Uuid::new_v4().to_string(),
             name: "Update packages".into(),
             text: "sudo apt update".into(),
+            recorded: false,
         });
         save(&path, library.clone()).unwrap();
         assert_eq!(read(&path).unwrap().entries[0].text, "sudo apt update");

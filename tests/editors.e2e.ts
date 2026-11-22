@@ -40,6 +40,12 @@ test('local SFTP browser opens a selected folder and navigates by token', async 
  await local.getByRole('button', {name: 'Local parent folder'}).click();
  await expect(local.getByRole('button', {name: 'Docs', exact: true})).toBeVisible();
  await expect(local).not.toContainText('notes.txt');
+ const path = local.getByRole('textbox', {name: 'Local folder path'});
+ await path.fill('C:\\Local\\Docs');
+ await path.press('Enter');
+ await expect(local).toContainText('notes.txt');
+ await local.getByRole('searchbox', {name: 'Search local files'}).fill('no match');
+ await expect(local).not.toContainText('notes.txt');
 });
 
 test('local SFTP folder upload uses the listed folder token and remote directory', async ({page}) => {
@@ -121,6 +127,29 @@ test('Monaco editing saves explicitly and a server conflict preserves the dirty 
  await editor.focus(); await page.keyboard.press('Control+End'); await page.keyboard.type(' pending'); await page.evaluate(() => { (window as any).editorConflict = true; }); await dialog.getByRole('button', { name: 'Save to server', exact: true }).click(); await expect(dialog.getByRole('alert')).toContainText('server file changed'); await expect(dialog.getByRole('tab')).toContainText('•'); await preview(page, 'TermiX-0.6.0-Editor');
  await page.setViewportSize({ width: 900, height: 600 }); await page.evaluate(() => document.documentElement.style.setProperty('--ui-scale', '1.5')); await expect(dialog.getByRole('button', { name: 'Save to server', exact: true })).toBeInViewport({ ratio: 1 });
 
- await dialog.getByRole('button', { name: 'Close editor', exact: true }).click(); await page.getByRole('dialog', {name:'Confirm changes'}).getByRole('button', {name:'Cancel',exact:true}).last().click(); await expect(dialog).toBeVisible();
+ await dialog.getByRole('button', { name: 'Close editor', exact: true }).click(); await expect(dialog).toBeHidden(); await page.getByRole('button', {name:'TermiX Editor', exact:true}).click(); await expect(dialog).toBeVisible(); await expect(dialog.getByRole('tab')).toContainText('•');
  await dialog.getByRole('button', { name: 'Reload server file', exact: true }).click(); await page.getByRole('button', {name:'Confirm',exact:true}).click(); await expect(dialog.getByRole('button', { name: 'Save to server', exact: true })).toBeDisabled(); await expect(dialog.getByRole('tab')).not.toContainText('•');
+});
+
+test('retains same-named files from distinct paths and compares either order', async ({page}) => {
+ await connected(page);
+ await page.getByRole('button', {name: 'Edit: hello.txt', exact: true}).click();
+ const dialog = page.getByRole('dialog', {name: 'TermiX Editor'});
+ const path = dialog.getByRole('textbox', {name: 'Remote file path'});
+ for (const directory of ['app', 'db']) {
+  await path.fill(`/home/${directory}/docker-compose.yaml`);
+  await path.press('Enter');
+  await expect(dialog.getByRole('tab')).toHaveCount(directory === 'app' ? 2 : 3);
+ }
+ await expect(dialog.getByRole('tab', {name: '/home/app/docker-compose.yaml'})).toBeVisible();
+ await expect(dialog.getByRole('tab', {name: '/home/db/docker-compose.yaml'})).toBeVisible();
+ await dialog.getByRole('button', {name: 'Compare files'}).click();
+ await dialog.getByRole('combobox', {name: 'Original', exact: true}).selectOption('/home/app/docker-compose.yaml');
+ await expect(dialog.getByRole('combobox', {name: 'Compare with', exact: true})).toHaveValue('/home/db/docker-compose.yaml');
+ await dialog.getByRole('button', {name: 'Swap files'}).click();
+ await expect(dialog.getByRole('combobox', {name: 'Original', exact: true})).toHaveValue('/home/db/docker-compose.yaml');
+ await page.mouse.click(2, 2);
+ await expect(dialog).toBeHidden();
+ await page.getByRole('button', {name: 'TermiX Editor', exact: true}).click();
+ await expect(dialog.getByRole('tab')).toHaveCount(3);
 });

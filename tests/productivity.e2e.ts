@@ -41,24 +41,30 @@ test('terminal context search finds output; snippets need explicit identified ta
  expect(await page.getByText('Target: Windows PowerShell',{exact:false}).count()).toBeGreaterThan(0);
  await page.getByRole('button',{name:'Run: Who am I',exact:true}).click(); await expect.poll(()=>page.evaluate(()=>(window as any).testCalls.filter((c:any)=>c.command==='write_terminal').length)).toBeGreaterThan(before);await expect(page.locator('.terminal-layer:visible .xterm-helper-textarea')).toBeFocused();
 });
-test('macro recording saves only commands explicitly sent from the recorder', async ({page}) => {
+test('records input from the selected terminal and lets the user edit before saving', async ({page}) => {
  await mockDesktop(page, true);
  await page.goto('/');
  await page.getByRole('button', {name: 'New tab', exact: true}).click();
  await page.getByRole('button', {name: 'Commands', exact: true}).click();
  await page.getByRole('button', {name: 'Record macro', exact: true}).click();
- const field = page.getByLabel('Command to record', {exact: true});
- for (const command of ['echo first', 'echo second']) {
-  await field.fill(command);
-  await page.getByRole('button', {name: 'Send and record'}).click();
-  await expect(field).toHaveValue('');
- }
- await page.getByRole('button', {name: 'Review recording'}).click();
- await expect(page.getByRole('textbox', {name: 'Command', exact: true})).toHaveValue('echo first\necho second');
- await page.getByLabel('Name', {exact: true}).fill('Recorded pair');
+ await expect(page.locator('.terminal-layer:visible .xterm-helper-textarea')).toBeFocused();
+ await page.keyboard.type('echo first');
+ await page.keyboard.press('Enter');
+ await page.keyboard.type('echo second');
+ await expect(page.getByLabel('Recorded input')).toContainText('echo first ⏎');
+ await page.getByRole('button', {name: 'Stop and review'}).click();
+ const command = page.getByRole('textbox', {name: 'Command', exact: true});
+ await expect(command).toHaveValue('echo first\necho second');
+ await command.fill('echo first\necho second\necho added');
+ await page.getByLabel('Name', {exact: true}).fill('Recorded commands');
  await page.getByRole('button', {name: 'Save command', exact: true}).click();
- await expect(page.getByRole('button', {name: 'Run: Recorded pair'})).toBeVisible();
- expect(await page.evaluate(() => JSON.parse(localStorage.getItem('test-commands') ?? '{}').entries[0].text)).toBe('echo first\necho second');
+ await expect(page.getByRole('button', {name: 'Run: Recorded commands'})).toBeVisible();
+ expect(await page.evaluate(() => JSON.parse(localStorage.getItem('test-commands') ?? '{}').entries[0])).toMatchObject({text: 'echo first\necho second\necho added', recorded: true});
+ await page.getByRole('button', {name: 'Run: Recorded commands'}).click();
+ await expect.poll(() => page.evaluate(() => {
+  const writes = (window as any).testCalls.filter((call: any) => call.command === 'write_terminal');
+  return new TextDecoder().decode(Uint8Array.from(writes.at(-1).args.data));
+ })).toBe('echo first\recho second\recho added');
 });
 test('workspace restoration retains tab order and widths but never automatically authenticates SSH', async ({page}) => {
  await ssh(page); await page.getByRole("button", { name: "New tab", exact: true }).click(); await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('test-workspace')??'null')?.tabs.length)).toBe(2); await page.reload(); await page.getByRole('button',{name:'Restore workspace',exact:true}).click(); await expect(page.getByRole('tab')).toHaveCount(2); expect(await page.evaluate(()=>(window as any).testCalls.filter((c:any)=>c.command==='ssh_open').length)).toBe(0); await page.getByRole('tab', {name: 'Editor host', exact:true}).click(); await expect(page.getByRole('button',{name:/^Reconnect/})).toBeVisible();

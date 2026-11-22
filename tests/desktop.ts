@@ -23,7 +23,7 @@ export async function mockDesktop(page: Page, configured = false, legacy = false
       if (command === "open_rdp_session" || command === "create_session_shortcut") return;
       if (command === "take_launch_session") return mock.launchSession ?? null;
       if (command === "sftp_local_open" || command === "sftp_local_list") {
-        if (command === "sftp_local_list" && args.token === "docs-token") {
+        if (command === "sftp_local_list" && (args.token === "docs-token" || args.path === "C:\\Local\\Docs")) {
           return {path: "C:\\Local\\Docs", canGoUp: true, truncated: false, entries: [{name: "notes.txt", directory: false, size: 16, token: "notes-token"}]};
         }
         return {path: "C:\\Local", canGoUp: false, truncated: false, entries: [{name: "Docs", directory: true, size: null, token: "docs-token"}]};

@@ -12,6 +12,8 @@ TermiX verbindet lokale Terminals, SSH, SFTP und einen integrierten Editor in ei
 
 ## Funktionen
 
+[v0.12.1](releases/v0.12.1.md) bringt Makroaufzeichnung direkt im Terminal, erhaltene Editor-Tabs, frei wählbare Vergleichsdateien und eine durchsuchbare lokale SFTP-Ansicht.
+
 - Sitzungen und Ordner per Rechtsklick verwalten und gezielt als JSON importieren oder exportieren. Bei SSH kannst du dich mit einem anderen Benutzernamen verbinden oder SFTP öffnen.
 - Terminal-Tabs sortieren, umbenennen, mit einer eigenen Farbe markieren und anheften. Bis zu sechs Terminals gleichzeitig anzeigen und Befehle per Multi-Execute an die bestätigten Ziele senden.
 - Dateien über die geprüfte SSH-Verbindung per SFTP übertragen und bearbeiten.

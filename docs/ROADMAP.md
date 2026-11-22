@@ -1,6 +1,13 @@
 # TermiX – Product Roadmap and Project Handoff
 
-### v0.12.0 release candidate
+### Workspace follow-up after v0.12.0
+
+- Settings opens on Appearance, which also contains language. First-run setup still starts with language.
+- Macro recording captures text and Enter in the selected terminal while the Commands pane is visible. Review and edit the result before saving it. Line breaks replay as Enter, including at the end if present. Special keys stop capture. Stop recording before entering secrets or using interactive terminal programs.
+- Closing or hiding the TermiX Editor retains its open tabs and unsaved buffers. Individual file tabs can still be closed. The limit is eight files per SSH connection, up to 2 MiB each. Compare any two open files using their full paths.
+- The local SFTP list is resizable and filterable. Enter a path within the selected tree or choose a different root with the Windows folder picker.
+
+### v0.12.0 release
 - Detachable terminals retain the live process and scrollback. Window appearance and labels follow workspace settings.
 - SFTP downloads verify a saved local prefix when the same source and destination are chosen again. Uploads retain in-session pause and resume. Following a disconnect, retrying a folder verifies completed files and skips identical ones; the interrupted file starts again in a new exclusive staging file.
 - Third-party import reviews supported OpenSSH, PuTTY and MobaXterm entries. Entries without a saved SSH username are skipped.

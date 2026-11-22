@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ArrowUp, Download, File, Folder, RefreshCw, Upload, X, Pencil, FolderPlus, FolderUp, FilePlus, Trash2 } from "lucide-react";
+import { ArrowRight, ArrowUp, Download, File, Folder, RefreshCw, Upload, X, Pencil, FolderPlus, FolderUp, FilePlus, Trash2 } from "lucide-react";
 import { Modal, useConfirmation } from "./Modal";
 import { ContextMenu } from "./ContextMenu";
 import { remoteText, type RemoteKey } from "./remoteText";
@@ -35,14 +35,21 @@ export function SftpPane({ id, language, initialPath, onEdit, onClose }: { id: s
   const [local, setLocal] = useState<LocalListing | null>(null);
   const [localBusy, setLocalBusy] = useState(false);
   const [localError, setLocalError] = useState("");
-  async function browseLocal(action: "choose" | "up" | "refresh", token?: string) {
+  const [localPath, setLocalPath] = useState("");
+  const [localQuery, setLocalQuery] = useState("");
+  const localEntries = local?.entries.filter(entry => entry.name.toLocaleLowerCase(language).includes(localQuery.trim().toLocaleLowerCase(language))) ?? [];
+  async function browseLocal(action: "choose" | "up" | "refresh" | "path", token?: string) {
     setLocalBusy(true);
     setLocalError("");
     try {
       const result = action === "choose"
         ? await invoke<LocalListing | null>("sftp_local_open", {id})
-        : await invoke<LocalListing>("sftp_local_list", {id, token: token ?? null, up: action === "up"});
-      if (alive.current && result) setLocal(result);
+        : await invoke<LocalListing>("sftp_local_list", {id, token: token ?? null, up: action === "up", ...(action === "path" ? {path: localPath.trim()} : {})});
+      if (alive.current && result) {
+        if (result.path !== local?.path) setLocalQuery("");
+        setLocal(result);
+        setLocalPath(result.path);
+      }
     } catch (error) {
       if (alive.current) setLocalError(String(error));
     } finally {
@@ -120,15 +127,19 @@ export function SftpPane({ id, language, initialPath, onEdit, onClose }: { id: s
           </>}
         </div>
         {local && <>
-          <p className="sftp-local-path" title={local.path}>{local.path}</p>
+          <form className="sftp-path sftp-local-path" onSubmit={event => { event.preventDefault(); if (!localBusy && localPath.trim()) void browseLocal("path"); }}>
+            <input aria-label={ui("Local folder path", "Lokaler Ordnerpfad")} title={ui("Enter a path inside the selected folder", "Pfad innerhalb des ausgewählten Ordners eingeben")} value={localPath} onChange={event => setLocalPath(event.target.value)}/>
+            <button className="icon-button" disabled={localBusy || !localPath.trim()} aria-label={ui("Open local path", "Lokalen Pfad öffnen")} title={ui("Open local path", "Lokalen Pfad öffnen")}><ArrowRight size={16}/></button>
+          </form>
+          <input className="local-search" type="search" aria-label={ui("Search local files", "Lokale Dateien suchen")} placeholder={ui("Search this folder…", "Diesen Ordner durchsuchen …")} value={localQuery} onChange={event => setLocalQuery(event.target.value)}/>
           <ul className="sftp-local-entries" aria-busy={localBusy}>
-            {local.entries.map(entry => <li key={entry.name}>{entry.directory
+            {localEntries.map(entry => <li key={entry.name}>{entry.directory
               ? <div className="sftp-local-file"><button className="sftp-entry" disabled={localBusy} onClick={() => void browseLocal("refresh", entry.token!)}><Folder size={16}/><span>{entry.name}</span></button>
                 {entry.token && <button className="icon-button" aria-label={`${ui("Upload folder", "Ordner hochladen")}: ${entry.name}`} title={ui("Upload folder", "Ordner hochladen")} disabled={busy || running || localBusy} onClick={() => void uploadLocal(entry.token!, true)}><FolderUp size={16}/></button>}</div>
               : <div className="sftp-local-file"><span className="sftp-entry"><File size={16}/><span>{entry.name}</span><small>{entry.size?.toLocaleString(language)} B</small></span>
                 {entry.token && <button className="icon-button" aria-label={`${tr("upload")}: ${entry.name}`} title={tr("upload")} disabled={busy || running || localBusy} onClick={() => void uploadLocal(entry.token!)}><Upload size={16}/></button>}</div>}</li>)}
           </ul>
-          {!local.entries.length && <small>{ui("No visible files or folders.", "Keine sichtbaren Dateien oder Ordner.")}</small>}
+          {!localEntries.length && <small>{ui("No visible files or folders.", "Keine sichtbaren Dateien oder Ordner.")}</small>}
           {local.truncated && <small>{ui("Only the first 1,000 directory entries were inspected.", "Es wurden nur die ersten 1.000 Verzeichniseinträge geprüft.")}</small>}
         </>}
         {localError && <p role="alert" className="sftp-error">{message(localError)}</p>}

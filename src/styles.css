@@ -398,3 +398,60 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 
 
 
+
+/* Keep the workspace navigation and terminal tabs on the same baseline. */
+.shared-sidebar > .workspace-sidebar-tabs {
+  box-sizing: border-box;
+  height: calc(54px * var(--ui-scale));
+  padding-block: 6px;
+  align-items: stretch;
+}
+.commands-shell { display: flex; flex: 1; min-height: 0; }
+.commands-shell[hidden] { display: none; }
+.command-form label { display: grid; gap: 7px; }
+.command-form input, .command-form textarea { box-sizing: border-box; }
+.macro-record { align-self: flex-start; }
+.macro-recording pre {
+  max-height: 9rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 8px;
+  background: var(--bg);
+  border-radius: var(--radius-control);
+}
+.manager-header-actions { display: flex; gap: 4px; }
+.remote-editor-modal .editor-tools {
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+.remote-editor-modal .editor-tools > .btn {
+  inline-size: auto;
+  flex: none;
+  white-space: nowrap;
+  gap: 6px;
+}
+.editor-indent, .editor-compare-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.editor-indent { flex: none; }
+.editor-compare-controls { margin-bottom: 10px; }
+.editor-compare-controls label { display: grid; min-width: 0; flex: 1; gap: 4px; }
+.editor-compare-controls select { width: 100%; }
+.remote-editor-modal.editor-comparing { width: 96vw; height: 94dvh; }
+.sftp-local-entries { height: 180px; min-height: 70px; max-height: 45dvh; resize: vertical; }
+.sftp-local-path input, .local-search {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  padding: 7px 9px;
+}
+.local-search { margin-bottom: 5px; }

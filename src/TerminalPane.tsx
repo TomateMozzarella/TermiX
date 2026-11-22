@@ -13,10 +13,11 @@ import { errorText, t, type Language } from "./i18n";
 
 export type TerminalWriter = (value: string, requestFocus?: boolean) => Promise<boolean>;
 
-export function TerminalPane({ tab, active, focusOnActivate, fontSize, theme, accent, language, onReconnect, onInputReady, onOpenOutput }: { tab: TerminalTab; active: boolean; focusOnActivate: boolean; fontSize: number; theme: ResolvedTheme; accent: string; language: Language; onReconnect: () => void; onOpenOutput: (text: string) => void; onInputReady?: (write: TerminalWriter | null) => void }) {
+export function TerminalPane({ tab, active, focusOnActivate, fontSize, theme, accent, language, onReconnect, onInputReady, onOpenOutput, onUserInput }: { tab: TerminalTab; active: boolean; focusOnActivate: boolean; fontSize: number; theme: ResolvedTheme; accent: string; language: Language; onReconnect: () => void; onOpenOutput: (text: string) => void; onUserInput?: (text: string) => void; onInputReady?: (write: TerminalWriter | null) => void }) {
   const confirmation = useConfirmation(language);
   const tr = (en: string, de: string) => language === "de" ? de : en;
   const [context, setContext] = useState<{x: number; y: number} | null>(null), [searchOpen, setSearchOpen] = useState(false), [query, setQuery] = useState(""), [found, setFound] = useState(true), [notice, setNotice] = useState(""), [sizeOffset, setSizeOffset] = useState(0);
+  const userInput = useRef(onUserInput); userInput.current = onUserInput;
   const controls = useRef<{ terminal: Terminal; search: SearchAddon }>();
   const [ended, setEnded] = useState(false);
   const visual = useRef({ theme, accent, language }); visual.current = { theme, accent, language };
@@ -52,7 +53,10 @@ export function TerminalPane({ tab, active, focusOnActivate, fontSize, theme, ac
         if (requestFocus) terminal.focus();
         return connection.write(value);
       }));
-    const input = terminal.onData(text => connection.write(text));
+    const input = terminal.onData(text => {
+      userInput.current?.(text);
+      void connection.write(text);
+    });
     const resized = terminal.onResize(({ cols, rows }) => connection.resize(cols, rows));
     const observer = new ResizeObserver(fitVisible); observer.observe(element);
     const moved = () => { confirmation.dismiss(); terminal.open(element); fitVisible(); terminal.focus(); };

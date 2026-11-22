@@ -1,5 +1,8 @@
 # Codex / AI contributor instructions for TermiX
 
+## Delivery on main
+For each completed application update, push directly to main and verify that the automatic Windows build starts. Update the relevant product docs, release notes and project media with the same change. Keep docs-only pushes lightweight and preserve published release tags and assets.
+
 Read [docs/ROADMAP.md](docs/ROADMAP.md) and [README.md](README.md) before changing code. The roadmap is the authoritative handoff for product goals, verified current state, milestone ordering, security requirements, and decisions from user discussions.
 
 ## Current verified focus: v0.10 delivered
@@ -71,3 +74,7 @@ Added to v0.10: native folder selection, nested files and empty directories, agg
 
 2026-11-08 workflow decision: user explicitly requests working directly on main and retiring old version branches. This supersedes PR-only work. Build the exact main commit and publish only after all required CI jobs and the source/hash receipt pass. Immutable tags/releases remain. Cleanup only expected old tips already contained in main. A redesigned README/project showcase with real UI captures and a labelled demonstration GIF is requested.
 Release presentation decision (2026-11-08): every new release gets a concise highlight, clear EXE/MSI/portable downloads, grouped New/Improved/Fixed changes, upgrade notes, known limits and verified-source/checksum assets. Use actual screenshots when useful; do not claim planned work or unverified tests as delivered. Preserve already-published assets/tags.
+
+
+
+
