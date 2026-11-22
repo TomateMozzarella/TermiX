@@ -12,4 +12,8 @@ test('capture an illustrative walkthrough from the actual production UI',async({
  async function point(button:import('@playwright/test').Locator){const box=await button.boundingBox();if(!box)throw Error('Missing demo target');const target={x:box.x+box.width/2,y:box.y+box.height/2};const start=await page.evaluate(()=>{const p=document.getElementById('demo-pointer')!;return{x:parseFloat(p.style.left),y:parseFloat(p.style.top)};});for(let i=1;i<=5;i++){await page.evaluate(({x,y})=>{const p=document.getElementById('demo-pointer')!;p.style.left=x+'px';p.style.top=y+'px';},{x:start.x+(target.x-start.x)*i/5,y:start.y+(target.y-start.y)*i/5});await shot();}await button.click();await page.waitForTimeout(200);}
  await shot('workspace-dark');await point(page.getByRole('button',{name:'SFTP',exact:true}));await expect(page.getByRole('toolbar',{name:'File actions',exact:true})).toBeVisible();await shot('sftp-dark');
  await point(page.getByRole('button',{name:'Edit: hello.txt',exact:true}));await expect(page.locator('.monaco-editor .view-line').first()).toBeVisible();await page.waitForTimeout(400);await shot('editor-dark');
+ await point(page.getByRole('button',{name:'Find',exact:true}));
+ await page.getByRole('textbox',{name:'Find text',exact:true}).fill('services');
+ await expect(page.getByRole('region',{name:'Editor search',exact:true})).toContainText('1 matches');
+ await shot('editor-search-dark');
 });

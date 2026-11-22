@@ -492,7 +492,11 @@ pub async fn sftp_local_list(
             .map_err(|_| "sftp_local")?
             .as_mut()
             .ok_or("sftp_local")?
-            .navigate(token.as_deref(), up, path.as_deref().map(std::path::Path::new))
+            .navigate(
+                token.as_deref(),
+                up,
+                path.as_deref().map(std::path::Path::new),
+            )
     })
     .await
     .map_err(|_| "sftp_local".to_owned())?
@@ -684,6 +688,39 @@ pub async fn sftp_download(
     };
     crate::sftp::start(terminal, path, local, false, false).map(Some)
 }
+#[tauri::command]
+pub async fn editor_pick_local(
+    window: tauri::WebviewWindow,
+) -> Result<Option<(String, String)>, String> {
+    let Some(path) = crate::files::choose(window, crate::files::Choice::Upload).await? else {
+        return Ok(None);
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        use std::io::Read;
+        const MAX_BYTES: u64 = 2 * 1024 * 1024;
+        let metadata = std::fs::symlink_metadata(&path).map_err(|_| "sftp_local")?;
+        if !metadata.is_file() || crate::local_files::is_link(&metadata) {
+            return Err("editor_type".into());
+        }
+        let path = std::fs::canonicalize(path).map_err(|_| "sftp_local")?;
+        let file = crate::local_files::open_verified_file(&path)?;
+        let mut bytes = Vec::new();
+        file.take(MAX_BYTES + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|_| "sftp_local")?;
+        if bytes.len() as u64 > MAX_BYTES || bytes.contains(&0) {
+            return Err("editor_type".into());
+        }
+        let text = String::from_utf8(bytes).map_err(|_| "editor_encoding")?;
+        Ok(Some((
+            crate::local_files::windows_display_path(&path),
+            text,
+        )))
+    })
+    .await
+    .map_err(|_| "sftp_local".to_owned())?
+}
+
 #[tauri::command]
 pub async fn editor_open(
     state: State<'_, crate::ssh::SshManager>,

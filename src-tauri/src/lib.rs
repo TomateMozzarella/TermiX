@@ -168,6 +168,7 @@ pub fn run() {
             commands::get_preferences,
             commands::save_preferences,
             commands::editor_open,
+            commands::editor_pick_local,
             commands::editor_save,
             commands::editor_reload,
             commands::editor_close,

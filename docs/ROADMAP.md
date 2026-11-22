@@ -1,5 +1,11 @@
 # TermiX – Product Roadmap and Project Handoff
 
+### Editor follow-up in v0.12.2
+
+- Use the editor's own search, replace and line-navigation panels. Search supports case, whole words, wrap-around, previous and next, and a match count in the current file.
+- Open native-picker-selected local UTF-8 files as read-only tabs, including without an SSH connection. Compare local files with remote files in the same editor workspace.
+- Use the explicit End comparison action. Close the editor with X or Escape. Clicking outside keeps it open.
+
 ### Workspace follow-up after v0.12.0
 
 - Settings opens on Appearance, which also contains language. First-run setup still starts with language.

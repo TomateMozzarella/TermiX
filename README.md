@@ -41,6 +41,8 @@ Connect to your servers, browse remote files and keep your everyday commands clo
 
 ### Workspace updates
 
+[v0.12.2](docs/releases/v0.12.2.md) adds a dedicated search and navigation panel, clearer file comparison, and read-only local file tabs that can be compared with remote files. [See editor search](docs/media/editor-search-dark.png).
+
 [v0.12.1](docs/releases/v0.12.1.md) brings direct terminal macro recording, persistent editor tabs, a larger two-file comparison and a resizable local SFTP list with search.
 
 The [v0.12.0 development notes](docs/releases/v0.12.0.md) cover the TermiX Editor workspace, external file review and saved RDP sessions that open in Windows Remote Desktop.

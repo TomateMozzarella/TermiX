@@ -217,7 +217,7 @@ impl Browser {
     }
 }
 
-fn windows_display_path(path: &Path) -> String {
+pub(crate) fn windows_display_path(path: &Path) -> String {
     let path = path.to_string_lossy();
     if let Some(unc) = path.strip_prefix(r"\\?\UNC\") {
         format!(r"\\{unc}")

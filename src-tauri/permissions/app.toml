@@ -20,7 +20,7 @@ commands.allow = ["tunnel_start", "tunnel_list", "tunnel_stop", "ssh_monitor", "
 [[permission]]
 identifier = "sftp"
 description = "Browse verified SSH transports and transfer files chosen through native dialogs; no arbitrary local paths."
-commands.allow = ["sftp_list", "sftp_local_open", "sftp_local_list", "sftp_local_upload", "sftp_dropped_upload", "sftp_pause_transfer", "sftp_upload", "sftp_upload_folder", "sftp_download", "sftp_progress", "sftp_cancel", "sftp_mkdir", "sftp_file_action", "editor_external_state", "editor_open", "editor_save", "editor_reload", "editor_close", "editor_external", "editor_reload_external", "editor_terminal_output"]
+commands.allow = ["sftp_list", "sftp_local_open", "sftp_local_list", "sftp_local_upload", "sftp_dropped_upload", "sftp_pause_transfer", "sftp_upload", "sftp_upload_folder", "sftp_download", "sftp_progress", "sftp_cancel", "sftp_mkdir", "sftp_file_action", "editor_external_state", "editor_open", "editor_pick_local", "editor_save", "editor_reload", "editor_close", "editor_external", "editor_reload_external", "editor_terminal_output"]
 
 [[permission]]
 identifier = "project-links"

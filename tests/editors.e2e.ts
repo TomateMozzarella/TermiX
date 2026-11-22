@@ -148,8 +148,37 @@ test('retains same-named files from distinct paths and compares either order', a
  await expect(dialog.getByRole('combobox', {name: 'Compare with', exact: true})).toHaveValue('/home/db/docker-compose.yaml');
  await dialog.getByRole('button', {name: 'Swap files'}).click();
  await expect(dialog.getByRole('combobox', {name: 'Original', exact: true})).toHaveValue('/home/db/docker-compose.yaml');
+ await dialog.getByRole('button', {name: 'End comparison'}).click();
+ await expect(dialog.locator('.monaco-diff-editor')).toHaveCount(0);
  await page.mouse.click(2, 2);
+ await expect(dialog).toBeVisible();
+ await dialog.getByRole('button', {name: 'Close editor'}).click();
  await expect(dialog).toBeHidden();
  await page.getByRole('button', {name: 'TermiX Editor', exact: true}).click();
  await expect(dialog.getByRole('tab')).toHaveCount(3);
+});
+
+test('opens a local file without SSH and provides visible search and line navigation', async ({page}) => {
+ await mockDesktop(page, true);
+ await page.addInitScript(() => { (window as any).editorLocal = ['C:\\Docs\\sample.txt', 'alpha\nAlpha\nalphabet']; });
+ await page.goto('/');
+ await page.getByRole('button', {name: 'TermiX Editor', exact: true}).click();
+ const dialog = page.getByRole('dialog', {name: 'TermiX Editor'});
+ await dialog.getByRole('button', {name: 'Open local file'}).click();
+ await expect(dialog.getByRole('tab', {name: 'sample.txt'})).toBeVisible();
+ await expect(dialog.getByRole('button', {name: 'Save to server'})).toBeDisabled();
+ await dialog.getByRole('button', {name: 'Find', exact: true}).click();
+ const search = dialog.getByRole('region', {name: 'Editor search'});
+ await search.getByRole('textbox', {name: 'Find text'}).fill('alpha');
+ await expect(search).toContainText('3 matches');
+ await search.getByRole('checkbox', {name: 'Whole words'}).check();
+ await expect(search).toContainText('2 matches');
+ await search.getByRole('checkbox', {name: 'Match case'}).check();
+ await search.getByRole('button', {name: 'Next match'}).click();
+ await expect(search).toContainText('1 / 1 matches');
+ await dialog.getByRole('button', {name: 'Go to line'}).click();
+ await search.getByRole('spinbutton', {name: 'Line number'}).fill('2');
+ await search.getByRole('button', {name: 'Go', exact: true}).click();
+ await expect(search).toBeHidden();
+ await expect(dialog.locator('.monaco-editor .cursor')).toBeVisible();
 });
