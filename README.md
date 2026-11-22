@@ -23,11 +23,11 @@ Connect to your servers, browse remote files and keep your everyday commands clo
 
 | Workspace | Included |
 | --- | --- |
-| Terminals | Local shells and SSH, scrollable tabs with custom colours, up to six panes, and Multi-Execute with a preview of the targets. |
-| Connections | Saved sessions, folder search, favourites, scoped JSON import/export, alternate SSH login and SFTP from the session menu. |
-| Remote files | Browse SFTP on the verified SSH connection; upload whole folders or files, download files, create and remove files or empty folders. |
+| Terminals | Local shells and SSH, scrollable tabs with custom colours, up to six panes, detachable live terminals, and Multi-Execute with a preview of the targets. |
+| Connections | Saved sessions, folder search, favourites, scoped JSON import/export, alternate SSH login, compatible OpenSSH/PuTTY/MobaXterm imports, SFTP from the session menu, and RDP via Windows Remote Desktop. |
+| Remote files | Browse SFTP on the verified SSH connection; upload whole folders or files, resume downloads after interruption, and create or remove files and empty folders. |
 | SSH tunnels | Explicit local/remote TCP forwarding with loopback defaults, active connection counts and Stop. |
-| Editing | Integrated Monaco editor with find/replace, comparison, explicit server saves and a read-only view of terminal output. External editing is optional. |
+| Editing | Integrated Monaco editor with find/replace, comparison, explicit server saves and terminal output in your preferred editor. Hide the editor to browse SFTP while retaining its tabs. |
 | Commands | Search, run, import and export named commands. JSON imports show a preview before adding commands to the library. |
 | Monitoring | Read-only SSH metrics for Linux, FreeBSD, macOS and Windows. Available counters depend on the remote system. |
 | Appearance | Light/dark/system, accent colours, readable font and UI scaling; categorized settings and first-run setup. |
@@ -52,7 +52,7 @@ The [v0.12.0 development notes](docs/releases/v0.12.0.md) cover the TermiX Edito
 </tr>
 </table>
 
-The current development workspace includes detachable terminals, resumable SFTP downloads, folder retries that preserve identical files, and SSH monitoring for Linux, FreeBSD, macOS and Windows. Native Windows validation is pending for these changes. See the [roadmap](docs/ROADMAP.md) for remaining work.
+In v0.12.0, interrupted downloads can resume after reconnect or restart when the local prefix matches. Folder upload retries skip byte-identical files and restart the interrupted file. See the [roadmap](docs/ROADMAP.md) for remaining work.
 
 ## Download and get started
 
@@ -72,7 +72,7 @@ This is active development software. See [security scope and limitations](docs/S
 
 Tauri 2 · Rust · React · TypeScript · xterm.js · Monaco
 
-Development now takes place directly on `main`. Windows CI validates the exact source, native integration, browser workflows, packaging, upgrades and portable isolation before publishing immutable release assets.
+Development now takes place directly on `main`. Application pushes to main trigger CI. Linux runs the browser suite and Linux monitoring checks. Windows validates native integration, packaging, upgrades and portable isolation. Publication requires all three checks and the build receipt for the exact source. Docs-only pushes skip the build.
 
 See the [contributor instructions](AGENTS.md), [development history and build guidance](docs/PROJECT-HISTORY.md) and [roadmap](docs/ROADMAP.md).
 

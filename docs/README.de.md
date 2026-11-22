@@ -1,6 +1,6 @@
 # TermiX
 
-Im aktuellen Entwicklungsstand lassen sich laufende Terminals abtrennen und SFTP-Downloads nach einer Unterbrechung wieder aufnehmen. Wiederholte Ordneruploads überspringen bytegleiche vorhandene Dateien. Das SSH-Monitoring unterstützt Linux, FreeBSD, macOS und Windows. Die native Windows-Prüfung der neuen Funktionen steht aus.
+Im aktuellen Entwicklungsstand lassen sich laufende Terminals abtrennen und SFTP-Downloads nach einer Unterbrechung wieder aufnehmen. Wiederholte Ordneruploads überspringen bytegleiche vorhandene Dateien. Das SSH-Monitoring unterstützt Linux, FreeBSD, macOS und Windows.
 
 **Terminal, Server und Dateien in einem übersichtlichen Arbeitsplatz.**
 
@@ -15,10 +15,10 @@ TermiX verbindet lokale Terminals, SSH, SFTP und einen integrierten Editor in ei
 - Sitzungen und Ordner per Rechtsklick verwalten und gezielt als JSON importieren oder exportieren. Bei SSH kannst du dich mit einem anderen Benutzernamen verbinden oder SFTP öffnen.
 - Terminal-Tabs sortieren, umbenennen, mit einer eigenen Farbe markieren und anheften. Bis zu sechs Terminals gleichzeitig anzeigen und Befehle per Multi-Execute an die bestätigten Ziele senden.
 - Dateien über die geprüfte SSH-Verbindung per SFTP übertragen und bearbeiten.
-- Monaco mit Suchen, Ersetzen und Dateivergleich oder einen externen Editor verwenden. Terminalausgaben lassen sich schreibgeschützt im integrierten Editor öffnen.
+- Monaco mit Suchen, Ersetzen und Dateivergleich oder einen externen Editor verwenden. Terminalausgaben öffnen sich im eingestellten Editor. Beim Wechsel zurück zu SFTP bleiben die Editor-Tabs erhalten.
 - Benannte Befehle in der Seitenleiste speichern, ausführen und als JSON importieren oder exportieren.
 - Lokale und entfernte TCP-Weiterleitungen über eine geprüfte SSH-Verbindung einrichten.
-- CPU, RAM, Speicherplatz und weitere Linux-Metriken beobachten.
+- CPU, RAM, Speicherplatz und weitere Werte für Linux, FreeBSD, macOS und Windows beobachten. Die verfügbaren Werte hängen vom Zielsystem ab.
 
 [Änderungen in v0.11.2](releases/v0.11.2.md) · [Veröffentlichte Windows-Versionen](https://github.com/TomateMozzarella/TermiX/releases)
 

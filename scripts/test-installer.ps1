@@ -10,23 +10,21 @@ if (!$installer) { throw 'Installer missing' }
 
 $bootstrapInstaller = $installer
 $bootstrapVersion = $version
-if ($version -eq '0.10.0') {
- $baselineDir = Join-Path $env:RUNNER_TEMP 'termix-baseline-0.9.0'
- New-Item -ItemType Directory -Force -Path $baselineDir | Out-Null
- gh release download v0.9.0 --repo $env:GH_REPO --pattern 'TermiX_0.9.0_x64-setup.exe' --dir $baselineDir
- if ($LASTEXITCODE -ne 0) { throw 'Could not download the immutable v0.9 upgrade baseline' }
- $bootstrapInstaller = Join-Path $baselineDir 'TermiX_0.9.0_x64-setup.exe'
- if ((Get-FileHash $bootstrapInstaller -Algorithm SHA256).Hash -ne '38D79115A06F675EF9B2D3FC24F895DEBAB99F2103A5D98A5FBDD347447616BE') { throw 'Upgrade baseline checksum mismatch' }
- $bootstrapVersion = '0.9.0'
+$upgradeBaselines = @{
+ '0.10.0' = @{ Version = '0.9.0'; Hash = '38D79115A06F675EF9B2D3FC24F895DEBAB99F2103A5D98A5FBDD347447616BE' }
+ '0.11.0' = @{ Version = '0.10.0'; Hash = '01777E131AC56CD93F6995195BBFF510CBD32338055ADD010DF556801D9C87E3' }
+ '0.12.0' = @{ Version = '0.11.2'; Hash = '7331A41AB5C19BFCD80252FB86FDCE01958C5915D6A09FFAD7492EB61F05D1D6' }
 }
-if ($version -eq '0.11.0') {
- $baselineDir = Join-Path $env:RUNNER_TEMP 'termix-baseline-0.10.0'
+$baseline = $upgradeBaselines[$version]
+if ($baseline) {
+ $bootstrapVersion = $baseline.Version
+ $baselineDir = Join-Path $env:RUNNER_TEMP "termix-baseline-$bootstrapVersion"
+ $baselineFile = "TermiX_${bootstrapVersion}_x64-setup.exe"
  New-Item -ItemType Directory -Force -Path $baselineDir | Out-Null
- gh release download v0.10.0 --repo $env:GH_REPO --pattern 'TermiX_0.10.0_x64-setup.exe' --dir $baselineDir
- if ($LASTEXITCODE -ne 0) { throw 'Could not download the immutable v0.10 upgrade baseline' }
- $bootstrapInstaller = Join-Path $baselineDir 'TermiX_0.10.0_x64-setup.exe'
- if ((Get-FileHash $bootstrapInstaller -Algorithm SHA256).Hash -ne '01777E131AC56CD93F6995195BBFF510CBD32338055ADD010DF556801D9C87E3') { throw 'Upgrade baseline checksum mismatch' }
- $bootstrapVersion = '0.10.0'
+ gh release download "v$bootstrapVersion" --repo $env:GH_REPO --pattern $baselineFile --dir $baselineDir
+ if ($LASTEXITCODE -ne 0) { throw "Could not download the v$bootstrapVersion upgrade baseline" }
+ $bootstrapInstaller = Join-Path $baselineDir $baselineFile
+ if ((Get-FileHash $bootstrapInstaller -Algorithm SHA256).Hash -ne $baseline.Hash) { throw 'Upgrade baseline checksum mismatch' }
 }
 $desktop = [Environment]::GetFolderPath('Desktop')
 $linkPath = Join-Path $desktop 'TermiX.lnk'

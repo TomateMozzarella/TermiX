@@ -1,10 +1,10 @@
 # TermiX – Product Roadmap and Project Handoff
 
-### Current development workspace after v0.12.0
+### v0.12.0 release candidate
 - Detachable terminals retain the live process and scrollback. Window appearance and labels follow workspace settings.
 - SFTP downloads verify a saved local prefix when the same source and destination are chosen again. Uploads retain in-session pause and resume. Following a disconnect, retrying a folder verifies completed files and skips identical ones; the interrupted file starts again in a new exclusive staging file.
 - Third-party import reviews supported OpenSSH, PuTTY and MobaXterm entries. Entries without a saved SSH username are skipped.
-- FreeBSD, macOS and Windows have read-only SSH monitoring collectors. Native Windows, SFTP and remote-host validation remain pending.
+- FreeBSD, macOS and Windows have read-only SSH monitoring collectors. The release workflow requires native Windows, browser and Linux collector checks. Broader live remote-host interoperability remains manual.
 
 Last updated: 2026-11-08
 Status: v0.10.0 implemented, tested, integrated into main and published on 2026-11-08. SSH tunnels, recursive folder upload and post-v0.9 UI improvements are delivered. Only main remains; future work stays on main. The v0.11 workspace redesign and Multi-Execute await native release validation.

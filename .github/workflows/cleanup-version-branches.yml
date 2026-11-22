@@ -1,16 +1,17 @@
 name: Remove integrated version branches
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
   cleanup:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Delete only the explicitly retired and integrated branches
         env:
           GH_TOKEN: ${{ github.token }}

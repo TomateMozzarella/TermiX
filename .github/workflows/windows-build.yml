@@ -9,6 +9,11 @@ on:
       - '.gitignore'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - 'AGENTS.md'
+      - '.gitignore'
   workflow_dispatch:
 concurrency:
   group: termix-build-${{ github.event.pull_request.number || github.ref }}
@@ -23,34 +28,38 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: Verify exact collector on Linux
         run: python3 scripts/test-monitor-linux.py
   frontend:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
       - run: npm ci
       - run: npm test
       - name: Release receipt tamper checks
         run: python -m unittest discover -s scripts -p test_release_assets.py
-      - run: npx playwright install chromium
+      - run: npx playwright install --with-deps chromium
       - name: Browser workflow tests
         env:
           TERMIX_PREVIEW_DIR: ${{ github.workspace }}/ui-previews
         run: npm run test:ui
       - name: Export mock-IPC visual previews for review
-        if: always()
+        if: always() && github.event.repository.private
         run: python scripts/export-previews.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: TermiX-UI-previews
+          retention-days: 7
           path: |
             ui-previews/*.png
             test-results/**
@@ -61,9 +70,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
@@ -72,10 +83,10 @@ jobs:
         id: rust-cache
         with:
           path: src-tauri/target
-          key: windows-rust-${{ hashFiles('src-tauri/Cargo.lock') }}-${{ github.run_id }}
+          key: windows-msvc-${{ hashFiles('src-tauri/Cargo.lock') }}-${{ github.sha }}
           restore-keys: |
-            windows-rust-${{ hashFiles('src-tauri/Cargo.lock') }}-
-            windows-rust-
+            windows-msvc-${{ hashFiles('src-tauri/Cargo.lock') }}-
+            windows-release-${{ hashFiles('src-tauri/Cargo.lock') }}-
       - name: Fetch locked Rust sources and collect native licenses
         run: |
           cargo fetch --locked --manifest-path src-tauri/Cargo.toml
@@ -91,30 +102,12 @@ jobs:
       - name: Rust PTY, SSH and credential integration tests
         timeout-minutes: 3
         run: ./scripts/test-native.ps1
-      - uses: actions/cache/save@v4
-        if: always()
-        with:
-          path: src-tauri/target
-          key: ${{ steps.rust-cache.outputs.cache-primary-key }}
-      - uses: actions/cache/restore@v4
-        id: release-cache
-        with:
-          path: src-tauri/target
-          key: windows-release-${{ hashFiles('src-tauri/Cargo.lock') }}-${{ github.run_id }}
-          restore-keys: |
-            windows-release-${{ hashFiles('src-tauri/Cargo.lock') }}-
-            windows-release-
       - name: Clear cached installer output before packaging
         run: ./scripts/clean-bundles.ps1
       - name: Prepare checksum-verified Windows bundlers
         run: ./scripts/prepare-bundlers.ps1
       - name: Build Windows installer
         run: ./scripts/build-windows.ps1
-      - uses: actions/cache/save@v4
-        if: always() && steps.release-cache.outputs.cache-primary-key != ''
-        with:
-          path: src-tauri/target
-          key: ${{ steps.release-cache.outputs.cache-primary-key }}
       - name: Verify installed files and refresh of an existing desktop shortcut
         env:
           GH_TOKEN: ${{ github.token }}
@@ -124,6 +117,11 @@ jobs:
         run: ./scripts/build-portable.ps1
       - name: Record installer checksums and source commit
         run: python scripts/release-manifest.py
+      - uses: actions/cache/save@v4
+        if: github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true'
+        with:
+          path: src-tauri/target
+          key: ${{ steps.rust-cache.outputs.cache-primary-key }}
       - uses: actions/upload-artifact@v4
         with:
           name: TermiX-Windows-Installer
@@ -135,12 +133,14 @@ jobs:
             src-tauri/target/release/bundle/SHA256SUMS
           if-no-files-found: error
   desktop-download:
-    needs: [frontend, windows]
+    if: github.event.repository.private
+    needs: [frontend, windows, linux-metrics]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
           name: TermiX-Windows-Installer

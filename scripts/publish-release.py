@@ -38,7 +38,9 @@ runs = [run for run in runs if run['head_sha'] == commit and run['status'] == 'c
 if not runs: raise RuntimeError('No successful same-repository build exists for this exact commit')
 run = runs[0]
 jobs = api(f'repos/{repo}/actions/runs/{run["id"]}/jobs?per_page=100')['jobs']
-if any(job['conclusion'] != 'success' for job in jobs) or not {'frontend', 'windows', 'linux-metrics'}.issubset({job['name'] for job in jobs}):
+required_jobs = {'frontend', 'windows', 'linux-metrics'}
+successful_jobs = {job['name'] for job in jobs if job['conclusion'] == 'success'}
+if not required_jobs.issubset(successful_jobs):
     raise RuntimeError('Required build jobs did not all succeed')
 artifacts = api(f'repos/{repo}/actions/runs/{run["id"]}/artifacts')['artifacts']
 artifact = next((a for a in artifacts if a['name'] == 'TermiX-Windows-Installer' and not a['expired']), None)
