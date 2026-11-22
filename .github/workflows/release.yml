@@ -33,5 +33,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          TERMIX_BUILD_RUN: ${{ github.event.workflow_run.id }}
           TERMIX_COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: python scripts/publish-release.py

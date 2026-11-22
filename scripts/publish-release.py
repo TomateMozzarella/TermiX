@@ -31,9 +31,18 @@ if tag_ref.returncode == 0 and tag_ref.stdout.strip() != commit: raise RuntimeEr
 notes = pathlib.Path('docs/releases') / (tag + '.md')
 if not notes.is_file(): raise RuntimeError('Versioned release notes are missing')
 repository_id = api(f'repos/{repo}')['id']
-runs = api(f'repos/{repo}/actions/workflows/windows-build.yml/runs?head_sha={commit}&status=success&per_page=100')['workflow_runs']
-runs = [run for run in runs if run['head_sha'] == commit and run['status'] == 'completed' and run['conclusion'] == 'success'
-        and run['head_repository']['id'] == repository_id
+run_id = os.environ.get('TERMIX_BUILD_RUN')
+if run_id:
+    if not re.fullmatch(r'[0-9]+', run_id):
+        raise RuntimeError('Invalid build run ID')
+    runs = [api(f'repos/{repo}/actions/runs/{run_id}')]
+else:
+    runs = api(f'repos/{repo}/actions/runs?head_sha={commit}&per_page=100')['workflow_runs']
+runs = [run for run in runs
+        if run['path'] == '.github/workflows/windows-build.yml'
+        and run['head_sha'] == commit and run['status'] == 'completed'
+        and run['conclusion'] == 'success'
+        and (run.get('head_repository') or {}).get('id') == repository_id
         and run['event'] in ('push', 'workflow_dispatch') and run['head_branch'] == 'main']
 if not runs: raise RuntimeError('No successful same-repository build exists for this exact commit')
 run = runs[0]
